@@ -244,9 +244,6 @@
   .mark-toggle .mark-dot{width:12px;height:12px;border-radius:50%;margin-left:2px;}
   .mark-toggle.active{opacity:1;border-color:var(--gold);}
   .mark-row-list{display:flex;flex-wrap:wrap;}
-  .mark-insert-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
-  .mark-insert-btn{font-size:11px;padding:4px 10px 4px 4px;margin:0;}
-  .mark-insert-btn img,.mark-insert-btn .mark-dot{width:14px;height:14px;}
   .mark-chip-inline{margin:0 2px;vertical-align:middle;}
   .content-body .mark-chip-inline{background:var(--card-hover);}
   .mark-quickadd{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;padding-top:12px;border-top:1px dashed var(--border);}
@@ -258,6 +255,7 @@
   .entity-picker-item .badge,.mark-toggle .badge{margin-left:2px;transform:scale(.92);}
   .entity-picker-item:hover{color:var(--gold);border-color:var(--gold-dim);}
   .entity-picker-item img{width:20px;height:20px;border-radius:50%;object-fit:cover;}
+  .entity-picker-item .mark-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
   .mark-quickadd .edit-input{width:auto;flex:1;min-width:160px;}
 
   .settings-block{margin-bottom:36px;}
@@ -1169,7 +1167,7 @@ function inline(s){
   return e;
 }
 function renderInlineMarkToken(name, val){
-  const m = state.marks.find(x=>x.name===name) || state.elements.find(x=>x.name===name);
+  const m = state.marks.find(x=>x.name===name) || state.elements.find(x=>x.name===name) || state.groups.find(x=>x.name===name);
   const icon = (m && m.image) ? `<img src="${m.image}">` : (m ? '' : `<span class="mark-dot" style="background:var(--gold)"></span>`);
   const styleAttr = m ? ` style="${coloredChipStyle(m.color)}"` : '';
   const titleAttr = (m && m.description) ? ` title="${escapeHtml(m.description)}"` : '';
@@ -2243,20 +2241,25 @@ function familyToggleHtml(family, isActive){
 function markInsertButtonsHtml(fieldPath){
   const markBtns = state.marks.map(m=>{
     const icon = m.image ? `<img src="${m.image}">` : `<span class="mark-dot" style="background:${m.color||'var(--gold)'}"></span>`;
-    return `<button type="button" class="mark-toggle mark-insert-btn" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(m.name)}">${icon}${escapeHtml(m.name)}</button>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(m.name)}">${icon}${escapeHtml(m.name)}</button>`;
   }).join('');
   const elementBtns = state.elements.map(el2=>{
     const icon = el2.image ? `<img src="${el2.image}">` : `<span class="mark-dot" style="background:${el2.color||'var(--gold)'}"></span>`;
-    return `<button type="button" class="mark-toggle mark-insert-btn" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(el2.name)}">${icon}${escapeHtml(el2.name)}</button>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(el2.name)}">${icon}${escapeHtml(el2.name)}</button>`;
   }).join('');
+  const groupBtns = state.groups.map(g=>{
+    const icon = g.image ? `<img src="${g.image}">` : `<span class="mark-dot" style="background:${g.color||'var(--gold)'}"></span>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(g.name)}">${icon}${escapeHtml(g.name)}</button>`;
+  }).join('');
+  const collapsibleRow = (label, key, btns)=> `<details class="entity-picker" data-picker-key="${key}"${openPickerKeys.has(key)?' open':''}>
+    <summary class="btn">+ 插入${label}到文本中</summary>
+    <div class="entity-picker-list">${btns}</div>
+  </details>`;
   let html = '';
-  if(state.marks.length){
-    html += `<div class="mark-insert-row"><span class="hint" style="width:100%;margin:0 0 2px;">插入状态标记到文本中：</span>${markBtns}</div>`;
-  }
-  if(state.elements.length){
-    html += `<div class="mark-insert-row"><span class="hint" style="width:100%;margin:0 0 2px;">插入元素图标到文本中：</span>${elementBtns}</div>`;
-  }
-  if(!html){ html = '<div class="hint">还没有可用的状态标记或元素，先去左侧「设置」新增。</div>'; }
+  if(state.marks.length) html += collapsibleRow('状态标记', 'insert-marks-'+fieldPath, markBtns);
+  if(state.elements.length) html += collapsibleRow('元素图标', 'insert-elements-'+fieldPath, elementBtns);
+  if(state.groups.length) html += collapsibleRow('分组图标', 'insert-groups-'+fieldPath, groupBtns);
+  if(!html){ html = '<div class="hint">还没有可用的状态标记、元素或分组，先去左侧「设置」新增。</div>'; }
   return html;
 }
 
