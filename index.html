@@ -767,6 +767,7 @@ let db = null;
 let auth = null;
 let docRef = null;
 let knownIds = { units:new Set(), items:new Set(), families:new Set(), memories:new Set() };
+let lastSavedJson = { meta:{}, units:{}, items:{}, families:{}, memories:{} };
 let applyingRemoteUpdate = false;
 let isAdmin = false;
 
@@ -908,6 +909,9 @@ async function fetchEntityCollection(name){
   const docs = snap.docs.slice().sort((a,b)=>(a.data().order||0)-(b.data().order||0));
   const list = docs.map(d=> d.data().json ? JSON.parse(d.data().json) : null).filter(Boolean);
   knownIds[name] = new Set(snap.docs.map(d=>d.id));
+  const cache = {};
+  docs.forEach(d=>{ if(d.data().json) cache[d.id] = {json: d.data().json, order: d.data().order||0}; });
+  lastSavedJson[name] = cache;
   return list;
 }
 
@@ -940,6 +944,9 @@ async function loadData(){
       // New per-key format
       state = defaultData();
       Object.keys(metaByKey).forEach(k=> state[k] = metaByKey[k]);
+      const metaCache = {};
+      metaCollectionSnap.docs.forEach(d=>{ if(META_KEYS.includes(d.id) && d.data().json) metaCache[d.id] = d.data().json; });
+      lastSavedJson.meta = metaCache;
       const [units, items, families, memories] = await Promise.all(ENTITY_COLLECTIONS.map(fetchEntityCollection));
       state.units = units; state.items = items; state.families = families; state.memories = memories;
     } else {
@@ -1003,7 +1010,10 @@ async function loadData(){
     if(pendingLocalSave) return; // don't let a stale remote snapshot clobber an edit we're about to save
     applyingRemoteUpdate = true;
     snap.docs.forEach(d=>{
-      if(META_KEYS.includes(d.id) && d.data().json) state[d.id] = JSON.parse(d.data().json);
+      if(META_KEYS.includes(d.id) && d.data().json){
+        state[d.id] = JSON.parse(d.data().json);
+        lastSavedJson.meta[d.id] = d.data().json;
+      }
     });
     migrateState();
     render();
@@ -1017,6 +1027,9 @@ async function loadData(){
       const docs = snap.docs.slice().sort((a,b)=>(a.data().order||0)-(b.data().order||0));
       state[name] = docs.map(d=> d.data().json ? JSON.parse(d.data().json) : null).filter(Boolean);
       knownIds[name] = new Set(snap.docs.map(d=>d.id));
+      const cache = {};
+      docs.forEach(d=>{ if(d.data().json) cache[d.id] = {json: d.data().json, order: d.data().order||0}; });
+      lastSavedJson[name] = cache;
       migrateState();
       render();
       applyingRemoteUpdate = false;
@@ -1040,9 +1053,10 @@ function saveData(silent){
         let oversizedMetaKey = null;
         META_KEYS.forEach(key=>{
           const json = JSON.stringify(state[key]);
+          if(json === lastSavedJson.meta[key]) return; // unchanged since last save — skip the network write
           const bytes = new Blob([json]).size;
           if(bytes > LIMIT_BYTES && !oversizedMetaKey) oversizedMetaKey = {key, bytes};
-          writes.push({type:'set', ref: db.collection('meta').doc(key), data:{json}});
+          writes.push({type:'set', ref: db.collection('meta').doc(key), data:{json}, cacheKind:'meta', cacheId:key, cacheJson:json});
         });
         if(oversizedMetaKey){
           showToast(`保存失败：「${oversizedMetaKey.key}」这部分数据已经超过单个文档1MB上限（约${(oversizedMetaKey.bytes/1024/1024).toFixed(2)}MB）。如果是更新日志，建议删掉一些旧记录。`, 10000);
@@ -1055,14 +1069,18 @@ function saveData(silent){
           (state[name]||[]).forEach((entity, idx)=>{
             currentIds.add(entity.id);
             const entityJson = JSON.stringify(entity);
+            const cacheEntry = lastSavedJson[name][entity.id];
+            if(cacheEntry && cacheEntry.json === entityJson && cacheEntry.order === idx) return; // unchanged — skip
             const entityBytes = new Blob([entityJson]).size;
             if(entityBytes > LIMIT_BYTES && !oversizedEntity){
               oversizedEntity = {name, entity, bytes: entityBytes};
             }
-            writes.push({type:'set', ref: db.collection(name).doc(entity.id), data:{json: entityJson, order: idx}});
+            writes.push({type:'set', ref: db.collection(name).doc(entity.id), data:{json: entityJson, order: idx}, cacheKind:name, cacheId:entity.id, cacheJson:entityJson, cacheOrder:idx});
           });
           (knownIds[name] || new Set()).forEach(id=>{
-            if(!currentIds.has(id)) writes.push({type:'delete', ref: db.collection(name).doc(id)});
+            if(!currentIds.has(id)){
+              writes.push({type:'delete', ref: db.collection(name).doc(id), cacheKind:name, cacheId:id, deleted:true});
+            }
           });
           knownIds[name] = currentIds;
         });
@@ -1072,14 +1090,33 @@ function saveData(silent){
           pendingLocalSave = false; resolve(); return;
         }
 
+        if(writes.length === 0){
+          if(!silent) showToast('没有改动，无需保存');
+          pendingLocalSave = false; resolve(); return;
+        }
+
         // Chunk into batches of ≤450 operations to stay safely under Firestore's 500-op batch limit as the site grows
+        const totalChunks = Math.ceil(writes.length/450);
         for(let i=0;i<writes.length;i+=450){
+          const chunkNum = Math.floor(i/450)+1;
+          if(!silent && totalChunks>1) showToast(`保存中... (${chunkNum}/${totalChunks})`, 60000);
+          else if(!silent && writes.length>1) showToast(`保存中... 共 ${writes.length} 处改动`, 60000);
           const batch = db.batch();
-          writes.slice(i,i+450).forEach(w=>{
+          const chunk = writes.slice(i,i+450);
+          chunk.forEach(w=>{
             if(w.type==='set') batch.set(w.ref, w.data);
             else batch.delete(w.ref);
           });
           await batch.commit();
+          // Only update the cache after a successful commit, so a failed save doesn't wrongly mark things as saved
+          chunk.forEach(w=>{
+            if(w.cacheKind==='meta'){
+              if(w.deleted) delete lastSavedJson.meta[w.cacheId]; else lastSavedJson.meta[w.cacheId] = w.cacheJson;
+            } else {
+              if(w.deleted) delete lastSavedJson[w.cacheKind][w.cacheId];
+              else lastSavedJson[w.cacheKind][w.cacheId] = {json:w.cacheJson, order:w.cacheOrder};
+            }
+          });
         }
         if(!silent) showToast('已保存');
       }
