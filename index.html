@@ -1135,7 +1135,8 @@ function renderInlineMarkToken(name, val){
   const m = state.marks.find(x=>x.name===name) || state.elements.find(x=>x.name===name);
   const icon = (m && m.image) ? `<img src="${m.image}">` : (m ? '' : `<span class="mark-dot" style="background:var(--gold)"></span>`);
   const styleAttr = m ? ` style="${coloredChipStyle(m.color)}"` : '';
-  return `<span class="mark-chip mark-chip-inline"${styleAttr}>${icon}${name}${val?(' '+val):''}</span>`;
+  const titleAttr = (m && m.description) ? ` title="${escapeHtml(m.description)}"` : '';
+  return `<span class="mark-chip mark-chip-inline"${styleAttr}${titleAttr}>${icon}${name}${val?(' '+val):''}</span>`;
 }
 
 function matchesSearch(hayParts){
@@ -2154,7 +2155,7 @@ function handleDraftAction(ds, draft){
 
 function markToggleHtml(mark, isActive){
   const icon = mark.image ? `<img src="${mark.image}">` : '';
-  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mark.color, isActive)}" data-action="toggleMark" data-mark-id="${mark.id}">${icon}${escapeHtml(mark.name)}</button>`;
+  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mark.color, isActive)}" data-action="toggleMark" data-mark-id="${mark.id}" title="${escapeHtml(mark.description||mark.name)}">${icon}${escapeHtml(mark.name)}</button>`;
 }
 
 function groupToggleHtml(group, isActive){
@@ -2487,7 +2488,7 @@ function renderUnit(){
     const m = state.marks.find(x=>x.id===mid);
     if(!m) return '';
     const icon = m.image ? `<img src="${m.image}">` : '';
-    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}">${icon}${escapeHtml(m.name)}</span>`;
+    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
   const skillsHtml = (unit.skills&&unit.skills.length) ? unit.skills.map(s=>{
     const mediaList = Array.isArray(s.media) ? s.media : [];
@@ -3100,7 +3101,7 @@ function renderSimpleEntity(type){
     const m = state.marks.find(x=>x.id===mid);
     if(!m) return '';
     const icon = m.image ? `<img src="${m.image}">` : '';
-    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}">${icon}${escapeHtml(m.name)}</span>`;
+    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
 
   let restrictChipHtml = '';
