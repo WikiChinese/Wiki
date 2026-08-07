@@ -766,7 +766,6 @@ const cloudinaryConfig = {
 let db = null;
 let auth = null;
 let docRef = null;
-let metaRef = null;
 let knownIds = { units:new Set(), items:new Set(), families:new Set(), memories:new Set() };
 let applyingRemoteUpdate = false;
 let isAdmin = false;
@@ -781,6 +780,10 @@ function computeIsAdmin(user){
 let authReadyResolved = false;
 let resolveAuthReady;
 const authReadyPromise = new Promise(res=>{ resolveAuthReady = res; });
+// Safety net: if Firebase Auth never fires onAuthStateChanged at all (this can happen when the
+// page is opened as a local file:// URL, which Chrome treats as a broken/blocked origin for some
+// Firebase Auth internals), don't let loadData() hang forever — proceed after a few seconds anyway.
+setTimeout(()=>{ if(!authReadyResolved){ authReadyResolved = true; resolveAuthReady(); } }, 3000);
 
 function initFirebase(){
   if(firebaseConfig.apiKey === "YOUR_API_KEY"){
@@ -791,7 +794,6 @@ function initFirebase(){
   db = firebase.firestore();
   auth = firebase.auth();
   docRef = db.collection('wiki').doc('data'); // legacy single-document store, kept only for one-time migration reads
-  metaRef = db.collection('meta').doc('data');
   auth.onAuthStateChanged((user)=>{
     isAdmin = computeIsAdmin(user);
     if(!authReadyResolved){ authReadyResolved = true; resolveAuthReady(); }
@@ -897,6 +899,9 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 });
 
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
+// Every top-level piece of "site config" data gets its own small document in the `meta` collection.
+// To give something new its own document in the future, just add its state key to this list.
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -921,45 +926,65 @@ async function loadData(){
   // and get silently rejected by the "write requires login" security rule.
   await authReadyPromise;
 
-  let metaSnap = null;
+  let metaCollectionSnap = null;
   let metaReadFailed = false;
-  try{ metaSnap = await metaRef.get(); }
-  catch(e){ metaReadFailed = true; console.error('meta doc read failed:', e); }
+  try{ metaCollectionSnap = await db.collection('meta').get(); }
+  catch(e){ metaReadFailed = true; console.error('meta collection read failed:', e); }
 
   try{
-    if(metaSnap && metaSnap.exists && metaSnap.data().json){
-      // New split-storage format
-      state = JSON.parse(metaSnap.data().json);
+    const metaByKey = {};
+    if(metaCollectionSnap){
+      metaCollectionSnap.docs.forEach(d=>{ if(META_KEYS.includes(d.id) && d.data().json) metaByKey[d.id] = JSON.parse(d.data().json); });
+    }
+    if(Object.keys(metaByKey).length){
+      // New per-key format
+      state = defaultData();
+      Object.keys(metaByKey).forEach(k=> state[k] = metaByKey[k]);
       const [units, items, families, memories] = await Promise.all(ENTITY_COLLECTIONS.map(fetchEntityCollection));
       state.units = units; state.items = items; state.families = families; state.memories = memories;
     } else {
-      // Nothing readable in the new format — try the old single-document format (this must be attempted
-      // even if reading the new "meta" doc above threw a permission error, since that's a different
-      // Firestore path and may still be perfectly readable)
-      let legacySnap = null;
-      try{ legacySnap = await docRef.get(); }
-      catch(e){ console.error('legacy doc read failed:', e); }
+      // Nothing readable in the new per-key format — try the previous single-meta-doc format,
+      // then the oldest single-document-for-everything format, as one-time migrations.
+      let legacyMetaSnap = null;
+      try{ legacyMetaSnap = await db.collection('meta').doc('data').get(); }
+      catch(e){ console.error('legacy meta doc read failed:', e); }
 
-      if(legacySnap && legacySnap.exists && legacySnap.data().json){
-        state = JSON.parse(legacySnap.data().json);
-        migrateState();
-        showToast('检测到旧格式数据，正在迁移到新的存储结构（分开存储以避开1MB限制）...', 5000);
-        await saveData(true);
-        showToast('迁移完成，已保存为新格式', 4000);
-      } else if(metaReadFailed){
-        // Could not read the new format NOR the old format — this is almost certainly a Firestore
-        // security-rules problem, not actually missing data. Do NOT auto-save blank defaults here,
-        // to avoid any risk of overwriting real data once the rules are fixed.
+      if(legacyMetaSnap && legacyMetaSnap.exists && legacyMetaSnap.data().json){
+        const legacyMeta = JSON.parse(legacyMetaSnap.data().json);
         state = defaultData();
+        Object.keys(legacyMeta).forEach(k=> state[k] = legacyMeta[k]);
+        const [units, items, families, memories] = await Promise.all(ENTITY_COLLECTIONS.map(fetchEntityCollection));
+        state.units = units; state.items = items; state.families = families; state.memories = memories;
         migrateState();
-        showToast('⚠️ 无法读取数据库，很可能是 Firestore 安全规则还没开放新的存储路径（meta / units / items / families / memories）导致的权限问题——不是数据被删除了。你的原始数据大概率还完整保存在数据库里。在确认权限问题解决之前，请不要在这个页面保存任何修改！', 20000);
-        renderAuthFoot();
-        render();
-        return;
+        showToast('检测到旧格式设置数据，正在迁移到分开存储的新格式...', 5000);
+        await saveData(true);
+        showToast('迁移完成', 4000);
       } else {
-        state = defaultData();
-        migrateState();
-        await saveData(true);
+        let legacySnap = null;
+        try{ legacySnap = await docRef.get(); }
+        catch(e){ console.error('legacy doc read failed:', e); }
+
+        if(legacySnap && legacySnap.exists && legacySnap.data().json){
+          state = JSON.parse(legacySnap.data().json);
+          migrateState();
+          showToast('检测到旧格式数据，正在迁移到新的存储结构（分开存储以避开1MB限制）...', 5000);
+          await saveData(true);
+          showToast('迁移完成，已保存为新格式', 4000);
+        } else if(metaReadFailed){
+          // Could not read any format at all — this is almost certainly a Firestore
+          // security-rules problem, not actually missing data. Do NOT auto-save blank defaults here,
+          // to avoid any risk of overwriting real data once the rules are fixed.
+          state = defaultData();
+          migrateState();
+          showToast('⚠️ 无法读取数据库，很可能是 Firestore 安全规则还没开放新的存储路径导致的权限问题——不是数据被删除了。你的原始数据大概率还完整保存在数据库里。在确认权限问题解决之前，请不要在这个页面保存任何修改！', 20000);
+          renderAuthFoot();
+          render();
+          return;
+        } else {
+          state = defaultData();
+          migrateState();
+          await saveData(true);
+        }
       }
     }
   }catch(e){
@@ -973,17 +998,13 @@ async function loadData(){
   render();
 
   // Live sync: reflect other people's edits without a manual refresh
-  metaRef.onSnapshot((snap)=>{
-    if(!snap.exists) return;
+  db.collection('meta').onSnapshot((snap)=>{
     if(snap.metadata.hasPendingWrites) return; // our own write echoing back
     if(pendingLocalSave) return; // don't let a stale remote snapshot clobber an edit we're about to save
-    if(!snap.data().json) return;
     applyingRemoteUpdate = true;
-    const incoming = JSON.parse(snap.data().json);
-    state.siteTitle = incoming.siteTitle; state.updateLog = incoming.updateLog; state.tierlist = incoming.tierlist;
-    state.marks = incoming.marks; state.groups = incoming.groups; state.elements = incoming.elements; state.series = incoming.series;
-    state.rarities = incoming.rarities; state.traits = incoming.traits; state.adminEmails = incoming.adminEmails;
-    state.obtainMethods = incoming.obtainMethods; state.odyssey = incoming.odyssey;
+    snap.docs.forEach(d=>{
+      if(META_KEYS.includes(d.id) && d.data().json) state[d.id] = JSON.parse(d.data().json);
+    });
     migrateState();
     render();
     applyingRemoteUpdate = false;
@@ -1013,22 +1034,20 @@ function saveData(silent){
     clearTimeout(saveTimer);
     pendingLocalSave = true;
     const doSave = async ()=>{
-      if(!db || !metaRef){ pendingLocalSave = false; resolve(); return; }
+      if(!db){ pendingLocalSave = false; resolve(); return; }
       try{
-        const meta = {
-          siteTitle: state.siteTitle, updateLog: state.updateLog, tierlist: state.tierlist,
-          marks: state.marks, groups: state.groups, elements: state.elements, series: state.series,
-          rarities: state.rarities, traits: state.traits, adminEmails: state.adminEmails,
-          obtainMethods: state.obtainMethods, odyssey: state.odyssey
-        };
-        const metaJson = JSON.stringify(meta);
-        const metaBytes = new Blob([metaJson]).size;
-        if(metaBytes > LIMIT_BYTES){
-          showToast(`保存失败：更新日志/设置这部分数据已经超过单个文档1MB上限（约${(metaBytes/1024/1024).toFixed(2)}MB）。可能是更新日志太长了，建议删掉一些旧记录。`, 10000);
+        const writes = [];
+        let oversizedMetaKey = null;
+        META_KEYS.forEach(key=>{
+          const json = JSON.stringify(state[key]);
+          const bytes = new Blob([json]).size;
+          if(bytes > LIMIT_BYTES && !oversizedMetaKey) oversizedMetaKey = {key, bytes};
+          writes.push({type:'set', ref: db.collection('meta').doc(key), data:{json}});
+        });
+        if(oversizedMetaKey){
+          showToast(`保存失败：「${oversizedMetaKey.key}」这部分数据已经超过单个文档1MB上限（约${(oversizedMetaKey.bytes/1024/1024).toFixed(2)}MB）。如果是更新日志，建议删掉一些旧记录。`, 10000);
           pendingLocalSave = false; resolve(); return;
         }
-        const writes = [];
-        writes.push({type:'set', ref: metaRef, data:{json: metaJson}});
 
         let oversizedEntity = null;
         ENTITY_COLLECTIONS.forEach(name=>{
@@ -3283,13 +3302,11 @@ function dbSizeReportHtml(){
   const limitBytes = 1048487;
   const sizeOf = (obj)=>{ try{ return new Blob([JSON.stringify(obj)]).size; }catch(e){ return 0; } };
 
-  const metaObj = {
-    siteTitle: state.siteTitle, updateLog: state.updateLog, tierlist: state.tierlist,
-    marks: state.marks, groups: state.groups, elements: state.elements, series: state.series,
-    rarities: state.rarities, traits: state.traits, adminEmails: state.adminEmails,
-    obtainMethods: state.obtainMethods, odyssey: state.odyssey
-  };
-  const metaBytes = sizeOf(metaObj);
+  let biggestMeta = {key:'', bytes:0};
+  META_KEYS.forEach(key=>{
+    const bytes = sizeOf(state[key]);
+    if(bytes > biggestMeta.bytes) biggestMeta = {key, bytes};
+  });
 
   let biggest = {name:'', label:'', bytes:0};
   ENTITY_COLLECTIONS.forEach(name=>{
@@ -3300,19 +3317,19 @@ function dbSizeReportHtml(){
     });
   });
 
-  const worstBytes = Math.max(metaBytes, biggest.bytes);
+  const worstBytes = Math.max(biggestMeta.bytes, biggest.bytes);
   const pct = Math.min(100, Math.round((worstBytes/limitBytes)*100));
   const barColor = pct >= 90 ? '#e05555' : (pct >= 70 ? '#c9a24b' : 'var(--teal)');
 
   return `<div class="settings-block">
     <div class="section-label" style="margin-top:0;">数据库大小</div>
-    <div class="hint" style="margin-bottom:10px;">现在的存储方式是：每个单位/物品/使魔/记忆各自存成一份独立文档，再加一份公共设置文档（更新日志、标记、特性等）。Firestore 对<b>单个文档</b>的1MB上限还在，但现在是分开算的，不会因为单位数量变多就整体炸掉——只有"某一个单位自己"的内容异常庞大（比如塞了没走Cloudinary的大图片）才可能撑到上限。</div>
+    <div class="hint" style="margin-bottom:10px;">现在的存储方式是：每个单位/物品/使魔/记忆各自存成一份独立文档；更新日志、状态标记、特性、稀有度、获取方式、分级榜、Odyssey模式等也都<b>各自单独存成一份文档</b>，互不共用额度。以后新增的功能，也会照这个规则各自拆开存。Firestore 对<b>单个文档</b>的1MB上限还在，但现在是分开算的——只有"某一份具体的文档自己"异常庞大，才会撑到上限，不会因为整体内容变多就全部一起炸掉。</div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;height:10px;margin-bottom:8px;">
       <div style="width:${pct}%;height:100%;background:${barColor};"></div>
     </div>
     <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text);margin-bottom:4px;">占用最多的一份文档：${(worstBytes/1024).toFixed(1)} KB / 1024 KB（${pct}%）</div>
     <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
-      公共设置文档：${(metaBytes/1024).toFixed(1)} KB　|　最大的单条数据：${biggest.label?`${escapeHtml(biggest.label)}「${escapeHtml(biggest.name)}」`:'（暂无）'} ${biggest.bytes?`(${(biggest.bytes/1024).toFixed(1)} KB)`:''}
+      占用最多的设置类文档：${biggestMeta.key||'（暂无）'} ${biggestMeta.bytes?`(${(biggestMeta.bytes/1024).toFixed(1)} KB)`:''}　|　占用最多的单条数据：${biggest.label?`${escapeHtml(biggest.label)}「${escapeHtml(biggest.name)}」`:'（暂无）'} ${biggest.bytes?`(${(biggest.bytes/1024).toFixed(1)} KB)`:''}
     </div>
     ${pct>=85 ? `<div class="hint" style="color:#e05555;margin-bottom:12px;">⚠️ 上面提到的这份文档快满了，去检查一下它是不是有图片/视频没走Cloudinary直接存进来了。</div>` : ''}
   </div>`;
@@ -3374,6 +3391,12 @@ function renderSettings(){
     </div>
 
     ${dbSizeReportHtml()}
+
+    <div class="settings-block">
+      <div class="section-label" style="margin-top:0;">数据恢复</div>
+      <div class="hint" style="margin-bottom:14px;">如果单位/物品/使魔/记忆显示为0，但你确定以前有数据，点这个按钮可以从最早的旧版备份数据（<code>wiki/data</code>）强制重新读取并覆盖保存一次。这不会删除任何东西，只是重新同步。</div>
+      <button class="btn" id="recoverFromLegacyBtn">🔄 从旧版数据强制恢复</button>
+    </div>
 
     <div class="settings-block">
       <div class="section-label" style="margin-top:0;">状态标记</div>
@@ -3507,6 +3530,30 @@ function renderSettings(){
     await saveData(false);
     settingsSaveBtn.disabled = false;
     settingsSaveBtn.textContent = original;
+  });
+  const recoverBtn = document.getElementById('recoverFromLegacyBtn');
+  if(recoverBtn) recoverBtn.addEventListener('click', async ()=>{
+    if(!requireAdmin()) return;
+    if(!confirm('确定要从旧版备份数据强制恢复吗？这会用旧数据覆盖你现在看到的内容（如果现在显示是空的/不对的，这正是你想要的）。')) return;
+    recoverBtn.disabled = true;
+    recoverBtn.textContent = '恢复中...';
+    try{
+      const legacySnap = await docRef.get();
+      if(!legacySnap.exists || !legacySnap.data().json){
+        showToast('没有找到旧版备份数据（wiki/data 这份文档是空的或不存在）。', 8000);
+      } else {
+        state = JSON.parse(legacySnap.data().json);
+        migrateState();
+        await saveData(false);
+        showToast('已从旧版数据恢复并重新保存！', 5000);
+        render();
+      }
+    }catch(e){
+      showToast(`恢复失败：${e && e.message ? e.message : '请检查网络或权限'}`, 10000);
+      console.error('recover error:', e);
+    }
+    recoverBtn.disabled = false;
+    recoverBtn.textContent = '🔄 从旧版数据强制恢复';
   });
   const addGroupBtn = document.getElementById('addGroupBtn');
   if(addGroupBtn) addGroupBtn.addEventListener('click', async ()=>{
