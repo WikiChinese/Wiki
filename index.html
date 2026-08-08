@@ -278,6 +278,8 @@
   .login-overlay.show{display:flex;}
   .login-box{background:var(--panel);border:1px solid var(--border-light);border-radius:12px;padding:24px 26px;width:300px;}
   .trait-box{background:var(--panel);border:1px solid var(--border-light);border-radius:12px;padding:22px 24px;width:min(640px,92vw);max-height:82vh;overflow-y:auto;}
+  .trait-page-list{display:flex;flex-direction:column;gap:16px;}
+  .trait-page-card{background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--gold-dim);border-radius:12px;padding:20px 22px;}
   .trait-detail-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
   .trait-detail-icon{width:44px;height:44px;border-radius:10px;object-fit:contain;background:var(--card);}
   .trait-detail-name{font-family:'Noto Serif SC',serif;font-size:20px;font-weight:700;}
@@ -388,7 +390,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -861,9 +863,7 @@ function closeLoginModal(){
   document.getElementById('loginOverlay').classList.remove('show');
 }
 
-function openTraitOverlay(traitId){
-  const t = state.traits.find(x=>x.id===traitId);
-  if(!t) return;
+function traitDetailInnerHtml(t){
   const iconHtml = t.image ? `<img class="trait-detail-icon" src="${t.image}">` : `<div class="trait-detail-icon" style="${coloredChipStyle(t.color)}"></div>`;
   const pctLine = (label, pct)=>{
     const p = parseFloat(pct);
@@ -879,7 +879,7 @@ function openTraitOverlay(traitId){
     <thead><tr><th>${escapeHtml(headers[0])}</th><th>${escapeHtml(headers[1])}</th></tr></thead>
     <tbody>${rows.map(r=>`<tr><td>${escapeHtml(r[0]||'')}</td><td>${escapeHtml(r[1]||'')}</td></tr>`).join('')}</tbody>
   </table>` : '';
-  document.getElementById('traitBox').innerHTML = `
+  return `
     <div class="trait-detail-head">
       ${iconHtml}
       <div>
@@ -895,6 +895,29 @@ function openTraitOverlay(traitId){
       ${tableHtml}
     </div>
   `;
+}
+
+function renderTraitsPage(){
+  const container = document.getElementById('mainInner');
+  const cardsHtml = state.traits.length ? state.traits.map(t=>`
+    <div class="trait-page-card">${traitDetailInnerHtml(t)}</div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何特性，管理员可以到「设置」页面新增。</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">特性</h1>
+      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="goToTraitSettingsBtn">去设置页管理</button></div>` : ''}
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">这里汇总了所有特性的完整信息（简介、数值加成、对照表）。以后想改某个特性的说明或数值，去「设置」页面改，这里会自动同步显示最新内容。</div>
+    <div class="trait-page-list">${cardsHtml}</div>
+  `;
+  const goBtn = document.getElementById('goToTraitSettingsBtn');
+  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+}
+
+function openTraitOverlay(traitId){
+  const t = state.traits.find(x=>x.id===traitId);
+  if(!t) return;
+  document.getElementById('traitBox').innerHTML = traitDetailInnerHtml(t);
   document.getElementById('traitOverlay').classList.add('show');
 }
 function closeTraitOverlay(){
@@ -1265,6 +1288,7 @@ function renderSidebar(){
   html += `<a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects">状态标记</a>`;
   html += `<a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey">Odyssey 模式</a>`;
   html += `<a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes">攻击类型</a>`;
+  html += `<a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits">特性</a>`;
   html += `<a href="#/settings" class="top-link ${currentView.type==='settings'?'active':''}" data-view="settings">设置 · 标记与稀有度</a>`;
 
   html += `<div class="cat-group"><div class="cat-head"><a href="#/unitGallery" class="cat-label-btn ${currentView.type==='unitGallery'?'active':''}" data-view="unitGallery">单位 · ${state.units.length}</a>${isAdmin ? '<button class="cat-add" id="addUnitBtn" title="新增单位">+</button>' : ''}</div></div>`;
@@ -2946,6 +2970,7 @@ function renderMain(){
   else if(currentView.type==='statusEffects') renderStatusEffects();
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
+  else if(currentView.type==='traits') renderTraitsPage();
   else if(currentView.type==='settings') renderSettings();
   else if(currentView.type==='unit') renderUnit();
   else if(currentView.type==='item') renderItem();
