@@ -34,18 +34,18 @@
   .search-results-label{display:flex;justify-content:space-between;align-items:center;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);font-weight:600;padding:12px 12px 6px;}
   .search-clear-btn{background:none;border:none;color:var(--gold-dim);font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer;padding:2px 4px;}
   .search-clear-btn:hover{color:var(--gold);}
-  .search-result-item{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:none;border:none;color:var(--text-dim);padding:9px 12px;border-radius:6px;font-size:13.5px;text-align:left;cursor:pointer;}
+  .search-result-item{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:none;border:none;color:var(--text-dim);padding:9px 12px;border-radius:6px;font-size:13.5px;text-align:left;cursor:pointer;text-decoration:none;}
   .search-result-item:hover{background:var(--card-hover);color:var(--text);}
   .search-result-sub{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
   .search-input:focus{border-color:var(--gold-dim);}
   .cat-nav{padding:10px 8px;flex:1;overflow-y:auto;}
-  .top-link{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text-dim);padding:10px 10px;border-radius:6px;font-size:14px;text-align:left;font-weight:500;margin-bottom:2px;}
+  .top-link{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text-dim);padding:10px 10px;border-radius:6px;font-size:14px;text-align:left;font-weight:500;margin-bottom:2px;text-decoration:none;}
   .top-link:hover{background:var(--card);color:var(--text);}
   .top-link.active{background:var(--card);color:var(--gold);}
   .cat-group{margin:10px 0 4px;}
   .cat-head{display:flex;align-items:center;gap:6px;padding:8px 10px;}
   .cat-label{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);font-weight:600;flex:1;}
-  .cat-label-btn{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);font-weight:600;flex:1;background:none;border:none;text-align:left;padding:0;cursor:pointer;}
+  .cat-label-btn{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);font-weight:600;flex:1;background:none;border:none;text-align:left;padding:0;cursor:pointer;text-decoration:none;display:block;}
   .cat-label-btn:hover{color:var(--gold);}
   .cat-label-btn.active{color:var(--gold);}
   .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:18px;}
@@ -57,7 +57,7 @@
   .odyssey-card-desc{font-size:13px;color:var(--text-dim);line-height:1.55;white-space:pre-line;}
   .odyssey-card-unit-tag{display:inline-block;font-size:11px;color:var(--teal);background:rgba(63,158,143,.12);border:1px solid var(--teal);border-radius:20px;padding:2px 10px;margin-bottom:6px;cursor:pointer;}
   .odyssey-card-unit-tag:hover{background:rgba(63,158,143,.25);}
-  .gallery-card{text-align:center;cursor:pointer;transition:opacity .15s, outline-color .15s;}
+  .gallery-card{text-align:center;cursor:pointer;transition:opacity .15s, outline-color .15s;text-decoration:none;display:block;color:inherit;}
   .gallery-card[draggable="true"]{cursor:grab;}
   .gallery-card.dragging{opacity:.35;cursor:grabbing;}
   .gallery-card.drag-over{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
@@ -362,7 +362,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'图鉴', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[]} };
+let state = { siteTitle:'图鉴', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[]}, attackTypes:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -384,13 +384,38 @@ let draftSimple = null;
 let draftOdyssey = null;
 let showingShinyImage = false;
 
+function viewToHash(view){
+  if(!view || !view.type || view.type==='home') return '#/';
+  return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
+}
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+function hashToView(){
+  const raw = (location.hash || '').replace(/^#\/?/, '');
+  if(!raw) return {type:'home'};
+  const parts = raw.split('/').filter(Boolean).map(decodeURIComponent);
+  const type = parts[0];
+  if(!VALID_HASH_TYPES.includes(type)) return {type:'home'};
+  return parts[1] ? {type, id: parts[1]} : {type};
+}
+function setHash(view){
+  const h = viewToHash(view);
+  if(location.hash !== h){ suppressNextHashChange = true; location.hash = h; }
+}
+let suppressNextHashChange = false;
+
+function isPlainLeftClick(e){
+  return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
+}
+
 function goToView(view){
   viewHistory.push(JSON.parse(JSON.stringify(currentView)));
   currentView = view;
+  setHash(view);
 }
 function goBack(){
   const prev = viewHistory.pop();
   currentView = prev || {type:'home'};
+  setHash(currentView);
   editMode=false; draftUnit=null; draftSimple=null; addingLog=false; showingShinyImage=false;
   render();
 }
@@ -585,7 +610,12 @@ function defaultData(){
       unitIds:[],
       characterCards:[],
       basicCards:[]
-    }
+    },
+    attackTypes:[
+      {id:uid(), name:'AOE', image:'', color:'#c9506e', description:'以自身或目标点为中心，对范围内的所有敌人造成伤害。'},
+      {id:uid(), name:'CONE', image:'', color:'#c9a24b', description:'扇形/锥形范围攻击，从单位面朝的方向向外呈扇形展开，覆盖扇形区域内的敌人。'},
+      {id:uid(), name:'半圆 (Half Circle)', image:'', color:'#4a8fd1', description:'以单位为圆心，朝面向方向展开的半圆形范围攻击。'}
+    ]
   };
 }
 
@@ -600,6 +630,12 @@ function migrateState(){
   if(!state.items) state.items = [];
   if(!Array.isArray(state.adminEmails)) state.adminEmails = [];
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
+  if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
+  state.attackTypes.forEach(t=>{
+    if(t.color===undefined) t.color = '#4a8fd1';
+    if(t.image===undefined) t.image = '';
+    if(t.description===undefined) t.description = '';
+  });
   if(!state.odyssey || typeof state.odyssey !== 'object') state.odyssey = {};
   if(state.odyssey.intro===undefined) state.odyssey.intro = '';
   if(!Array.isArray(state.odyssey.unitIds)) state.odyssey.unitIds = [];
@@ -677,6 +713,7 @@ function migrateState(){
         a.range = withRange ? withRange.range : (a.levels.length ? (a.levels[a.levels.length-1].range||'') : '');
       }
       if(a.attackType===undefined) a.attackType = '';
+      if(a.attackTypeId===undefined) a.attackTypeId = '';
       if(a.baseSpa===undefined) a.baseSpa = '';
       if(a.unitLv60===undefined) a.unitLv60 = '';
       if(a.trait===undefined) a.trait = '';
@@ -900,7 +937,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -999,6 +1036,14 @@ async function loadData(){
   }
   migrateState();
   if(auth && auth.currentUser) isAdmin = computeIsAdmin(auth.currentUser);
+  currentView = hashToView();
+  if(!location.hash) setHash(currentView);
+  window.addEventListener('hashchange', ()=>{
+    if(suppressNextHashChange){ suppressNextHashChange = false; return; }
+    currentView = hashToView();
+    editMode = false; draftUnit=null; draftSimple=null; draftOdyssey=null; showingShinyImage=false;
+    render();
+  });
   renderAuthFoot();
   render();
 
@@ -1193,12 +1238,14 @@ function renderSidebar(){
     state.memories.forEach(m=>{ if(m.name.toLowerCase().includes(q)) results.push({type:'memory', id:m.id, name:m.name, sub:'记忆'}); });
 
     html += `<div class="search-results-label">搜索结果 (${results.length}) <button class="search-clear-btn" id="searchClearBtn">清除</button></div>`;
-    html += results.length ? results.map(r=>`<button class="search-result-item" data-view="${r.type}" data-id="${r.id}">${escapeHtml(r.name)}<span class="search-result-sub">${r.sub}</span></button>`).join('') : `<div class="empty-hint" style="padding-left:0;">没有找到匹配的结果</div>`;
+    html += results.length ? results.map(r=>`<a href="${viewToHash({type:r.type, id:r.id})}" class="search-result-item" data-view="${r.type}" data-id="${r.id}">${escapeHtml(r.name)}<span class="search-result-sub">${r.sub}</span></a>`).join('') : `<div class="empty-hint" style="padding-left:0;">没有找到匹配的结果</div>`;
     nav.innerHTML = html;
 
     nav.querySelectorAll('.search-result-item').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        currentView = {type: btn.dataset.view, id: btn.dataset.id};
+      btn.addEventListener('click', (e)=>{
+        if(!isPlainLeftClick(e)) return;
+        e.preventDefault();
+        goToView({type: btn.dataset.view, id: btn.dataset.id});
         editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false;
         render(); closeMobileSidebar();
       });
@@ -1213,24 +1260,35 @@ function renderSidebar(){
     return;
   }
 
-  html += `<button class="top-link ${currentView.type==='home'?'active':''}" data-view="home">首页 · 更新日志</button>`;
-  html += `<button class="top-link ${currentView.type==='tierlist'?'active':''}" data-view="tierlist">分级榜</button>`;
-  html += `<button class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects">状态标记</button>`;
-  html += `<button class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey">Odyssey 模式</button>`;
-  html += `<button class="top-link ${currentView.type==='settings'?'active':''}" data-view="settings">设置 · 标记与稀有度</button>`;
+  html += `<a href="#/" class="top-link ${currentView.type==='home'?'active':''}" data-view="home">首页 · 更新日志</a>`;
+  html += `<a href="#/tierlist" class="top-link ${currentView.type==='tierlist'?'active':''}" data-view="tierlist">分级榜</a>`;
+  html += `<a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects">状态标记</a>`;
+  html += `<a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey">Odyssey 模式</a>`;
+  html += `<a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes">攻击类型</a>`;
+  html += `<a href="#/settings" class="top-link ${currentView.type==='settings'?'active':''}" data-view="settings">设置 · 标记与稀有度</a>`;
 
-  html += `<div class="cat-group"><div class="cat-head"><button class="cat-label-btn ${currentView.type==='unitGallery'?'active':''}" data-view="unitGallery">单位 · ${state.units.length}</button>${isAdmin ? '<button class="cat-add" id="addUnitBtn" title="新增单位">+</button>' : ''}</div></div>`;
-  html += `<div class="cat-group"><div class="cat-head"><button class="cat-label-btn ${currentView.type==='itemGallery'?'active':''}" data-view="itemGallery">物品 · ${state.items.length}</button>${isAdmin ? '<button class="cat-add" id="addItemBtn" title="新增物品">+</button>' : ''}</div></div>`;
-  html += `<div class="cat-group"><div class="cat-head"><button class="cat-label-btn ${currentView.type==='familyGallery'?'active':''}" data-view="familyGallery">使魔 · ${state.families.length}</button>${isAdmin ? '<button class="cat-add" id="addFamilyBtn" title="新增使魔">+</button>' : ''}</div></div>`;
-  html += `<div class="cat-group"><div class="cat-head"><button class="cat-label-btn ${currentView.type==='memoryGallery'?'active':''}" data-view="memoryGallery">记忆 · ${state.memories.length}</button>${isAdmin ? '<button class="cat-add" id="addMemoryBtn" title="新增记忆">+</button>' : ''}</div></div>`;
+  html += `<div class="cat-group"><div class="cat-head"><a href="#/unitGallery" class="cat-label-btn ${currentView.type==='unitGallery'?'active':''}" data-view="unitGallery">单位 · ${state.units.length}</a>${isAdmin ? '<button class="cat-add" id="addUnitBtn" title="新增单位">+</button>' : ''}</div></div>`;
+  html += `<div class="cat-group"><div class="cat-head"><a href="#/itemGallery" class="cat-label-btn ${currentView.type==='itemGallery'?'active':''}" data-view="itemGallery">物品 · ${state.items.length}</a>${isAdmin ? '<button class="cat-add" id="addItemBtn" title="新增物品">+</button>' : ''}</div></div>`;
+  html += `<div class="cat-group"><div class="cat-head"><a href="#/familyGallery" class="cat-label-btn ${currentView.type==='familyGallery'?'active':''}" data-view="familyGallery">使魔 · ${state.families.length}</a>${isAdmin ? '<button class="cat-add" id="addFamilyBtn" title="新增使魔">+</button>' : ''}</div></div>`;
+  html += `<div class="cat-group"><div class="cat-head"><a href="#/memoryGallery" class="cat-label-btn ${currentView.type==='memoryGallery'?'active':''}" data-view="memoryGallery">记忆 · ${state.memories.length}</a>${isAdmin ? '<button class="cat-add" id="addMemoryBtn" title="新增记忆">+</button>' : ''}</div></div>`;
 
   nav.innerHTML = html;
 
   nav.querySelectorAll('.top-link').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ currentView = {type: btn.dataset.view}; editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; render(); closeMobileSidebar(); });
+    btn.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      currentView = {type: btn.dataset.view}; setHash(currentView);
+      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; render(); closeMobileSidebar();
+    });
   });
   nav.querySelectorAll('.cat-label-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ currentView = {type: btn.dataset.view}; editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false; render(); closeMobileSidebar(); });
+    btn.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      currentView = {type: btn.dataset.view}; setHash(currentView);
+      editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false; render(); closeMobileSidebar();
+    });
   });
   const addUnitBtn = document.getElementById('addUnitBtn');
   if(addUnitBtn) addUnitBtn.addEventListener('click', async ()=>{
@@ -1643,7 +1701,30 @@ function renderStatusEffects(){
     <div class="status-effect-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToMarkSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+}
+
+function renderAttackTypes(){
+  const container = document.getElementById('mainInner');
+  const cardsHtml = state.attackTypes.length ? state.attackTypes.map(t=>`
+    <div class="status-effect-card">
+      ${t.image ? `<img class="status-effect-icon zoomable" src="${t.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
+      <div class="status-effect-info">
+        <div class="status-effect-name">${escapeHtml(t.name)}</div>
+        <div class="status-effect-desc">${t.description ? escapeHtml(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何攻击类型，管理员可以到「设置」页面新增。</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">攻击类型</h1>
+      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="goToAttackTypeSettingsBtn">去设置页管理</button></div>` : ''}
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">这里汇总了单位攻击方式可能用到的攻击类型（比如 AOE、CONE、半圆），方便查阅每种类型具体是什么形状/范围。</div>
+    <div class="status-effect-list">${cardsHtml}</div>
+  `;
+  const goBtn = document.getElementById('goToAttackTypeSettingsBtn');
+  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
 }
 
 function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit){
@@ -1744,10 +1825,10 @@ function renderOdyssey(){
   const selectedUnits = (od.unitIds||[]).map(id=>state.units.find(u=>u.id===id)).filter(Boolean);
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
-    <div class="gallery-card" data-view="unit" data-id="${u.id}">
+    <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}">
       ${u.image ? `<img class="gallery-card-img" src="${u.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
       <div class="gallery-card-name">${escapeHtml(u.name)}</div>
-    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
+    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -1766,7 +1847,9 @@ function renderOdyssey(){
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftOdyssey=null; render(); });
   container.querySelectorAll('.gallery-card').forEach(card=>{
-    card.addEventListener('click', ()=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
@@ -2018,7 +2101,11 @@ function attackCardHtml(attack, ai){
     <div style="display:flex;gap:10px;margin-bottom:2px;flex-wrap:wrap;">
       <div style="flex:1;min-width:140px;">
         <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">攻击类型</label>
-        <input class="edit-input" data-bind="attacks.${ai}.attackType" value="${escapeHtml(attack.attackType||'')}" placeholder="例如：近战 / 远程 / AOE">
+        <select class="edit-select" data-bind="attacks.${ai}.attackTypeId">
+          <option value="">无</option>
+          ${state.attackTypes.map(t=>`<option value="${t.id}" ${attack.attackTypeId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+        </select>
+        ${state.attackTypes.length===0 ? `<div class="hint">还没有可选的攻击类型，先去左侧「攻击类型」→「设置」新增，比如 AOE、CONE、半圆。</div>` : ''}
       </div>
     </div>
 
@@ -2628,6 +2715,8 @@ function renderUnit(){
     const calcDamage = traitObj ? applyTraitPct(a.damage, traitObj.damagePct) : null;
     const calcBaseSpa = traitObj ? applyTraitPct(a.baseSpa, traitObj.spaPct) : null;
     const calcRange = traitObj ? applyTraitPct(a.range, traitObj.rangePct) : null;
+    const attackTypeObj = a.attackTypeId ? state.attackTypes.find(t=>t.id===a.attackTypeId) : null;
+    const attackTypeLabel = attackTypeObj ? attackTypeObj.name : (a.attackType || '');
     const statCell = (label, val, calc)=> val ? `<div class="attack-stat-cell">
         <div class="attack-stat-label">${label}</div>
         <div class="attack-stat-value">${escapeHtml(val)}${calc!==null&&calc!==undefined?`<span class="arrow">→</span><span class="boosted">${calc.toLocaleString()}</span>`:''}</div>
@@ -2636,7 +2725,7 @@ function renderUnit(){
       statCell('伤害', a.damage, calcDamage),
       statCell('攻速', a.baseSpa, calcBaseSpa),
       statCell('范围', a.range, calcRange),
-      statCell('攻击类型', a.attackType, null)
+      statCell('攻击类型', attackTypeLabel, null)
     ].join('');
     return `
     <div class="attack-view">
@@ -2856,6 +2945,7 @@ function renderMain(){
   else if(currentView.type==='tierlist') renderTierlist();
   else if(currentView.type==='statusEffects') renderStatusEffects();
   else if(currentView.type==='odyssey') renderOdyssey();
+  else if(currentView.type==='attackTypes') renderAttackTypes();
   else if(currentView.type==='settings') renderSettings();
   else if(currentView.type==='unit') renderUnit();
   else if(currentView.type==='item') renderItem();
@@ -2884,10 +2974,10 @@ function renderGallery(type){
   const hasRarity = type==='unit' || type==='item' || type==='family' || type==='memory';
 
   function cardHtml(entity){
-    return `<div class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}"${isAdmin ? ' draggable="true"' : ''}>
+    return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}"${isAdmin ? ' draggable="true"' : ''}>
       ${entity.image ? `<img class="gallery-card-img" src="${entity.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
       <div class="gallery-card-name">${escapeHtml(entity.name)}</div>
-    </div>`;
+    </a>`;
   }
 
   let cardsHtml;
@@ -2919,7 +3009,9 @@ function renderGallery(type){
   if(addBtn) addBtn.addEventListener('click', ()=> document.getElementById(cfg.addBtnId).click());
 
   container.querySelectorAll('.gallery-card').forEach(card=>{
-    card.addEventListener('click', ()=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
@@ -3218,6 +3310,26 @@ function obtainMethodEditRowHtml(m, i){
   </div>`;
 }
 
+function attackTypeEditRowHtml(t, i){
+  const iconHtml = t.image ? `<img class="mark-icon-preview zoomable" src="${t.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const isGradient = /gradient/.test(t.color||'');
+  const colorPickerVal = isGradient ? '#4a8fd1' : (t.color||'#4a8fd1');
+  return `<div class="sub-card">
+    <div class="mark-edit-row">
+      ${iconHtml}
+      <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="attackTypes.${i}.image" style="display:none;"></label>
+      <input class="edit-input" data-settings-bind="attackTypes.${i}.name" value="${escapeHtml(t.name)}" placeholder="攻击类型名称，如：AOE / CONE / 半圆">
+      <input type="color" data-settings-bind="attackTypes.${i}.color" value="${colorPickerVal}">
+      ${colorFormulaInputHtml('attackTypes', i, t.color)}
+      <button class="btn btn-danger" data-settings-action="removeAttackType" data-index="${i}">删除</button>
+    </div>
+    <div class="edit-field" style="margin-top:10px;">
+      <span class="edit-label">说明（会显示在左侧「攻击类型」页面里）</span>
+      <textarea class="edit-input" data-settings-bind="attackTypes.${i}.description" rows="2" placeholder="例如：以自身为中心，对周围一定范围内敌人造成伤害">${escapeHtml(t.description||'')}</textarea>
+    </div>
+  </div>`;
+}
+
 function markEditRowHtml(mark, i){
   const iconHtml = mark.image ? `<img class="mark-icon-preview zoomable" src="${mark.image}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(mark.color||'');
@@ -3402,6 +3514,7 @@ function renderSettings(){
   }
   const marksHtml = state.marks.length ? state.marks.map(markEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无标记</div>';
   const obtainMethodsHtml = state.obtainMethods.length ? state.obtainMethods.map(obtainMethodEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无获取方式</div>';
+  const attackTypesHtml = state.attackTypes.length ? state.attackTypes.map(attackTypeEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无攻击类型</div>';
   const groupsHtml = state.groups.length ? state.groups.map(groupEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分组</div>';
   const elementsHtml = state.elements.length ? state.elements.map(elementEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无元素</div>';
   const seriesHtml = state.series.length ? state.series.map(seriesEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无系列</div>';
@@ -3451,6 +3564,13 @@ function renderSettings(){
       <div class="hint" style="margin-bottom:14px;">管理可选的获取方式标签，例如 Raids、Story Stage、常驻招募、限时活动。编辑单位/使魔/记忆时，可以点开列表勾选（可多选），不用再手打文字。</div>
       <div id="obtainMethodsList">${obtainMethodsHtml}</div>
       <button class="btn btn-gold" id="addObtainMethodBtn">+ 新增获取方式</button>
+    </div>
+
+    <div class="settings-block">
+      <div class="section-label" style="margin-top:0;">攻击类型</div>
+      <div class="hint" style="margin-bottom:14px;">管理攻击方式可以选择的攻击类型，例如 AOE、CONE（扇形）、半圆。编辑单位攻击方式时可以直接选，不用手打文字；左侧栏的「攻击类型」页面会把每个类型的说明列出来给大家查阅。</div>
+      <div id="attackTypesList">${attackTypesHtml}</div>
+      <button class="btn btn-gold" id="addAttackTypeBtn">+ 新增攻击类型</button>
     </div>
 
     <div class="settings-block">
@@ -3535,6 +3655,7 @@ function renderSettings(){
       const idx = parseInt(el.dataset.index);
       if(action==='removeMark') state.marks.splice(idx,1);
       else if(action==='removeObtainMethod') state.obtainMethods.splice(idx,1);
+      else if(action==='removeAttackType') state.attackTypes.splice(idx,1);
       else if(action==='removeGroup') state.groups.splice(idx,1);
       else if(action==='removeElement') state.elements.splice(idx,1);
       else if(action==='removeSeries') state.series.splice(idx,1);
@@ -3559,6 +3680,12 @@ function renderSettings(){
   const addObtainMethodBtn = document.getElementById('addObtainMethodBtn');
   if(addObtainMethodBtn) addObtainMethodBtn.addEventListener('click', async ()=>{
     state.obtainMethods.push({id:uid(), name:'新获取方式', image:'', color:'#4a8fd1'});
+    await saveData(true);
+    renderSettings();
+  });
+  const addAttackTypeBtn = document.getElementById('addAttackTypeBtn');
+  if(addAttackTypeBtn) addAttackTypeBtn.addEventListener('click', async ()=>{
+    state.attackTypes.push({id:uid(), name:'新攻击类型', image:'', color:'#4a8fd1', description:''});
     await saveData(true);
     renderSettings();
   });
