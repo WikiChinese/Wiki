@@ -39,6 +39,10 @@
   .search-result-sub{font-size:10px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.05em;flex-shrink:0;}
   .search-input:focus{border-color:var(--gold-dim);}
   .cat-nav{padding:10px 8px;flex:1;overflow-y:auto;}
+  .nav-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);font-weight:700;margin:16px 10px 6px;display:flex;align-items:center;gap:7px;}
+  .nav-section-label::before{content:'';width:5px;height:5px;background:var(--gold-dim);transform:rotate(45deg);flex-shrink:0;}
+  .nav-section:first-child .nav-section-label{margin-top:2px;}
+  .nav-icon{width:16px;text-align:center;flex-shrink:0;opacity:.85;}
   .top-link{display:flex;align-items:center;gap:8px;width:100%;background:none;border:none;color:var(--text-dim);padding:10px 10px;border-radius:6px;font-size:14px;text-align:left;font-weight:500;margin-bottom:2px;text-decoration:none;}
   .top-link:hover{background:var(--card);color:var(--text);}
   .top-link.active{background:var(--card);color:var(--gold);}
@@ -1283,18 +1287,32 @@ function renderSidebar(){
     return;
   }
 
-  html += `<a href="#/" class="top-link ${currentView.type==='home'?'active':''}" data-view="home">首页 · 更新日志</a>`;
-  html += `<a href="#/tierlist" class="top-link ${currentView.type==='tierlist'?'active':''}" data-view="tierlist">分级榜</a>`;
-  html += `<a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects">状态标记</a>`;
-  html += `<a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey">Odyssey 模式</a>`;
-  html += `<a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes">攻击类型</a>`;
-  html += `<a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits">特性</a>`;
-  html += `<a href="#/settings" class="top-link ${currentView.type==='settings'?'active':''}" data-view="settings">设置 · 标记与稀有度</a>`;
+  html += `<div class="nav-section">
+    <div class="nav-section-label">浏览</div>
+    <a href="#/" class="top-link ${currentView.type==='home'?'active':''}" data-view="home"><span class="nav-icon">📰</span>首页 · 更新日志</a>
+    <a href="#/tierlist" class="top-link ${currentView.type==='tierlist'?'active':''}" data-view="tierlist"><span class="nav-icon">📊</span>分级榜</a>
+    <a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey"><span class="nav-icon">🗺️</span>Odyssey 模式</a>
+  </div>
 
-  html += `<div class="cat-group"><div class="cat-head"><a href="#/unitGallery" class="cat-label-btn ${currentView.type==='unitGallery'?'active':''}" data-view="unitGallery">单位 · ${state.units.length}</a>${isAdmin ? '<button class="cat-add" id="addUnitBtn" title="新增单位">+</button>' : ''}</div></div>`;
-  html += `<div class="cat-group"><div class="cat-head"><a href="#/itemGallery" class="cat-label-btn ${currentView.type==='itemGallery'?'active':''}" data-view="itemGallery">物品 · ${state.items.length}</a>${isAdmin ? '<button class="cat-add" id="addItemBtn" title="新增物品">+</button>' : ''}</div></div>`;
-  html += `<div class="cat-group"><div class="cat-head"><a href="#/familyGallery" class="cat-label-btn ${currentView.type==='familyGallery'?'active':''}" data-view="familyGallery">使魔 · ${state.families.length}</a>${isAdmin ? '<button class="cat-add" id="addFamilyBtn" title="新增使魔">+</button>' : ''}</div></div>`;
-  html += `<div class="cat-group"><div class="cat-head"><a href="#/memoryGallery" class="cat-label-btn ${currentView.type==='memoryGallery'?'active':''}" data-view="memoryGallery">记忆 · ${state.memories.length}</a>${isAdmin ? '<button class="cat-add" id="addMemoryBtn" title="新增记忆">+</button>' : ''}</div></div>`;
+  <div class="nav-section">
+    <div class="nav-section-label">图鉴数据库</div>
+    <div class="cat-group"><div class="cat-head"><a href="#/unitGallery" class="cat-label-btn ${currentView.type==='unitGallery'?'active':''}" data-view="unitGallery">单位 · ${state.units.length}</a>${isAdmin ? '<button class="cat-add" id="addUnitBtn" title="新增单位">+</button>' : ''}</div></div>
+    <div class="cat-group"><div class="cat-head"><a href="#/itemGallery" class="cat-label-btn ${currentView.type==='itemGallery'?'active':''}" data-view="itemGallery">物品 · ${state.items.length}</a>${isAdmin ? '<button class="cat-add" id="addItemBtn" title="新增物品">+</button>' : ''}</div></div>
+    <div class="cat-group"><div class="cat-head"><a href="#/familyGallery" class="cat-label-btn ${currentView.type==='familyGallery'?'active':''}" data-view="familyGallery">使魔 · ${state.families.length}</a>${isAdmin ? '<button class="cat-add" id="addFamilyBtn" title="新增使魔">+</button>' : ''}</div></div>
+    <div class="cat-group"><div class="cat-head"><a href="#/memoryGallery" class="cat-label-btn ${currentView.type==='memoryGallery'?'active':''}" data-view="memoryGallery">记忆 · ${state.memories.length}</a>${isAdmin ? '<button class="cat-add" id="addMemoryBtn" title="新增记忆">+</button>' : ''}</div></div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">参考资料</div>
+    <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
+    <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
+    <a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits"><span class="nav-icon">✨</span>特性</a>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">管理</div>
+    <a href="#/settings" class="top-link ${currentView.type==='settings'?'active':''}" data-view="settings"><span class="nav-icon">⚙️</span>设置 · 标记与稀有度</a>
+  </div>`;
 
   nav.innerHTML = html;
 
