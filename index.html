@@ -1762,7 +1762,7 @@ function renderHome(){
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
           </div>
           ${l.image ? `<img class="log-image zoomable" src="${l.image}">` : ''}
-          <div class="log-content">${escapeHtml(l.content)}</div>
+          <div class="log-content">${renderMarkdownLite(l.content)}</div>
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
           ${logEntityChipsHtml(state.families, l.linkedFamilies, 'family', '新使魔')}
@@ -1938,7 +1938,7 @@ function odysseyCardViewHtml(card, hideUnitTag){
     <div class="odyssey-card-body">
       <div class="odyssey-card-name">${escapeHtml(card.name)}</div>
       ${linkedUnit ? `<div class="odyssey-card-unit-tag" data-view="unit" data-id="${linkedUnit.id}">对应单位：${escapeHtml(linkedUnit.name)}</div>` : ''}
-      <div class="odyssey-card-desc">${card.description ? escapeHtml(card.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      <div class="odyssey-card-desc">${card.description ? renderMarkdownLite(card.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
 }
