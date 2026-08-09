@@ -40,6 +40,14 @@
   .search-input:focus{border-color:var(--gold-dim);}
   .cat-nav{padding:10px 8px;flex:1;overflow-y:auto;}
   .nav-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-faint);font-weight:700;margin:16px 10px 6px;display:flex;align-items:center;gap:7px;}
+  .nav-collapsible{margin:0;}
+  .nav-collapsible summary{list-style:none;cursor:pointer;}
+  .nav-collapsible summary::-webkit-details-marker{display:none;}
+  .nav-collapsible summary.nav-section-label{justify-content:space-between;padding:2px 10px 2px 0;}
+  .nav-collapsible summary.nav-section-label::after{content:'▸';margin-left:auto;font-size:9px;color:var(--text-faint);transition:transform .15s;}
+  .nav-collapsible[open] summary.nav-section-label::after{transform:rotate(90deg);}
+  .nav-collapsible summary .cat-add{text-transform:none;letter-spacing:0;font-weight:600;margin-left:6px;}
+  .nav-sub-link{padding-left:26px !important;font-size:13px;}
   .nav-section-label::before{content:'';width:5px;height:5px;background:var(--gold-dim);transform:rotate(45deg);flex-shrink:0;}
   .nav-section:first-child .nav-section-label{margin-top:2px;}
   .nav-icon{width:16px;text-align:center;flex-shrink:0;opacity:.85;}
@@ -374,7 +382,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'图鉴', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[] };
+let state = { siteTitle:'图鉴', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -394,13 +402,14 @@ let draftLogEntry = null;
 let draftUnit = null;
 let draftSimple = null;
 let draftOdyssey = null;
+let draftStage = null;
 let showingShinyImage = false;
 
 function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','stage','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -628,6 +637,16 @@ function defaultData(){
       {id:uid(), name:'AOE', image:'', color:'#c9506e', description:'以自身或目标点为中心，对范围内的所有敌人造成伤害。'},
       {id:uid(), name:'CONE', image:'', color:'#c9a24b', description:'扇形/锥形范围攻击，从单位面朝的方向向外呈扇形展开，覆盖扇形区域内的敌人。'},
       {id:uid(), name:'半圆 (Half Circle)', image:'', color:'#4a8fd1', description:'以单位为圆心，朝面向方向展开的半圆形范围攻击。'}
+    ],
+    stages:[
+      {id:uid(), name:'剧情关卡 (Story Stage)', image:'', description:''},
+      {id:uid(), name:'传说关卡 (Legend Stage)', image:'', description:''},
+      {id:uid(), name:'团队本 (Raids)', image:'', description:''},
+      {id:uid(), name:'地下城 (Dungeon)', image:'', description:''},
+      {id:uid(), name:'Boss活动 (Boss Event)', image:'', description:''},
+      {id:uid(), name:'每日挑战 (Daily Challenge)', image:'', description:''},
+      {id:uid(), name:'每周挑战 (Weekly Challenge)', image:'', description:''},
+      {id:uid(), name:'普通挑战 (Normal Challenge)', image:'', description:''}
     ]
   };
 }
@@ -648,6 +667,11 @@ function migrateState(){
     if(t.color===undefined) t.color = '#4a8fd1';
     if(t.image===undefined) t.image = '';
     if(t.description===undefined) t.description = '';
+  });
+  if(!Array.isArray(state.stages)) state.stages = [];
+  state.stages.forEach(s=>{
+    if(s.image===undefined) s.image = '';
+    if(s.description===undefined) s.description = '';
   });
   if(!state.odyssey || typeof state.odyssey !== 'object') state.odyssey = {};
   if(state.odyssey.intro===undefined) state.odyssey.intro = '';
@@ -910,6 +934,73 @@ function traitDetailInnerHtml(t){
   `;
 }
 
+function renderStagePage(){
+  const container = document.getElementById('mainInner');
+  const stage = state.stages.find(s=>s.id===currentView.id);
+  if(!stage){ container.innerHTML = `<div class="empty-state"><h2>未找到该关卡分类</h2></div>`; return; }
+
+  if(editMode){
+    if(!draftStage) draftStage = JSON.parse(JSON.stringify(stage));
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <div class="crumb">编辑关卡分类</div>
+        <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteStageBtn">删除</button>
+          <button class="btn" id="cancelBtn">取消</button>
+          <button class="btn btn-gold" id="saveBtn">保存</button>
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">名称</span>
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStage.name)}" placeholder="关卡分类名称">
+      </div>
+      <div class="image-upload-box" style="margin-bottom:18px;">
+        ${draftStage.image ? `<img class="image-preview zoomable" src="${draftStage.image}">` : `<div class="image-placeholder">无图片</div>`}
+        <div class="upload-controls">
+          <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
+          ${draftStage.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个关卡类型的规则、玩法、掉落、注意事项...">${escapeHtml(draftStage.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+      </div>
+    `;
+    wireDraftForm(container, draftStage);
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStage=null; render(); });
+    document.getElementById('saveBtn').addEventListener('click', async ()=>{
+      stage.name = (draftStage.name||'').trim() || '未命名关卡';
+      stage.image = draftStage.image || '';
+      stage.description = draftStage.description || '';
+      editMode = false; draftStage = null;
+      await saveData(false);
+      render();
+    });
+    document.getElementById('deleteStageBtn').addEventListener('click', async ()=>{
+      if(!confirm(`确定删除「${stage.name}」这个关卡分类？`)) return;
+      state.stages = state.stages.filter(s=>s.id!==stage.id);
+      editMode = false; draftStage = null;
+      currentView = {type:'home'}; setHash(currentView);
+      await saveData(false);
+      render();
+    });
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <div class="crumb">关卡</div>
+      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+    </div>
+    ${stage.image ? `<img class="unit-image zoomable" src="${stage.image}">` : ''}
+    <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(stage.name)}</h1>
+    <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+  `;
+  const editBtn = document.getElementById('editBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStage=null; render(); });
+}
+
 function renderTraitsPage(){
   const container = document.getElementById('mainInner');
   const cardsHtml = state.traits.length ? state.traits.map(t=>`
@@ -973,7 +1064,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','stages'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -1312,6 +1403,13 @@ function renderSidebar(){
   </div>
 
   <div class="nav-section">
+    <details class="nav-collapsible" data-picker-key="sidebar-stages"${(openPickerKeys.has('sidebar-stages') || currentView.type==='stage') ? ' open' : ''}>
+      <summary class="nav-section-label" style="cursor:pointer;">关卡${isAdmin ? ' <button type="button" class="cat-add" id="addStageBtn" title="新增关卡分类">+</button>' : ''}</summary>
+      ${state.stages.map(s=>`<a href="${viewToHash({type:'stage', id:s.id})}" class="top-link nav-sub-link ${currentView.type==='stage'&&currentView.id===s.id?'active':''}" data-view="stage" data-id="${s.id}">${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡分类</div>'}
+    </details>
+  </div>
+
+  <div class="nav-section">
     <div class="nav-section-label">参考资料</div>
     <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
     <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
@@ -1324,13 +1422,31 @@ function renderSidebar(){
   </div>`;
 
   nav.innerHTML = html;
+  wirePickerToggles(nav);
+  const addStageBtn = document.getElementById('addStageBtn');
+  if(addStageBtn) addStageBtn.addEventListener('click', async (e)=>{
+    e.preventDefault(); e.stopPropagation();
+    if(!requireAdmin()) return;
+    const name = window.prompt('新关卡分类的名称？（例如：限时联动活动）', '');
+    if(name === null) return;
+    const trimmed = name.trim();
+    if(!trimmed) return;
+    const newStage = {id:uid(), name:trimmed, image:'', description:''};
+    state.stages.push(newStage);
+    openPickerKeys.add('sidebar-stages');
+    await saveData(true);
+    goToView({type:'stage', id:newStage.id});
+    editMode = true; draftStage = null;
+    render();
+  });
 
   nav.querySelectorAll('.top-link').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
-      currentView = {type: btn.dataset.view}; setHash(currentView);
-      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; render(); closeMobileSidebar();
+      currentView = btn.dataset.id ? {type: btn.dataset.view, id: btn.dataset.id} : {type: btn.dataset.view};
+      setHash(currentView);
+      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; draftStage=null; render(); closeMobileSidebar();
     });
   });
   nav.querySelectorAll('.cat-label-btn').forEach(btn=>{
@@ -1739,7 +1855,7 @@ function renderStatusEffects(){
       ${m.image ? `<img class="status-effect-icon zoomable" src="${m.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
-        <div class="status-effect-desc">${m.description ? escapeHtml(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何状态标记，管理员可以到「设置」页面新增。</div>';
 
@@ -1762,7 +1878,7 @@ function renderAttackTypes(){
       ${t.image ? `<img class="status-effect-icon zoomable" src="${t.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(t.name)}</div>
-        <div class="status-effect-desc">${t.description ? escapeHtml(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何攻击类型，管理员可以到「设置」页面新增。</div>';
 
@@ -1810,7 +1926,7 @@ function odysseyFloorViewHtml(floor){
     ${floor.image ? `<img class="floor-card-img zoomable" src="${floor.image}">` : ''}
     <div class="floor-card-body">
       <div class="floor-card-name">${escapeHtml(floor.name)}</div>
-      <div class="floor-card-desc">${floor.description ? escapeHtml(floor.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      <div class="floor-card-desc">${floor.description ? renderMarkdownLite(floor.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
 }
@@ -3020,6 +3136,7 @@ function renderMain(){
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
   else if(currentView.type==='traits') renderTraitsPage();
+  else if(currentView.type==='stage') renderStagePage();
   else if(currentView.type==='settings') renderSettings();
   else if(currentView.type==='unit') renderUnit();
   else if(currentView.type==='item') renderItem();
