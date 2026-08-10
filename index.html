@@ -1924,7 +1924,7 @@ function odysseyFloorViewHtml(floor){
   return `<div class="floor-card">
     ${floor.image ? `<img class="skill-image zoomable" src="${floor.image}">` : ''}
     <div class="floor-card-body">
-      <div class="floor-card-name">${escapeHtml(floor.name)}</div>
+      <div class="floor-card-name">${inline(floor.name)}</div>
       <div class="floor-card-desc">${floor.description ? renderMarkdownLite(floor.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
