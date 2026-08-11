@@ -48,6 +48,9 @@
   .nav-collapsible[open] summary.nav-section-label::after{transform:rotate(90deg);}
   .nav-collapsible summary .cat-add{text-transform:none;letter-spacing:0;font-weight:600;margin-left:6px;}
   .nav-sub-link{padding-left:26px !important;font-size:13px;}
+  .nav-sub-link[draggable="true"]{cursor:grab;}
+  .nav-sub-link.dragging{opacity:.35;cursor:grabbing;}
+  .nav-sub-link.drag-over{outline:2px dashed var(--gold);outline-offset:-2px;border-radius:6px;}
   .nav-section-label::before{content:'';width:5px;height:5px;background:var(--gold-dim);transform:rotate(45deg);flex-shrink:0;}
   .nav-section:first-child .nav-section-label{margin-top:2px;}
   .nav-icon{width:16px;text-align:center;flex-shrink:0;opacity:.85;}
@@ -671,6 +674,8 @@ function migrateState(){
   state.stages.forEach(s=>{
     if(s.image===undefined) s.image = '';
     if(s.description===undefined) s.description = '';
+    if(!Array.isArray(s.levels)) s.levels = [];
+    s.levels.forEach(lv=>{ if(lv.image===undefined) lv.image=''; if(lv.description===undefined) lv.description=''; });
   });
   if(!state.odyssey || typeof state.odyssey !== 'object') state.odyssey = {};
   if(state.odyssey.intro===undefined) state.odyssey.intro = '';
@@ -965,6 +970,12 @@ function renderStagePage(){
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个关卡类型的规则、玩法、掉落、注意事项...">${escapeHtml(draftStage.description||'')}</textarea>
         <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
       </div>
+      <div class="edit-field">
+        <span class="edit-label">关卡 (每一关)</span>
+        <div class="hint" style="margin-bottom:10px;">比如"剧情关卡"里面有很多一关一关的具体关卡，在这里一个个加。</div>
+        ${draftStage.levels.map((lv,i)=>odysseyCardEditHtml(lv,i,'levels','removeStageLevel')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
+        <button class="btn btn-gold" data-action="addStageLevel">+ 添加关</button>
+      </div>
     `;
     wireDraftForm(container, draftStage);
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStage=null; render(); });
@@ -972,6 +983,7 @@ function renderStagePage(){
       stage.name = (draftStage.name||'').trim() || '未命名关卡';
       stage.image = draftStage.image || '';
       stage.description = draftStage.description || '';
+      stage.levels = draftStage.levels || [];
       editMode = false; draftStage = null;
       await saveData(false);
       render();
@@ -987,6 +999,15 @@ function renderStagePage(){
     return;
   }
 
+  const levelsHtml = stage.levels.length ? stage.levels.map(lv=>`
+    <div class="floor-card" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
+      ${lv.image ? `<img class="skill-image zoomable" src="${lv.image}">` : ''}
+      <div class="floor-card-body">
+        <div class="floor-card-name">${inline(lv.name)}</div>
+        <div class="floor-card-desc">${lv.description ? renderMarkdownLite(lv.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">关卡</div>
@@ -995,9 +1016,49 @@ function renderStagePage(){
     ${stage.image ? `<img class="unit-image zoomable" src="${stage.image}">` : ''}
     <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(stage.name)}</h1>
     <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="section-label">关卡列表</div>
+    ${isAdmin && stage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 按住卡片拖动，可以调整关卡顺序。</div>` : ''}
+    <div class="floor-list" id="stageLevelsList">${levelsHtml}</div>
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStage=null; render(); });
+
+  if(isAdmin){
+    const listEl = document.getElementById('stageLevelsList');
+    let dragSrcId = null;
+    listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
+      card.addEventListener('dragstart', (e)=>{
+        dragSrcId = card.dataset.levelId;
+        card.classList.add('dragging');
+        if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', ()=>{
+        card.classList.remove('dragging');
+        listEl.querySelectorAll('.floor-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+        dragSrcId = null;
+      });
+      card.addEventListener('dragover', (e)=>{
+        if(!dragSrcId || card.dataset.levelId===dragSrcId) return;
+        e.preventDefault();
+        card.classList.add('drag-over');
+      });
+      card.addEventListener('dragleave', ()=>{ card.classList.remove('drag-over'); });
+      card.addEventListener('drop', async (e)=>{
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        const targetId = card.dataset.levelId;
+        if(!dragSrcId || dragSrcId===targetId) return;
+        const srcIdx = stage.levels.findIndex(x=>x.id===dragSrcId);
+        if(srcIdx<0) return;
+        const [moved] = stage.levels.splice(srcIdx,1);
+        const tgtIdx = stage.levels.findIndex(x=>x.id===targetId);
+        stage.levels.splice(tgtIdx<0 ? stage.levels.length : tgtIdx, 0, moved);
+        dragSrcId = null;
+        await saveData(true);
+        renderStagePage();
+      });
+    });
+  }
 }
 
 function renderTraitsPage(){
@@ -1404,7 +1465,7 @@ function renderSidebar(){
   <div class="nav-section">
     <details class="nav-collapsible" data-picker-key="sidebar-stages"${(openPickerKeys.has('sidebar-stages') || currentView.type==='stage') ? ' open' : ''}>
       <summary class="nav-section-label" style="cursor:pointer;">关卡${isAdmin ? ' <button type="button" class="cat-add" id="addStageBtn" title="新增关卡分类">+</button>' : ''}</summary>
-      ${state.stages.map(s=>`<a href="${viewToHash({type:'stage', id:s.id})}" class="top-link nav-sub-link ${currentView.type==='stage'&&currentView.id===s.id?'active':''}" data-view="stage" data-id="${s.id}">${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡分类</div>'}
+      ${state.stages.map(s=>`<a href="${viewToHash({type:'stage', id:s.id})}" class="top-link nav-sub-link ${currentView.type==='stage'&&currentView.id===s.id?'active':''}" data-view="stage" data-id="${s.id}"${isAdmin ? ' draggable="true"' : ''}>${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡分类</div>'}
     </details>
   </div>
 
@@ -1448,6 +1509,42 @@ function renderSidebar(){
       editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; draftStage=null; render(); closeMobileSidebar();
     });
   });
+  if(isAdmin){
+    let dragSrcStageId = null;
+    nav.querySelectorAll('.nav-sub-link[data-view="stage"]').forEach(link=>{
+      link.addEventListener('dragstart', (e)=>{
+        dragSrcStageId = link.dataset.id;
+        link.classList.add('dragging');
+        if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      link.addEventListener('dragend', ()=>{
+        link.classList.remove('dragging');
+        nav.querySelectorAll('.nav-sub-link.drag-over').forEach(c=>c.classList.remove('drag-over'));
+        dragSrcStageId = null;
+      });
+      link.addEventListener('dragover', (e)=>{
+        if(!dragSrcStageId || link.dataset.id===dragSrcStageId) return;
+        e.preventDefault();
+        link.classList.add('drag-over');
+      });
+      link.addEventListener('dragleave', ()=>{ link.classList.remove('drag-over'); });
+      link.addEventListener('drop', async (e)=>{
+        e.preventDefault();
+        link.classList.remove('drag-over');
+        const targetId = link.dataset.id;
+        if(!dragSrcStageId || dragSrcStageId===targetId) return;
+        const srcIdx = state.stages.findIndex(x=>x.id===dragSrcStageId);
+        if(srcIdx<0) return;
+        const [moved] = state.stages.splice(srcIdx,1);
+        const tgtIdx = state.stages.findIndex(x=>x.id===targetId);
+        state.stages.splice(tgtIdx<0 ? state.stages.length : tgtIdx, 0, moved);
+        dragSrcStageId = null;
+        openPickerKeys.add('sidebar-stages');
+        await saveData(true);
+        renderSidebar();
+      });
+    });
+  }
   nav.querySelectorAll('.cat-label-btn').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
@@ -2344,6 +2441,8 @@ function handleDraftAction(ds, draft){
   else if(action==='removeBasicCard') draft.basicCards.splice(idx,1);
   else if(action==='addFloor') draft.floors.push({id:uid(), name:'第 '+(draft.floors.length+1)+' 层', image:'', description:''});
   else if(action==='removeFloor') draft.floors.splice(idx,1);
+  else if(action==='addStageLevel') draft.levels.push({id:uid(), name:'第 '+(draft.levels.length+1)+' 关', image:'', description:''});
+  else if(action==='removeStageLevel') draft.levels.splice(idx,1);
   else if(action==='toggleOdysseyUnit'){
     const id = ds.unitId;
     if(!Array.isArray(draft.unitIds)) draft.unitIds = [];
