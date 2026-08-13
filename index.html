@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>图鉴</title>
+<title>动漫先锋 (Anime Vanguard) Wiki</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -344,7 +344,7 @@
   <button class="mobile-menu-btn" id="menuBtn">&#9776;</button>
   <div class="sidebar" id="sidebar">
     <div class="sidebar-head">
-      <input class="site-title" id="siteTitle" value="图鉴">
+      <input class="site-title" id="siteTitle" value="动漫先锋 (Anime Vanguard) Wiki">
       <div class="site-sub">游戏百科</div>
     </div>
     <div class="search-wrap">
@@ -384,7 +384,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'图鉴', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -534,9 +534,9 @@ function getPath(obj, path){
 function defaultData(){
   const now = Date.now();
   return {
-    siteTitle:'图鉴',
+    siteTitle:'动漫先锋 (Anime Vanguard) Wiki',
     updateLog:[
-      {id:uid(), date:todayStr(), title:'图鉴上线', content:'欢迎使用图鉴！在左侧栏可以添加单位与物品，点击「分级榜」可以查看/编辑分级榜内容。', updatedAt: now}
+      {id:uid(), date:todayStr(), title:'Wiki 上线', content:'欢迎使用 动漫先锋 (Anime Vanguard) Wiki！在左侧栏可以添加单位与物品，点击「分级榜」可以查看/编辑分级榜内容。', updatedAt: now}
     ],
     units:(()=>{
       const exampleUnitId = uid();
@@ -973,7 +973,7 @@ function renderStagePage(){
       <div class="edit-field">
         <span class="edit-label">关卡 (每一关)</span>
         <div class="hint" style="margin-bottom:10px;">比如"剧情关卡"里面有很多一关一关的具体关卡，在这里一个个加。</div>
-        ${draftStage.levels.map((lv,i)=>odysseyCardEditHtml(lv,i,'levels','removeStageLevel')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
+        ${draftStage.levels.map((lv,i)=>odysseyCardEditHtml(lv,i,'levels','removeStageLevel',false,'关卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
         <button class="btn btn-gold" data-action="addStageLevel">+ 添加关</button>
       </div>
     `;
@@ -1990,11 +1990,13 @@ function renderAttackTypes(){
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
 }
 
-function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit){
+function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit, labelWord){
+  const word = labelWord || '卡片';
   return `<div class="sub-card">
     <div class="sub-card-head">
-      <input class="edit-input" data-bind="${kind}.${i}.name" value="${escapeHtml(card.name)}" placeholder="卡片名称">
+      <input class="edit-input" data-bind="${kind}.${i}.name" value="${escapeHtml(card.name)}" placeholder="${word}名称">
       <button class="btn btn-danger" data-action="${removeAction}" data-index="${i}">删除</button>
+    </div>
     </div>
     <div class="image-upload-box" style="margin:10px 0;">
       ${card.image ? `<img class="image-preview small zoomable" src="${card.image}">` : `<div class="image-placeholder small">无图片</div>`}
@@ -2011,8 +2013,8 @@ function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit){
       </select>
     </div>` : ''}
     <div class="edit-field">
-      <span class="edit-label">卡片说明（必填，会显示在卡片上）</span>
-      <textarea class="edit-input" data-bind="${kind}.${i}.description" rows="3" placeholder="这张卡的效果/用途说明...">${escapeHtml(card.description||'')}</textarea>
+      <span class="edit-label">${word}说明（必填，会显示在${word}上）</span>
+      <textarea class="edit-input" data-bind="${kind}.${i}.description" rows="3" placeholder="这个${word}的效果/用途说明...">${escapeHtml(card.description||'')}</textarea>
     </div>
   </div>`;
 }
@@ -2064,7 +2066,7 @@ function renderOdyssey(){
       <div class="edit-field">
         <span class="edit-label">楼层 (Floor)</span>
         <div class="hint" style="margin-bottom:10px;">不同楼层规则/敌人/奖励不一样的话，在这里分开说明，每层都可以配一张图。</div>
-        ${draftOdyssey.floors.map((f,i)=>odysseyCardEditHtml(f,i,'floors','removeFloor')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无楼层</div>'}
+        ${draftOdyssey.floors.map((f,i)=>odysseyCardEditHtml(f,i,'floors','removeFloor',false,'楼层')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无楼层</div>'}
         <button class="btn btn-gold" data-action="addFloor">+ 新增楼层</button>
       </div>
 
@@ -2074,13 +2076,13 @@ function renderOdyssey(){
 
       <div class="edit-field">
         <span class="edit-label">角色卡 (Character Card)</span>
-        ${draftOdyssey.characterCards.map((c,i)=>odysseyCardEditHtml(c,i,'characterCards','removeCharacterCard',true)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无角色卡</div>'}
+        ${draftOdyssey.characterCards.map((c,i)=>odysseyCardEditHtml(c,i,'characterCards','removeCharacterCard',true,'角色卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无角色卡</div>'}
         <button class="btn btn-gold" data-action="addCharacterCard">+ 新增角色卡</button>
       </div>
 
       <div class="edit-field">
         <span class="edit-label">基础卡 (Basic Card)</span>
-        ${draftOdyssey.basicCards.map((c,i)=>odysseyCardEditHtml(c,i,'basicCards','removeBasicCard')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无基础卡</div>'}
+        ${draftOdyssey.basicCards.map((c,i)=>odysseyCardEditHtml(c,i,'basicCards','removeBasicCard',false,'基础卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无基础卡</div>'}
         <button class="btn btn-gold" data-action="addBasicCard">+ 新增基础卡</button>
       </div>
     `;
@@ -4054,8 +4056,9 @@ function renderSettings(){
 
 function render(){
   const titleEl = document.getElementById('siteTitle');
-  if(titleEl && document.activeElement !== titleEl) titleEl.value = state.siteTitle || '图鉴';
+  if(titleEl && document.activeElement !== titleEl) titleEl.value = state.siteTitle || '动漫先锋 (Anime Vanguard) Wiki';
   if(titleEl) titleEl.readOnly = !isAdmin;
+  document.title = state.siteTitle || '动漫先锋 (Anime Vanguard) Wiki';
   renderSidebar();
   renderMain();
 }
@@ -4065,7 +4068,7 @@ document.getElementById('menuBtn').addEventListener('click', ()=>{
 });
 document.getElementById('siteTitle').addEventListener('change', async (e)=>{
   if(!isAdmin){ e.target.value = state.siteTitle; showToast('请先登录管理员账号才能编辑'); return; }
-  state.siteTitle = e.target.value.trim() || '图鉴';
+  state.siteTitle = e.target.value.trim() || '动漫先锋 (Anime Vanguard) Wiki';
   await saveData(true);
 });
 document.getElementById('searchInput').addEventListener('input', (e)=>{
