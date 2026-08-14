@@ -87,8 +87,13 @@
   .gallery-card:hover .gallery-card-img,.gallery-card:hover .gallery-card-placeholder{border-color:var(--gold-dim);}
   .gallery-card:hover .gallery-card-name{color:var(--gold);}
   .rarity-section{margin-bottom:32px;}
-  .rarity-section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .rarity-section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;list-style:none;user-select:none;}
+  .rarity-section-head::-webkit-details-marker{display:none;}
+  .rarity-section-head:hover{opacity:.85;}
   .rarity-section-count{font-size:12px;color:var(--text-faint);font-family:'JetBrains Mono',monospace;}
+  .rarity-section-arrow{margin-left:auto;font-size:11px;color:var(--text-faint);transition:transform .15s;}
+  .rarity-section[open] .rarity-section-arrow{transform:rotate(90deg);}
+  .rarity-section:not([open]){margin-bottom:10px;}
   .cat-add{background:none;border:1px solid var(--border);color:var(--text-faint);width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
   .cat-add:hover{color:var(--gold);border-color:var(--gold-dim);}
   .page-list{padding:2px 0 10px;}
@@ -401,6 +406,7 @@ let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
 let openPickerKeys = new Set();
+let closedRaritySections = new Set();
 function wirePickerToggles(container){
   container.querySelectorAll('details.entity-picker[data-picker-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
@@ -3473,11 +3479,15 @@ function renderGallery(type){
     const groups = state.rarities.map(r=>({rarity:r, items:list.filter(e=>e.rarity===r.id)})).filter(g=>g.items.length);
     const unranked = list.filter(e=>!e.rarity || !state.rarities.some(r=>r.id===e.rarity));
     if(unranked.length) groups.push({rarity:null, items:unranked});
-    cardsHtml = groups.map(g=>`
-      <div class="rarity-section">
-        <div class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}<span class="rarity-section-count">${g.items.length}</span></div>
+    cardsHtml = groups.map(g=>{
+      const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
+      const isOpen = !closedRaritySections.has(key);
+      return `
+      <details class="rarity-section" data-rarity-key="${key}"${isOpen?' open':''}>
+        <summary class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
         <div class="gallery-grid">${g.items.map(cardHtml).join('')}</div>
-      </div>`).join('');
+      </details>`;
+    }).join('');
   } else {
     cardsHtml = `<div class="gallery-grid">${list.map(cardHtml).join('')}</div>`;
   }
@@ -3493,6 +3503,13 @@ function renderGallery(type){
 
   const addBtn = document.getElementById('galleryAddBtn');
   if(addBtn) addBtn.addEventListener('click', ()=> document.getElementById(cfg.addBtnId).click());
+
+  container.querySelectorAll('details.rarity-section[data-rarity-key]').forEach(d=>{
+    d.addEventListener('toggle', ()=>{
+      if(d.open) closedRaritySections.delete(d.dataset.rarityKey);
+      else closedRaritySections.add(d.dataset.rarityKey);
+    });
+  });
 
   container.querySelectorAll('.gallery-card').forEach(card=>{
     card.addEventListener('click', (e)=>{
