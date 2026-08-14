@@ -396,7 +396,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -417,13 +417,14 @@ let draftUnit = null;
 let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
+let draftUpgrade = null;
 let showingShinyImage = false;
 
 function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','stage','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','stage','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -684,6 +685,13 @@ function migrateState(){
   });
   if(!Array.isArray(state.stages)) state.stages = [];
   state.stages.forEach(s=>{
+    if(s.image===undefined) s.image = '';
+    if(s.description===undefined) s.description = '';
+    if(!Array.isArray(s.levels)) s.levels = [];
+    s.levels.forEach(lv=>{ if(lv.image===undefined) lv.image=''; if(lv.description===undefined) lv.description=''; });
+  });
+  if(!Array.isArray(state.upgrades)) state.upgrades = [];
+  state.upgrades.forEach(s=>{
     if(s.image===undefined) s.image = '';
     if(s.description===undefined) s.description = '';
     if(!Array.isArray(s.levels)) s.levels = [];
@@ -1073,6 +1081,129 @@ function renderStagePage(){
   }
 }
 
+function renderUpgradePage(){
+  const container = document.getElementById('mainInner');
+  const upgrade = state.upgrades.find(s=>s.id===currentView.id);
+  if(!upgrade){ container.innerHTML = `<div class="empty-state"><h2>未找到该升级分类</h2></div>`; return; }
+
+  if(editMode){
+    if(!draftUpgrade) draftUpgrade = JSON.parse(JSON.stringify(upgrade));
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <div class="crumb">编辑升级分类</div>
+        <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteUpgradeBtn">删除</button>
+          <button class="btn" id="cancelBtn">取消</button>
+          <button class="btn btn-gold" id="saveBtn">保存</button>
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">名称</span>
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgrade.name)}" placeholder="升级分类名称">
+      </div>
+      <div class="image-upload-box" style="margin-bottom:18px;">
+        ${draftUpgrade.image ? `<img class="image-preview zoomable" src="${draftUpgrade.image}">` : `<div class="image-placeholder">无图片</div>`}
+        <div class="upload-controls">
+          <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
+          ${draftUpgrade.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个升级类型的规则、玩法、消耗、注意事项...">${escapeHtml(draftUpgrade.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">升级 (每一项)</span>
+        <div class="hint" style="margin-bottom:10px;">比如这个升级分类里有很多具体的升级项目/等级，在这里一个个加。</div>
+        ${draftUpgrade.levels.map((lv,i)=>odysseyCardEditHtml(lv,i,'levels','removeUpgradeLevel',false,'升级')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无升级项目</div>'}
+        <button class="btn btn-gold" data-action="addUpgradeLevel">+ 添加升级</button>
+      </div>
+    `;
+    wireDraftForm(container, draftUpgrade);
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftUpgrade=null; render(); });
+    document.getElementById('saveBtn').addEventListener('click', async ()=>{
+      upgrade.name = (draftUpgrade.name||'').trim() || '未命名升级';
+      upgrade.image = draftUpgrade.image || '';
+      upgrade.description = draftUpgrade.description || '';
+      upgrade.levels = draftUpgrade.levels || [];
+      editMode = false; draftUpgrade = null;
+      await saveData(false);
+      render();
+    });
+    document.getElementById('deleteUpgradeBtn').addEventListener('click', async ()=>{
+      if(!confirm(`确定删除「${upgrade.name}」这个升级分类？`)) return;
+      state.upgrades = state.upgrades.filter(s=>s.id!==upgrade.id);
+      editMode = false; draftUpgrade = null;
+      currentView = {type:'home'}; setHash(currentView);
+      await saveData(false);
+      render();
+    });
+    return;
+  }
+
+  const levelsHtml = upgrade.levels.length ? upgrade.levels.map(lv=>`
+    <div class="floor-card" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
+      ${lv.image ? `<img class="skill-image zoomable" src="${lv.image}">` : ''}
+      <div class="floor-card-body">
+        <div class="floor-card-name">${inline(lv.name)}</div>
+        <div class="floor-card-desc">${lv.description ? renderMarkdownLite(lv.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无升级项目</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <div class="crumb">升级</div>
+      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+    </div>
+    ${upgrade.image ? `<img class="unit-image zoomable" src="${upgrade.image}">` : ''}
+    <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(upgrade.name)}</h1>
+    <div class="content-body">${renderMarkdownLite(upgrade.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="section-label">升级列表</div>
+    ${isAdmin && upgrade.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 按住卡片拖动，可以调整顺序。</div>` : ''}
+    <div class="floor-list" id="upgradeLevelsList">${levelsHtml}</div>
+  `;
+  const editBtn = document.getElementById('editBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftUpgrade=null; render(); });
+
+  if(isAdmin){
+    const listEl = document.getElementById('upgradeLevelsList');
+    let dragSrcId = null;
+    listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
+      card.addEventListener('dragstart', (e)=>{
+        dragSrcId = card.dataset.levelId;
+        card.classList.add('dragging');
+        if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', ()=>{
+        card.classList.remove('dragging');
+        listEl.querySelectorAll('.floor-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+        dragSrcId = null;
+      });
+      card.addEventListener('dragover', (e)=>{
+        if(!dragSrcId || card.dataset.levelId===dragSrcId) return;
+        e.preventDefault();
+        card.classList.add('drag-over');
+      });
+      card.addEventListener('dragleave', ()=>{ card.classList.remove('drag-over'); });
+      card.addEventListener('drop', async (e)=>{
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        const targetId = card.dataset.levelId;
+        if(!dragSrcId || dragSrcId===targetId) return;
+        const srcIdx = upgrade.levels.findIndex(x=>x.id===dragSrcId);
+        if(srcIdx<0) return;
+        const [moved] = upgrade.levels.splice(srcIdx,1);
+        const tgtIdx = upgrade.levels.findIndex(x=>x.id===targetId);
+        upgrade.levels.splice(tgtIdx<0 ? upgrade.levels.length : tgtIdx, 0, moved);
+        dragSrcId = null;
+        await saveData(true);
+        renderUpgradePage();
+      });
+    });
+  }
+}
+
 function renderTraitsPage(){
   const container = document.getElementById('mainInner');
   const cardsHtml = state.traits.length ? state.traits.map(t=>`
@@ -1136,7 +1267,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','stages'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','stages','upgrades'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -1482,6 +1613,13 @@ function renderSidebar(){
   </div>
 
   <div class="nav-section">
+    <details class="nav-collapsible" data-picker-key="sidebar-upgrades"${(openPickerKeys.has('sidebar-upgrades') || currentView.type==='upgrade') ? ' open' : ''}>
+      <summary class="nav-section-label" style="cursor:pointer;">升级${isAdmin ? ' <button type="button" class="cat-add" id="addUpgradeBtn" title="新增升级分类">+</button>' : ''}</summary>
+      ${state.upgrades.map(s=>`<a href="${viewToHash({type:'upgrade', id:s.id})}" class="top-link nav-sub-link ${currentView.type==='upgrade'&&currentView.id===s.id?'active':''}" data-view="upgrade" data-id="${s.id}"${isAdmin ? ' draggable="true"' : ''}>${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无升级分类</div>'}
+    </details>
+  </div>
+
+  <div class="nav-section">
     <div class="nav-section-label">参考资料</div>
     <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
     <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
@@ -1503,12 +1641,28 @@ function renderSidebar(){
     if(name === null) return;
     const trimmed = name.trim();
     if(!trimmed) return;
-    const newStage = {id:uid(), name:trimmed, image:'', description:''};
+    const newStage = {id:uid(), name:trimmed, image:'', description:'', levels:[]};
     state.stages.push(newStage);
     openPickerKeys.add('sidebar-stages');
     await saveData(true);
     goToView({type:'stage', id:newStage.id});
     editMode = true; draftStage = null;
+    render();
+  });
+  const addUpgradeBtn = document.getElementById('addUpgradeBtn');
+  if(addUpgradeBtn) addUpgradeBtn.addEventListener('click', async (e)=>{
+    e.preventDefault(); e.stopPropagation();
+    if(!requireAdmin()) return;
+    const name = window.prompt('新升级分类的名称？（例如：单位升级、武器升级、天赋升级）', '');
+    if(name === null) return;
+    const trimmed = name.trim();
+    if(!trimmed) return;
+    const newUpgrade = {id:uid(), name:trimmed, image:'', description:'', levels:[]};
+    state.upgrades.push(newUpgrade);
+    openPickerKeys.add('sidebar-upgrades');
+    await saveData(true);
+    goToView({type:'upgrade', id:newUpgrade.id});
+    editMode = true; draftUpgrade = null;
     render();
   });
 
@@ -1518,7 +1672,7 @@ function renderSidebar(){
       e.preventDefault();
       currentView = btn.dataset.id ? {type: btn.dataset.view, id: btn.dataset.id} : {type: btn.dataset.view};
       setHash(currentView);
-      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; draftStage=null; render(); closeMobileSidebar();
+      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; draftStage=null; draftUpgrade=null; render(); closeMobileSidebar();
     });
   });
   if(isAdmin){
@@ -1552,6 +1706,40 @@ function renderSidebar(){
         state.stages.splice(tgtIdx<0 ? state.stages.length : tgtIdx, 0, moved);
         dragSrcStageId = null;
         openPickerKeys.add('sidebar-stages');
+        await saveData(true);
+        renderSidebar();
+      });
+    });
+    let dragSrcUpgradeId = null;
+    nav.querySelectorAll('.nav-sub-link[data-view="upgrade"]').forEach(link=>{
+      link.addEventListener('dragstart', (e)=>{
+        dragSrcUpgradeId = link.dataset.id;
+        link.classList.add('dragging');
+        if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      link.addEventListener('dragend', ()=>{
+        link.classList.remove('dragging');
+        nav.querySelectorAll('.nav-sub-link.drag-over').forEach(c=>c.classList.remove('drag-over'));
+        dragSrcUpgradeId = null;
+      });
+      link.addEventListener('dragover', (e)=>{
+        if(!dragSrcUpgradeId || link.dataset.id===dragSrcUpgradeId) return;
+        e.preventDefault();
+        link.classList.add('drag-over');
+      });
+      link.addEventListener('dragleave', ()=>{ link.classList.remove('drag-over'); });
+      link.addEventListener('drop', async (e)=>{
+        e.preventDefault();
+        link.classList.remove('drag-over');
+        const targetId = link.dataset.id;
+        if(!dragSrcUpgradeId || dragSrcUpgradeId===targetId) return;
+        const srcIdx = state.upgrades.findIndex(x=>x.id===dragSrcUpgradeId);
+        if(srcIdx<0) return;
+        const [moved] = state.upgrades.splice(srcIdx,1);
+        const tgtIdx = state.upgrades.findIndex(x=>x.id===targetId);
+        state.upgrades.splice(tgtIdx<0 ? state.upgrades.length : tgtIdx, 0, moved);
+        dragSrcUpgradeId = null;
+        openPickerKeys.add('sidebar-upgrades');
         await saveData(true);
         renderSidebar();
       });
@@ -2453,6 +2641,8 @@ function handleDraftAction(ds, draft){
   else if(action==='removeFloor') draft.floors.splice(idx,1);
   else if(action==='addStageLevel') draft.levels.push({id:uid(), name:'第 '+(draft.levels.length+1)+' 关', image:'', description:''});
   else if(action==='removeStageLevel') draft.levels.splice(idx,1);
+  else if(action==='addUpgradeLevel') draft.levels.push({id:uid(), name:'升级 '+(draft.levels.length+1), image:'', description:''});
+  else if(action==='removeUpgradeLevel') draft.levels.splice(idx,1);
   else if(action==='toggleOdysseyUnit'){
     const id = ds.unitId;
     if(!Array.isArray(draft.unitIds)) draft.unitIds = [];
@@ -3241,6 +3431,7 @@ function renderMain(){
   else if(currentView.type==='attackTypes') renderAttackTypes();
   else if(currentView.type==='traits') renderTraitsPage();
   else if(currentView.type==='stage') renderStagePage();
+  else if(currentView.type==='upgrade') renderUpgradePage();
   else if(currentView.type==='settings') renderSettings();
   else if(currentView.type==='unit') renderUnit();
   else if(currentView.type==='item') renderItem();
