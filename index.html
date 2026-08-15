@@ -169,12 +169,19 @@
   .skill-image{width:120px;height:120px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--card-hover);}
   .skill-view-body{flex:1;min-width:0;}
   .skill-name{font-size:15px;margin:0 0 6px;color:var(--text);font-family:'Noto Serif SC',serif;font-weight:700;}
-  .attack-view{position:relative;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--gold-dim);border-radius:12px;padding:18px 20px 16px;margin-bottom:16px;}
-  .attack-slot-badge{position:absolute;top:14px;right:16px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:var(--gold-dim);border:1px solid var(--border-light);border-radius:20px;padding:3px 9px;letter-spacing:.04em;background:var(--card);}
-  .attack-view-head{display:flex;align-items:center;gap:14px;margin-bottom:14px;padding-right:52px;}
-  .attack-thumb{width:76px;height:76px;border-radius:10px;object-fit:cover;background:var(--card-hover);border:1px solid var(--border-light);box-shadow:0 0 0 3px var(--bg), 0 0 0 4px var(--gold-dim);flex-shrink:0;}
+  .attack-view{position:relative;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:14px;padding:20px 20px 16px;margin-bottom:18px;overflow:hidden;}
+  .attack-view::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg, transparent, var(--atk-accent, var(--gold-dim)), transparent);}
+  .attack-view::after{content:'';position:absolute;inset:0;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);pointer-events:none;}
+  .attack-emblem{position:relative;width:38px;height:38px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg, var(--atk-accent, var(--gold)) 0%, var(--atk-accent, var(--gold-dim)) 100%);clip-path:polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);box-shadow:0 3px 8px rgba(0,0,0,.35);}
+  .attack-emblem-num{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;color:#221a0d;line-height:1;}
+  .attack-emblem-tag{font-family:'Noto Serif SC',serif;font-size:8px;color:rgba(34,26,13,.65);margin-top:1px;}
+  .attack-view-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .attack-thumb{width:72px;height:72px;border-radius:10px;object-fit:cover;background:var(--card-hover);border:1px solid var(--border-light);box-shadow:0 0 0 3px var(--bg), 0 0 0 4px var(--atk-accent, var(--gold-dim));flex-shrink:0;}
+  .attack-media-strip{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .attack-media-thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;background:var(--card-hover);border:1px solid var(--border-light);flex-shrink:0;}
   .attack-view-titles{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;}
-  .attack-view-titles .skill-name{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;margin:0;}
+  .attack-view-titles .skill-name{font-family:'Noto Serif SC',serif;font-size:18px;font-weight:700;margin:0;position:relative;padding-bottom:7px;width:fit-content;}
+  .attack-view-titles .skill-name::after{content:'';position:absolute;left:0;bottom:0;width:26px;height:2px;border-radius:2px;background:var(--atk-accent, var(--gold-dim));}
   .attack-type-chip{display:inline-flex;align-items:center;gap:5px;width:fit-content;font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;}
   .attack-type-chip img{width:13px;height:13px;border-radius:50%;}
   .attack-trait-picker{display:flex;align-items:center;gap:8px;flex-shrink:0;}
@@ -205,17 +212,21 @@
   .level-table.view td{color:var(--text);}
   .level-table.view tr:hover td{background:var(--card-hover);}
   .level-table td input{padding:6px 8px;font-size:12px;}
-  .level-track{display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px;}
-  .level-pill{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:var(--card);border:1px solid var(--border);border-radius:9px;}
+  .level-track{display:flex;flex-wrap:wrap;gap:8px;}
+  .level-track-view{display:grid;grid-template-columns:repeat(auto-fit, minmax(120px, 1fr));gap:8px;}
+  .level-pill{position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 10px 17px;background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+  .level-pill::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--border-light);}
   .level-pill:last-child{border-color:var(--gold-dim);background:rgba(201,162,75,.08);}
+  .level-pill:last-child::before{background:var(--gold);}
   .level-pill-label{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:var(--gold);}
   .level-pill-cost{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-dim);white-space:nowrap;}
   .level-pill-edit{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:9px;}
   .level-pill-edit .edit-input{width:60px;padding:6px 8px;font-size:12px;text-align:center;}
   .level-pill-edit .level-pill-arrow{color:var(--text-faint);font-size:11px;}
   .attack-cost-bar{margin-top:10px;display:flex;justify-content:space-between;align-items:center;background:rgba(201,162,75,0.08);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 14px;font-size:13px;}
-  .attack-cost-bar .label{color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:5px;}
+  .attack-cost-bar .label{color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:8px;}
   .attack-cost-bar .value{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold);font-size:15px;}
+  .coin-badge{width:24px;height:24px;border-radius:50%;background:linear-gradient(160deg, var(--gold) 0%, var(--gold-dim) 100%);display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,.3);flex-shrink:0;}
 
   .log-timeline{position:relative;padding-left:28px;}
   .log-timeline::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:linear-gradient(180deg, var(--gold-dim) 0%, var(--border) 85%, transparent 100%);}
@@ -1834,6 +1845,11 @@ function coloredChipStyle(color){
   return `background:${raw};color:#ffffff;`;
 }
 
+function cnNum(n){
+  const map=['零','一','二','三','四','五','六','七','八','九','十'];
+  return (n>=0 && n<=10) ? map[n] : String(n);
+}
+
 function dimChipStyle(color){
   const raw = color || '#8a8a8a';
   const isGradient = /gradient/.test(raw);
@@ -2434,6 +2450,9 @@ function startUnitEdit(unit){
   draftUnit = JSON.parse(JSON.stringify(unit));
   if(!Array.isArray(draftUnit.skills)) draftUnit.skills = [];
   if(!Array.isArray(draftUnit.attacks)) draftUnit.attacks = [];
+  draftUnit.attacks.forEach(a=>{
+    if(!Array.isArray(a.media)) a.media = a.image ? [a.image] : [];
+  });
   if(!Array.isArray(draftUnit.marks)) draftUnit.marks = [];
   if(!Array.isArray(draftUnit.skins)) draftUnit.skins = [];
   if(!Array.isArray(draftUnit.passives)){
@@ -2516,6 +2535,22 @@ function skillMediaSlotHtml(url, i, mi){
   </div>`;
 }
 
+function attackMediaSlotHtml(url, ai, mi){
+  const mediaHtml = url
+    ? (isVideoUrl(url)
+        ? `<video class="image-preview small zoomable" src="${url}" autoplay loop muted playsinline></video>`
+        : `<img class="image-preview small zoomable" src="${url}">`)
+    : `<div class="image-placeholder small">无图片</div>`;
+  return `<div class="skill-edit-image">
+    ${mediaHtml}
+    <label class="file-label">选择图片/视频<input type="file" accept="image/*,video/*" data-image-bind="attacks.${ai}.media.${mi}" style="display:none;"></label>
+    <div style="display:flex;gap:4px;">
+      ${url ? `<button class="btn" data-image-remove="attacks.${ai}.media.${mi}">移除</button>` : ''}
+      <button class="btn btn-danger" data-action="removeAttackMedia" data-attack-index="${ai}" data-media-index="${mi}">删除框</button>
+    </div>
+  </div>`;
+}
+
 function skillCardHtml(skill, i){
   const mediaList = Array.isArray(skill.media) ? skill.media : [];
   return `<div class="sub-card">
@@ -2589,13 +2624,11 @@ function attackCardHtml(attack, ai){
       <input class="edit-input" data-bind="attacks.${ai}.name" value="${escapeHtml(attack.name)}" placeholder="攻击名称">
       <button class="btn btn-danger" data-action="removeAttack" data-index="${ai}">删除</button>
     </div>
-    <div class="image-upload-box" style="margin:10px 0;">
-      ${attack.image ? (isVideoUrl(attack.image) ? `<video class="image-preview small zoomable" src="${attack.image}" autoplay loop muted playsinline></video>` : `<img class="image-preview small zoomable" src="${attack.image}">`) : `<div class="image-placeholder small">无图片</div>`}
-      <div class="upload-controls">
-        <label class="file-label">选择图片/视频<input type="file" accept="image/*,video/*" data-image-bind="attacks.${ai}.image" style="display:none;"></label>
-        ${attack.image ? `<button class="btn" data-image-remove="attacks.${ai}.image">移除图片</button>` : ''}
-      </div>
+    <div class="skill-edit-media-stack" style="flex-direction:row;flex-wrap:wrap;margin:10px 0;">
+      ${(Array.isArray(attack.media)?attack.media:[]).map((url,mi)=>attackMediaSlotHtml(url,ai,mi)).join('')}
+      <button class="btn" data-action="addAttackMedia" data-attack-index="${ai}" style="width:fit-content;align-self:flex-start;">+ 新增图片/视频</button>
     </div>
+    <div class="hint" style="margin:-4px 0 10px;">可以加多张图片/视频，比如同一个攻击方式在不同阶段/形态的画面。</div>
 
     <div class="attack-section-label">基础数值</div>
     <div style="display:flex;gap:10px;margin-bottom:10px;">
@@ -2680,9 +2713,11 @@ function handleDraftAction(ds, draft){
   }
   else if(action==='addSkillMedia'){ if(!Array.isArray(draft.skills[idx].media)) draft.skills[idx].media=[]; draft.skills[idx].media.push(''); }
   else if(action==='removeSkillMedia'){ draft.skills[idx].media.splice(mi,1); }
+  else if(action==='addAttackMedia'){ if(!Array.isArray(draft.attacks[ai].media)) draft.attacks[ai].media=[]; draft.attacks[ai].media.push(''); }
+  else if(action==='removeAttackMedia'){ draft.attacks[ai].media.splice(mi,1); }
   else if(action==='addOtherForm') draft.otherForms.push({id:uid(), name:'新形态', image:'', passives:[]});
   else if(action==='removeOtherForm') draft.otherForms.splice(idx,1);
-  else if(action==='addAttack'){ const n=draft.attacks.length+1; draft.attacks.push({id:uid(), name:'攻击'+n, image:'', damage:'', range:'', levels:[{label:'LV0',spa:'',cost:''}]}); }
+  else if(action==='addAttack'){ const n=draft.attacks.length+1; draft.attacks.push({id:uid(), name:'攻击'+n, image:'', media:[], damage:'', range:'', levels:[{label:'LV0',spa:'',cost:''}]}); }
   else if(action==='removeAttack') draft.attacks.splice(idx,1);
   else if(action==='addLevel'){ const atk=draft.attacks[ai]; atk.levels.push({label:'LV'+atk.levels.length, spa:'',cost:''}); }
   else if(action==='bulkAddLevels'){
@@ -3242,19 +3277,24 @@ function renderUnit(){
       statCell('⚡', '攻速', a.baseSpa, calcBaseSpa),
       statCell('🎯', '范围', a.range, calcRange)
     ].join('');
+    const mediaList = Array.isArray(a.media) ? a.media.filter(Boolean) : (a.image ? [a.image] : []);
+    const mainMedia = mediaList[0] || '';
+    const extraMedia = mediaList.slice(1);
+    const extraMediaHtml = extraMedia.length ? `<div class="attack-media-strip">${extraMedia.map(url=>isVideoUrl(url)?`<video class="attack-media-thumb zoomable" src="${url}" autoplay loop muted playsinline></video>`:`<img class="attack-media-thumb zoomable" src="${url}">`).join('')}</div>` : '';
     return `
-    <div class="attack-view">
-      <span class="attack-slot-badge">ATK ${String(ai+1).padStart(2,'0')}</span>
+    <div class="attack-view" style="${(attackTypeObj && attackTypeObj.color && !/gradient/.test(attackTypeObj.color)) ? `--atk-accent:${attackTypeObj.color};` : ''}">
       <div class="attack-view-head">
-        ${a.image?(isVideoUrl(a.image)?`<video class="attack-thumb zoomable" src="${a.image}" autoplay loop muted playsinline></video>`:`<img class="attack-thumb zoomable" src="${a.image}">`):''}
+        <div class="attack-emblem"><span class="attack-emblem-num">${cnNum(ai+1)}</span><span class="attack-emblem-tag">技</span></div>
+        ${mainMedia?(isVideoUrl(mainMedia)?`<video class="attack-thumb zoomable" src="${mainMedia}" autoplay loop muted playsinline></video>`:`<img class="attack-thumb zoomable" src="${mainMedia}">`):''}
         <div class="attack-view-titles">
           <h3 class="skill-name">${escapeHtml(a.name)}</h3>
           ${attackTypeObj ? `<span class="attack-type-chip" style="${coloredChipStyle(attackTypeObj.color)}">${attackTypeObj.image?`<img src="${attackTypeObj.image}">`:''}${escapeHtml(attackTypeObj.name)}</span>` : (attackTypeLegacyLabel ? `<span class="attack-type-chip" style="background:var(--card-hover);color:var(--text-faint);">${escapeHtml(attackTypeLegacyLabel)}</span>` : '')}
         </div>
       </div>
+      ${extraMediaHtml}
       ${plateHtml ? `<div class="attack-stat-plate">${plateHtml}</div>` : ''}
-      <div class="level-track">${a.levels.map(l=>`<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`).join('')}</div>
-      <div class="attack-cost-bar"><span class="label">💰 总升级花费</span><span class="value">${sumAttackCost(a).toLocaleString()}</span></div>
+      <div class="level-track-view">${a.levels.map(l=>`<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`).join('')}</div>
+      <div class="attack-cost-bar"><span class="label"><span class="coin-badge">💰</span>总升级花费</span><span class="value">${sumAttackCost(a).toLocaleString()}</span></div>
     </div>`;
   }).join('') : '<p style="color:var(--text-faint);">暂无内容</p>';
 
