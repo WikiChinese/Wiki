@@ -75,7 +75,7 @@
   .floor-card-body{flex:1;min-width:200px;padding:0;}
   .floor-card-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;}
   .floor-card-desc{font-size:13.5px;color:var(--text-dim);line-height:1.7;white-space:pre-line;}
-  .odyssey-card-unit-tag{display:inline-block;font-size:11px;color:var(--teal);background:rgba(63,158,143,.12);border:1px solid var(--teal);border-radius:20px;padding:2px 10px;margin-bottom:6px;cursor:pointer;}
+  .odyssey-card-unit-tag{display:inline-block;font-size:11px;color:var(--teal);background:rgba(63,158,143,.12);border:1px solid var(--teal);border-radius:20px;padding:2px 10px;margin-bottom:6px;cursor:pointer;text-decoration:none;}
   .odyssey-card-unit-tag:hover{background:rgba(63,158,143,.25);}
   .gallery-card{text-align:center;cursor:pointer;transition:opacity .15s, outline-color .15s;text-decoration:none;display:block;color:inherit;}
   .gallery-card[draggable="true"]{cursor:grab;}
@@ -273,7 +273,7 @@
   .skill-edit-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:8px;}
   .skill-edit-body .edit-textarea{min-height:90px;}
 
-  .mark-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;}
+  .mark-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;}
   .mark-chip img{width:18px;height:18px;border-radius:50%;object-fit:cover;}
   .mark-chip .mark-dot{width:9px;height:9px;border-radius:50%;margin-left:2px;}
   .mark-toggle{display:inline-flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;border:2px solid transparent;cursor:pointer;margin:0 8px 8px 0;opacity:.5;transition:opacity .15s;}
@@ -2009,7 +2009,7 @@ function logEntityChipsHtml(allEntities, selectedIds, viewType, label){
       const e = allEntities.find(x=>x.id===id);
       if(!e) return '';
       const icon = e.image ? `<img src="${e.image}">` : '';
-      return `<div class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle('#8a713a')}cursor:pointer;">${icon}${escapeHtml(e.name)}</div>`;
+      return `<a href="${viewToHash({type:viewType, id:e.id})}" class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle('#8a713a')}cursor:pointer;">${icon}${escapeHtml(e.name)}</a>`;
     }).join('')}</div>
   </div>`;
 }
@@ -2154,7 +2154,9 @@ function renderHome(){
     });
   });
   container.querySelectorAll('.mark-chip[data-view]').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type: chip.dataset.view, id: chip.dataset.id});
       editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
@@ -2253,7 +2255,7 @@ function odysseyCardViewHtml(card, hideUnitTag){
     ${card.image ? `<img class="odyssey-card-img zoomable" src="${card.image}">` : `<div class="odyssey-card-img placeholder">无图片</div>`}
     <div class="odyssey-card-body">
       <div class="odyssey-card-name">${escapeHtml(card.name)}</div>
-      ${linkedUnit ? `<div class="odyssey-card-unit-tag" data-view="unit" data-id="${linkedUnit.id}">对应单位：${escapeHtml(linkedUnit.name)}</div>` : ''}
+      ${linkedUnit ? `<a href="${viewToHash({type:'unit', id:linkedUnit.id})}" class="odyssey-card-unit-tag" data-view="unit" data-id="${linkedUnit.id}">对应单位：${escapeHtml(linkedUnit.name)}</a>` : ''}
       <div class="odyssey-card-desc">${card.description ? renderMarkdownLite(card.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
@@ -2359,7 +2361,9 @@ function renderOdyssey(){
     });
   });
   container.querySelectorAll('.odyssey-card-unit-tag').forEach(tag=>{
-    tag.addEventListener('click', ()=>{
+    tag.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type: tag.dataset.view, id: tag.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
@@ -3172,7 +3176,7 @@ function renderUnit(){
     return `<div class="skill-view">
       ${media}
       <div class="skill-view-body">
-        <h3 class="skill-name" data-view="memory" data-id="${m.id}" style="cursor:pointer;">${escapeHtml(m.name)}</h3>
+        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'memory', id:m.id})}" data-view="memory" data-id="${m.id}" style="color:inherit;text-decoration:none;cursor:pointer;">${escapeHtml(m.name)}</a></h3>
         ${passivesInner}
       </div>
     </div>`;
@@ -3193,7 +3197,7 @@ function renderUnit(){
     return `<div class="skill-view">
       ${media2}
       <div class="skill-view-body">
-        <h3 class="skill-name" data-view="family" data-id="${f.id}" style="cursor:pointer;">${escapeHtml(f.name)}</h3>
+        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'family', id:f.id})}" data-view="family" data-id="${f.id}" style="color:inherit;text-decoration:none;cursor:pointer;">${escapeHtml(f.name)}</a></h3>
         ${fpassivesInner}
       </div>
     </div>`;
@@ -3323,15 +3327,19 @@ function renderUnit(){
   });
   wireBackButton(container);
   wireComments(container);
-  container.querySelectorAll('.skill-name[data-view="memory"]').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
+  container.querySelectorAll('.skill-name a[data-view="memory"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type:'memory', id: chip.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
     });
   });
-  container.querySelectorAll('.skill-name[data-view="family"]').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
+  container.querySelectorAll('.skill-name a[data-view="family"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type:'family', id: chip.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
@@ -3780,7 +3788,7 @@ function renderSimpleEntity(type){
     const f = state.families.find(x=>x.id===fid);
     if(!f) return '';
     const icon = f.image ? `<img src="${f.image}">` : '';
-    return `<div class="mark-chip" data-view="family" data-id="${f.id}" style="${coloredChipStyle('#4a8fd1')}cursor:pointer;">${icon}${escapeHtml(f.name)}</div>`;
+    return `<a href="${viewToHash({type:'family', id:f.id})}" class="mark-chip" data-view="family" data-id="${f.id}" style="${coloredChipStyle('#4a8fd1')}cursor:pointer;">${icon}${escapeHtml(f.name)}</a>`;
   }).join('')}</div>` : '';
 
   container.innerHTML = `
@@ -3805,7 +3813,9 @@ function renderSimpleEntity(type){
   wireBackButton(container);
   wireComments(container);
   container.querySelectorAll('.mark-chip[data-view="family"]').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
       goToView({type:'family', id: chip.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null;
       render();
