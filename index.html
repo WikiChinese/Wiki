@@ -315,7 +315,7 @@
   .mark-quickadd .edit-input{width:auto;flex:1;min-width:160px;}
 
   .settings-block{margin-bottom:36px;}
-  .mark-edit-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px;}
+  .mark-edit-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px;}
   .mark-icon-preview{width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--card-hover);flex-shrink:0;border:1px solid var(--border);}
   .mark-icon-placeholder{width:40px;height:40px;border-radius:50%;background:var(--card-hover);flex-shrink:0;border:1px dashed var(--border-light);}
   .mark-edit-row .edit-input{flex:1;}
@@ -3958,14 +3958,17 @@ function markEditRowHtml(mark, i){
     <div class="mark-edit-row">
       ${iconHtml}
       <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="marks.${i}.image" style="display:none;"></label>
-      <input class="edit-input" data-settings-bind="marks.${i}.name" value="${escapeHtml(mark.name)}" placeholder="标记名称，如：灼烧">
-      <select class="edit-select" data-settings-bind="marks.${i}.categoryId" style="max-width:180px;">
+      <input class="edit-input" style="flex:3;min-width:180px;" data-settings-bind="marks.${i}.name" value="${escapeHtml(mark.name)}" placeholder="标记名称，如：灼烧">
+      <button class="btn btn-danger" data-settings-action="removeMark" data-index="${i}">删除</button>
+    </div>
+    <div class="mark-edit-row" style="margin-top:8px;margin-bottom:0;">
+      <label style="font-size:12px;color:var(--text-faint);flex-shrink:0;">分类</label>
+      <select class="edit-select" style="flex:1;min-width:160px;" data-settings-bind="marks.${i}.categoryId">
         <option value="">未分类</option>
         ${state.markCategories.map(c=>`<option value="${c.id}" ${mark.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
       </select>
       <input type="color" data-settings-bind="marks.${i}.color" value="${colorPickerVal}">
       ${colorFormulaInputHtml('marks', i, mark.color)}
-      <button class="btn btn-danger" data-settings-action="removeMark" data-index="${i}">删除</button>
     </div>
     <div class="edit-field" style="margin-top:10px;">
       <span class="edit-label">效果说明（会显示在左侧「状态标记」页面里）</span>
