@@ -167,6 +167,24 @@
   .skill-view{display:flex;gap:14px;flex-wrap:wrap;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
   .skill-view-media-stack{display:flex;flex-direction:column;gap:12px;flex-shrink:0;}
   .skill-image{width:120px;height:120px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--card-hover);}
+  .skin-showcase{display:flex;flex-wrap:wrap;gap:14px;}
+  .skin-card{width:132px;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:transform .15s, border-color .15s;}
+  .skin-card:hover{transform:translateY(-3px);border-color:var(--gold-dim);}
+  .skin-card-image-wrap{position:relative;width:100%;aspect-ratio:1;background:var(--card-hover);}
+  .skin-card-image{width:100%;height:100%;object-fit:cover;display:block;}
+  .skin-card-rarity-tag{position:absolute;top:6px;left:6px;}
+  .skin-card-rarity-tag .badge{font-size:9.5px;padding:2px 7px;box-shadow:0 2px 5px rgba(0,0,0,.4);}
+  .skin-card-body{padding:9px 10px 11px;text-align:center;}
+  .skin-card-name{font-family:'Noto Serif SC',serif;font-size:12.5px;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:6px;}
+  .skin-card-tags{display:flex;justify-content:center;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
+  .skin-card-series-tag{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;}
+  .skin-card-media-strip{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;margin-bottom:5px;}
+  .skin-card-media-thumb{width:26px;height:26px;border-radius:5px;object-fit:cover;background:var(--card-hover);border:1px solid var(--border-light);}
+  .skin-card-obtain{font-size:10.5px;color:var(--text-faint);line-height:1.4;}
+  .skin-card-ref{margin-top:5px;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .skin-card-ref a{color:var(--teal);text-decoration:none;}
+  .skin-card-ref a:hover{text-decoration:underline;}
+  .skin-card-ref span{color:var(--text-faint);cursor:default;}
   .skill-view-body{flex:1;min-width:0;}
   .skill-name{font-size:15px;margin:0 0 6px;color:var(--text);font-family:'Noto Serif SC',serif;font-weight:700;}
   .attack-view{position:relative;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:14px;padding:20px 20px 16px;margin-bottom:18px;overflow:hidden;}
@@ -420,7 +438,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[], upgrades:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -449,7 +467,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','stage','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','stage','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -716,6 +734,12 @@ function migrateState(){
     if(t.image===undefined) t.image = '';
     if(t.description===undefined) t.description = '';
   });
+  if(!Array.isArray(state.enemyMechanics)) state.enemyMechanics = [];
+  state.enemyMechanics.forEach(t=>{
+    if(t.color===undefined) t.color = '#b8544a';
+    if(t.image===undefined) t.image = '';
+    if(t.description===undefined) t.description = '';
+  });
   if(!Array.isArray(state.stages)) state.stages = [];
   state.stages.forEach(s=>{
     if(s.image===undefined) s.image = '';
@@ -825,7 +849,7 @@ function migrateState(){
     });
     if(!Array.isArray(u.marks)) u.marks = [];
     if(!Array.isArray(u.skins)) u.skins = [];
-    u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; });
+    u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; if(s.referenceUrl===undefined) s.referenceUrl=''; if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : []; });
     if(!Array.isArray(u.passives)) u.passives = u.passive ? [{id:uid(), name:'被动1', description:u.passive}] : [];
     if(u.placementLimit===undefined) u.placementLimit = '';
     if(u.englishName===undefined) u.englishName = '';
@@ -1308,7 +1332,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','stages','upgrades'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','enemyMechanics','stages','upgrades'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -1665,6 +1689,7 @@ function renderSidebar(){
     <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
     <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
     <a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits"><span class="nav-icon">✨</span>特性</a>
+    <a href="#/enemyMechanics" class="top-link ${currentView.type==='enemyMechanics'?'active':''}" data-view="enemyMechanics"><span class="nav-icon">☠️</span>敌方机制</a>
   </div>
 
   <div class="nav-section">
@@ -2263,6 +2288,119 @@ function renderAttackTypes(){
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
 }
 
+let editingEnemyMechanics = false;
+
+function enemyMechanicEditRowHtml(m, i){
+  const iconHtml = m.image ? `<img class="mark-icon-preview zoomable" src="${m.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const isGradient = /gradient/.test(m.color||'');
+  const colorPickerVal = isGradient ? '#b8544a' : (m.color||'#b8544a');
+  const formulaVal = isGradient ? escapeHtml(m.color) : '';
+  return `<div class="sub-card">
+    <div class="mark-edit-row">
+      ${iconHtml}
+      <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-em-image-bind="${i}.image" style="display:none;"></label>
+      <input class="edit-input" style="flex:3;min-width:180px;" data-em-bind="${i}.name" value="${escapeHtml(m.name)}" placeholder="机制名称，如：破盾、免疫控制">
+      <button class="btn btn-danger" data-em-action="removeEnemyMechanic" data-index="${i}">删除</button>
+    </div>
+    <div class="mark-edit-row" style="margin-top:8px;margin-bottom:0;">
+      <input type="color" data-em-bind="${i}.color" value="${colorPickerVal}">
+      <input class="edit-input" style="flex:1;min-width:160px;" data-em-color-formula="${i}" value="${formulaVal}" placeholder="自定义颜色公式，例如渐变色 linear-gradient(...)">
+    </div>
+    <div class="edit-field" style="margin-top:10px;">
+      <span class="edit-label">机制说明（会显示在「敌方机制」页面里）</span>
+      <textarea class="edit-input" data-em-bind="${i}.description" rows="2" placeholder="例如：该敌人会周期性生成护盾，需要在短时间内打破才能继续造成伤害">${escapeHtml(m.description||'')}</textarea>
+    </div>
+  </div>`;
+}
+
+function renderEnemyMechanics(){
+  const container = document.getElementById('mainInner');
+
+  if(editingEnemyMechanics && isAdmin){
+    const rowsHtml = state.enemyMechanics.length ? state.enemyMechanics.map(enemyMechanicEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无机制</div>';
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <h1 class="page-title" style="margin:0;">敌方机制</h1>
+        <div class="toolbar-actions"><button class="btn btn-gold" id="doneEditEnemyMechanicsBtn">✓ 完成编辑</button></div>
+      </div>
+      <div class="hint" style="margin:-6px 0 16px;">编辑敌人可能带有的特殊机制，例如护盾、免疫控制、狂暴、召唤小怪等。改动会自动保存。</div>
+      <div id="enemyMechanicsList">${rowsHtml}</div>
+      <button class="btn btn-gold" id="addEnemyMechanicBtn">+ 新增机制</button>
+    `;
+    const doneBtn = document.getElementById('doneEditEnemyMechanicsBtn');
+    if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingEnemyMechanics = false; renderEnemyMechanics(); });
+    const addBtn = document.getElementById('addEnemyMechanicBtn');
+    if(addBtn) addBtn.addEventListener('click', async ()=>{
+      state.enemyMechanics.push({id:uid(), name:'新机制', image:'', color:'#b8544a', description:''});
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+    wireEnemyMechanicsForm(container);
+    return;
+  }
+
+  const cardsHtml = state.enemyMechanics.length ? state.enemyMechanics.map(m=>`
+    <div class="status-effect-card">
+      ${m.image ? `<img class="status-effect-icon zoomable" src="${m.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
+      <div class="status-effect-info">
+        <div class="status-effect-name">${escapeHtml(m.name)}</div>
+        <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何敌方机制，管理员可以点右上角「编辑」新增。</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">敌方机制</h1>
+      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="editEnemyMechanicsBtn">编辑</button></div>` : ''}
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">这里汇总了敌人可能带有的特殊机制，比如护盾、免疫控制、狂暴、召唤小怪等，方便查阅每种机制具体是什么效果、该怎么应对。</div>
+    <div class="status-effect-list">${cardsHtml}</div>
+  `;
+  const editBtn = document.getElementById('editEnemyMechanicsBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingEnemyMechanics = true; renderEnemyMechanics(); });
+}
+
+function wireEnemyMechanicsForm(container){
+  container.querySelectorAll('[data-em-bind]').forEach(el=>{
+    const sync = ()=>{
+      setPath(state.enemyMechanics, el.dataset.emBind, el.value);
+      pendingLocalSave = true;
+      clearTimeout(settingsSyncTimer);
+      settingsSyncTimer = setTimeout(()=>{ saveData(true); }, 400);
+    };
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+  });
+  container.querySelectorAll('[data-em-color-formula]').forEach(el=>{
+    el.addEventListener('change', async ()=>{
+      const i = parseInt(el.dataset.emColorFormula);
+      const val = el.value.trim();
+      if(val) state.enemyMechanics[i].color = val;
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+  });
+  container.querySelectorAll('[data-em-image-bind]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      handleImageUpload(el, async (dataUrl)=>{
+        setPath(state.enemyMechanics, el.dataset.emImageBind, dataUrl);
+        await saveData(true);
+        renderEnemyMechanics();
+      });
+    });
+  });
+  container.querySelectorAll('[data-em-action]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const action = el.dataset.emAction;
+      const idx = parseInt(el.dataset.index);
+      if(action==='removeEnemyMechanic') state.enemyMechanics.splice(idx,1);
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+  });
+}
+
+
 function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit, labelWord){
   const word = labelWord || '卡片';
   return `<div class="sub-card">
@@ -2485,6 +2623,9 @@ function startUnitEdit(unit){
   });
   if(!Array.isArray(draftUnit.marks)) draftUnit.marks = [];
   if(!Array.isArray(draftUnit.skins)) draftUnit.skins = [];
+  draftUnit.skins.forEach(s=>{
+    if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : [];
+  });
   if(!Array.isArray(draftUnit.passives)){
     draftUnit.passives = unit.passive ? [{id:uid(), name:'被动1', description:unit.passive}] : [];
   }
@@ -2521,10 +2662,9 @@ function passiveCardHtml(passive, i, pathPrefix, includeScope){
 function skinCardHtml(skin, i){
   return `<div class="sub-card">
     <div class="skill-edit-row">
-      <div class="skill-edit-image">
-        ${skin.image ? `<img class="image-preview small zoomable" src="${skin.image}">` : `<div class="image-placeholder small">无图片</div>`}
-        <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="skins.${i}.image" style="display:none;"></label>
-        ${skin.image ? `<button class="btn" data-image-remove="skins.${i}.image">移除图片</button>` : ''}
+      <div class="skill-edit-media-stack" style="flex-direction:row;flex-wrap:wrap;">
+        ${(Array.isArray(skin.media)?skin.media:[]).map((url,mi)=>skinMediaSlotHtml(url,i,mi)).join('')}
+        <button class="btn" data-action="addSkinMedia" data-index="${i}" style="width:fit-content;align-self:flex-start;">+ 新增图片/视频</button>
       </div>
       <div class="skill-edit-body">
         <input class="edit-input" data-bind="skins.${i}.name" value="${escapeHtml(skin.name)}" placeholder="皮肤名称">
@@ -2541,6 +2681,10 @@ function skinCardHtml(skin, i){
         <div class="edit-field" style="margin:8px 0 0;">
           <span class="edit-label">获取方式</span>
           <input class="edit-input" data-bind="skins.${i}.obtainWay" value="${escapeHtml(skin.obtainWay)}" placeholder="例如：限时活动、商城购买、抽卡获得">
+        </div>
+        <div class="edit-field" style="margin:8px 0 0;">
+          <span class="edit-label">参考来源（可以是链接，或者纯文字说明，比如画师名字/图源出处）</span>
+          <input class="edit-input" data-bind="skins.${i}.referenceUrl" value="${escapeHtml(skin.referenceUrl||'')}" placeholder="例如：https://x.com/... 或 画师：XXX">
         </div>
         <textarea class="edit-textarea" data-bind="skins.${i}.description" placeholder="皮肤说明（可选）...">${escapeHtml(skin.description||'')}</textarea>
       </div>
@@ -2577,6 +2721,22 @@ function attackMediaSlotHtml(url, ai, mi){
     <div style="display:flex;gap:4px;">
       ${url ? `<button class="btn" data-image-remove="attacks.${ai}.media.${mi}">移除</button>` : ''}
       <button class="btn btn-danger" data-action="removeAttackMedia" data-attack-index="${ai}" data-media-index="${mi}">删除框</button>
+    </div>
+  </div>`;
+}
+
+function skinMediaSlotHtml(url, i, mi){
+  const mediaHtml = url
+    ? (isVideoUrl(url)
+        ? `<video class="image-preview small zoomable" src="${url}" autoplay loop muted playsinline></video>`
+        : `<img class="image-preview small zoomable" src="${url}">`)
+    : `<div class="image-placeholder small">无图片</div>`;
+  return `<div class="skill-edit-image">
+    ${mediaHtml}
+    <label class="file-label">选择图片/视频<input type="file" accept="image/*,video/*" data-image-bind="skins.${i}.media.${mi}" style="display:none;"></label>
+    <div style="display:flex;gap:4px;">
+      ${url ? `<button class="btn" data-image-remove="skins.${i}.media.${mi}">移除</button>` : ''}
+      <button class="btn btn-danger" data-action="removeSkinMedia" data-index="${i}" data-media-index="${mi}">删除框</button>
     </div>
   </div>`;
 }
@@ -2745,6 +2905,8 @@ function handleDraftAction(ds, draft){
   else if(action==='removeSkillMedia'){ draft.skills[idx].media.splice(mi,1); }
   else if(action==='addAttackMedia'){ if(!Array.isArray(draft.attacks[ai].media)) draft.attacks[ai].media=[]; draft.attacks[ai].media.push(''); }
   else if(action==='removeAttackMedia'){ draft.attacks[ai].media.splice(mi,1); }
+  else if(action==='addSkinMedia'){ if(!Array.isArray(draft.skins[idx].media)) draft.skins[idx].media=[]; draft.skins[idx].media.push(''); }
+  else if(action==='removeSkinMedia'){ draft.skins[idx].media.splice(mi,1); }
   else if(action==='addOtherForm') draft.otherForms.push({id:uid(), name:'新形态', image:'', passives:[]});
   else if(action==='removeOtherForm') draft.otherForms.splice(idx,1);
   else if(action==='addAttack'){ const n=draft.attacks.length+1; draft.attacks.push({id:uid(), name:'攻击'+n, image:'', media:[], damage:'', range:'', levels:[{label:'LV0',spa:'',cost:''}]}); }
@@ -2758,7 +2920,7 @@ function handleDraftAction(ds, draft){
     }
   }
   else if(action==='removeLevel') draft.attacks[ai].levels.splice(idx,1);
-  else if(action==='addSkin') draft.skins.push({id:uid(), name:'新皮肤', image:'', description:''});
+  else if(action==='addSkin') draft.skins.push({id:uid(), name:'新皮肤', image:'', media:[], description:'', rarity:'', series:'', obtainWay:'', referenceUrl:''});
   else if(action==='removeSkin') draft.skins.splice(idx,1);
   else if(action==='addPassive'){
     const path = ds.path;
@@ -3275,16 +3437,25 @@ function renderUnit(){
     </div>`;
   }).join('') : '';
 
-  const skinsHtml = (unit.skins&&unit.skins.length) ? `<div class="mark-row-list" style="gap:16px;">${unit.skins.map(s=>{
+  const skinsHtml = (unit.skins&&unit.skins.length) ? `<div class="skin-showcase">${unit.skins.map(s=>{
     const seriesObj = s.series ? state.series.find(sr=>sr.id===s.series) : null;
-    return `<div style="text-align:center;width:110px;">
-      ${s.image?`<img class="skill-image zoomable" style="width:96px;height:96px;" src="${s.image}">`:`<div class="image-placeholder" style="width:96px;height:96px;">无图片</div>`}
-      <div style="font-size:12px;color:var(--text-dim);margin-top:6px;">${escapeHtml(s.name)}</div>
-      <div style="margin-top:4px;display:flex;flex-direction:column;gap:3px;align-items:center;">
-        ${s.rarity ? rarityBadge(s.rarity) : ''}
-        ${seriesObj ? `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${escapeHtml(seriesObj.name)}</span>` : ''}
+    const isLink = /^https?:\/\//i.test((s.referenceUrl||'').trim());
+    const mediaList = Array.isArray(s.media) ? s.media.filter(Boolean) : (s.image ? [s.image] : []);
+    const mainMedia = mediaList[0] || '';
+    const extraMedia = mediaList.slice(1);
+    const extraMediaHtml = extraMedia.length ? `<div class="skin-card-media-strip">${extraMedia.map(url=>isVideoUrl(url)?`<video class="skin-card-media-thumb zoomable" src="${url}" autoplay loop muted playsinline></video>`:`<img class="skin-card-media-thumb zoomable" src="${url}">`).join('')}</div>` : '';
+    return `<div class="skin-card">
+      <div class="skin-card-image-wrap">
+        ${mainMedia?(isVideoUrl(mainMedia)?`<video class="skin-card-image zoomable" src="${mainMedia}" autoplay loop muted playsinline></video>`:`<img class="skin-card-image zoomable" src="${mainMedia}">`):`<div class="image-placeholder" style="width:100%;height:100%;">无图片</div>`}
+        ${s.rarity ? `<span class="skin-card-rarity-tag">${rarityBadge(s.rarity)}</span>` : ''}
       </div>
-      ${s.obtainWay ? `<div style="font-size:11px;color:var(--text-faint);margin-top:4px;">${escapeHtml(s.obtainWay)}</div>` : ''}
+      <div class="skin-card-body">
+        <div class="skin-card-name">${escapeHtml(s.name)}</div>
+        ${seriesObj ? `<div class="skin-card-tags"><span class="skin-card-series-tag" style="${dimChipStyle(seriesObj.color)}">${escapeHtml(seriesObj.name)}</span></div>` : ''}
+        ${extraMediaHtml}
+        ${s.obtainWay ? `<div class="skin-card-obtain">${escapeHtml(s.obtainWay)}</div>` : ''}
+        ${s.referenceUrl ? `<div class="skin-card-ref">${isLink ? `<a href="${escapeHtml(s.referenceUrl)}" target="_blank" rel="noopener noreferrer">🔗 参考来源</a>` : `<span title="${escapeHtml(s.referenceUrl)}">🔗 ${escapeHtml(s.referenceUrl)}</span>`}</div>` : ''}
+      </div>
     </div>`;
   }).join('')}</div>` : '';
 
@@ -3539,6 +3710,7 @@ function renderMain(){
   else if(currentView.type==='statusEffects') renderStatusEffects();
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
+  else if(currentView.type==='enemyMechanics') renderEnemyMechanics();
   else if(currentView.type==='traits') renderTraitsPage();
   else if(currentView.type==='stage') renderStagePage();
   else if(currentView.type==='upgrade') renderUpgradePage();
