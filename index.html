@@ -271,6 +271,7 @@
   .status-effect-icon-dot{width:40px;height:40px;border-radius:8px;flex-shrink:0;}
   .status-effect-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px;}
   .status-effect-desc{font-size:13.5px;color:var(--text-dim);line-height:1.6;white-space:pre-line;}
+  .status-effect-cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:2px;}
   .attack-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--gold-dim);font-weight:700;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border);}
   .attack-section-label:first-of-type{margin-top:2px;padding-top:0;border-top:none;}
   .comments-list{margin-bottom:16px;}
@@ -419,7 +420,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[], upgrades:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -767,10 +768,18 @@ function migrateState(){
   if(!Array.isArray(state.memories)) state.memories = [];
   if(!state.tierlist) state.tierlist = {content:''};
   if(!Array.isArray(state.marks)) state.marks = [];
+  if(!Array.isArray(state.markCategories)){
+    state.markCategories = [
+      {id:uid(), name:'持续伤害 (DOT)', color:'#b8544a'},
+      {id:uid(), name:'控制 (CC)', color:'#4a8fd1'},
+      {id:uid(), name:'增伤 (Damage Amplification)', color:'#c9a24b'}
+    ];
+  }
   state.marks.forEach(m=>{
     if(m.description===undefined) m.description = '';
     if(m.color===undefined) m.color = '#c9a24b';
     if(m.image===undefined) m.image = '';
+    if(m.categoryId===undefined) m.categoryId = '';
   });
   if(!Array.isArray(state.groups)) state.groups = [];
   if(!Array.isArray(state.elements)) state.elements = [];
@@ -1299,7 +1308,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','stages','upgrades'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','stages','upgrades'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -2189,14 +2198,35 @@ function renderHome(){
 
 function renderStatusEffects(){
   const container = document.getElementById('mainInner');
-  const cardsHtml = state.marks.length ? state.marks.map(m=>`
+  const markCardHtml = m => `
     <div class="status-effect-card">
       ${m.image ? `<img class="status-effect-icon zoomable" src="${m.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
         <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
-    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何状态标记，管理员可以到「设置」页面新增。</div>';
+    </div>`;
+
+  let cardsHtml;
+  if(!state.marks.length){
+    cardsHtml = '<div class="empty-hint" style="padding-left:0;">还没有任何状态标记，管理员可以到「设置」页面新增。</div>';
+  } else if(!state.markCategories.length){
+    cardsHtml = `<div class="status-effect-list">${state.marks.map(markCardHtml).join('')}</div>`;
+  } else {
+    const grouped = state.markCategories.map(cat=>({
+      cat, marks: state.marks.filter(m=>m.categoryId===cat.id)
+    })).filter(g=>g.marks.length);
+    const uncategorized = state.marks.filter(m=>!m.categoryId || !state.markCategories.some(c=>c.id===m.categoryId));
+    cardsHtml = grouped.map(g=>`
+      <div class="status-effect-category-group">
+        <div class="section-label" style="margin-top:1.4em;"><span class="status-effect-cat-dot" style="background:${/gradient/.test(g.cat.color||'')?'var(--gold)':(g.cat.color||'var(--gold-dim)')}"></span>${escapeHtml(g.cat.name)}</div>
+        <div class="status-effect-list">${g.marks.map(markCardHtml).join('')}</div>
+      </div>`).join('') + (uncategorized.length ? `
+      <div class="status-effect-category-group">
+        <div class="section-label" style="margin-top:1.4em;">未分类</div>
+        <div class="status-effect-list">${uncategorized.map(markCardHtml).join('')}</div>
+      </div>` : '');
+  }
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -2204,7 +2234,7 @@ function renderStatusEffects(){
       ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="goToMarkSettingsBtn">去设置页管理</button></div>` : ''}
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了所有单位可能带有的状态效果标记，方便查阅每种标记具体是什么效果。</div>
-    <div class="status-effect-list">${cardsHtml}</div>
+    ${cardsHtml}
   `;
   const goBtn = document.getElementById('goToMarkSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
@@ -3909,6 +3939,17 @@ function attackTypeEditRowHtml(t, i){
   </div>`;
 }
 
+function markCategoryEditRowHtml(cat, i){
+  const isGradient = /gradient/.test(cat.color||'');
+  const colorPickerVal = isGradient ? '#c9a24b' : (cat.color||'#c9a24b');
+  return `<div class="mark-edit-row">
+    <input class="edit-input" data-settings-bind="markCategories.${i}.name" value="${escapeHtml(cat.name)}" placeholder="分类名称，如：控制 (CC)">
+    <input type="color" data-settings-bind="markCategories.${i}.color" value="${colorPickerVal}">
+    ${colorFormulaInputHtml('markCategories', i, cat.color)}
+    <button class="btn btn-danger" data-settings-action="removeMarkCategory" data-index="${i}">删除</button>
+  </div>`;
+}
+
 function markEditRowHtml(mark, i){
   const iconHtml = mark.image ? `<img class="mark-icon-preview zoomable" src="${mark.image}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(mark.color||'');
@@ -3918,6 +3959,10 @@ function markEditRowHtml(mark, i){
       ${iconHtml}
       <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="marks.${i}.image" style="display:none;"></label>
       <input class="edit-input" data-settings-bind="marks.${i}.name" value="${escapeHtml(mark.name)}" placeholder="标记名称，如：灼烧">
+      <select class="edit-select" data-settings-bind="marks.${i}.categoryId" style="max-width:180px;">
+        <option value="">未分类</option>
+        ${state.markCategories.map(c=>`<option value="${c.id}" ${mark.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+      </select>
       <input type="color" data-settings-bind="marks.${i}.color" value="${colorPickerVal}">
       ${colorFormulaInputHtml('marks', i, mark.color)}
       <button class="btn btn-danger" data-settings-action="removeMark" data-index="${i}">删除</button>
@@ -4073,7 +4118,9 @@ function renderSettings(){
     container.innerHTML = `
       <div class="page-toolbar"><h1 class="page-title" style="margin:0;">设置</h1></div>
       <div class="view-only-note">登录管理员账号后才能编辑标记、分组、元素、系列与稀有度颜色。</div>
-      <div class="section-label" style="margin-top:0;">状态标记</div>
+      <div class="section-label" style="margin-top:0;">状态标记分类</div>
+      <div class="mark-row-list">${state.markCategories.map(c=>`<span class="mark-chip" style="${coloredChipStyle(c.color)}">${escapeHtml(c.name)}</span>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无分类</div>'}</div>
+      <div class="section-label">状态标记</div>
       <div class="mark-row-list">${state.marks.map(m=>{
         const icon = m.image ? `<img src="${m.image}">` : '';
         return `<span class="mark-chip" style="${coloredChipStyle(m.color)}">${icon}${escapeHtml(m.name)}</span>`;
@@ -4092,6 +4139,7 @@ function renderSettings(){
     return;
   }
   const marksHtml = state.marks.length ? state.marks.map(markEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无标记</div>';
+  const markCategoriesHtml = state.markCategories.length ? state.markCategories.map(markCategoryEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分类</div>';
   const obtainMethodsHtml = state.obtainMethods.length ? state.obtainMethods.map(obtainMethodEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无获取方式</div>';
   const attackTypesHtml = state.attackTypes.length ? state.attackTypes.map(attackTypeEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无攻击类型</div>';
   const groupsHtml = state.groups.length ? state.groups.map(groupEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分组</div>';
@@ -4132,8 +4180,15 @@ function renderSettings(){
     </div>
 
     <div class="settings-block">
+      <div class="section-label" style="margin-top:0;">状态标记分类</div>
+      <div class="hint" style="margin-bottom:14px;">管理状态标记的分类，例如持续伤害（DOT）、控制（CC）、增伤（Damage Amplification），可以自由新增/改名/删除。设置好分类后，下面「状态标记」里每个标记可以选择归入哪个分类，「状态标记」页面会按分类分组显示。</div>
+      <div id="markCategoriesList">${markCategoriesHtml}</div>
+      <button class="btn btn-gold" id="addMarkCategoryBtn">+ 新增分类</button>
+    </div>
+
+    <div class="settings-block">
       <div class="section-label" style="margin-top:0;">状态标记</div>
-      <div class="hint" style="margin-bottom:14px;">管理可用于单位的状态效果标记，例如持续伤害（DOT）、灼烧、流血等。每个标记可以上传一个小图标，编辑单位时可以勾选添加。</div>
+      <div class="hint" style="margin-bottom:14px;">管理可用于单位的状态效果标记，例如持续伤害（DOT）、灼烧、流血等。每个标记可以上传一个小图标，选择所属分类，编辑单位时可以勾选添加。</div>
       <div id="marksList">${marksHtml}</div>
       <button class="btn btn-gold" id="addMarkBtn">+ 新增标记</button>
     </div>
@@ -4233,6 +4288,7 @@ function renderSettings(){
       const action = el.dataset.settingsAction;
       const idx = parseInt(el.dataset.index);
       if(action==='removeMark') state.marks.splice(idx,1);
+      else if(action==='removeMarkCategory') state.markCategories.splice(idx,1);
       else if(action==='removeObtainMethod') state.obtainMethods.splice(idx,1);
       else if(action==='removeAttackType') state.attackTypes.splice(idx,1);
       else if(action==='removeGroup') state.groups.splice(idx,1);
@@ -4252,7 +4308,13 @@ function renderSettings(){
   });
   const addBtn = document.getElementById('addMarkBtn');
   if(addBtn) addBtn.addEventListener('click', async ()=>{
-    state.marks.push({id:uid(), name:'新标记', image:'', color:'#c9a24b'});
+    state.marks.push({id:uid(), name:'新标记', image:'', color:'#c9a24b', categoryId:'', description:''});
+    await saveData(true);
+    renderSettings();
+  });
+  const addMarkCategoryBtn = document.getElementById('addMarkCategoryBtn');
+  if(addMarkCategoryBtn) addMarkCategoryBtn.addEventListener('click', async ()=>{
+    state.markCategories.push({id:uid(), name:'新分类', color:'#c9a24b'});
     await saveData(true);
     renderSettings();
   });
