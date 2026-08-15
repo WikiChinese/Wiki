@@ -449,14 +449,22 @@ function isPlainLeftClick(e){
   return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey;
 }
 
+function clearUnitTraitPreviewIfLeaving(newView){
+  if(currentView.type==='unit' && currentView.id && !(newView.type==='unit' && newView.id===currentView.id)){
+    delete traitPreviewOverrides['unit:'+currentView.id];
+  }
+}
 function goToView(view){
+  clearUnitTraitPreviewIfLeaving(view);
   viewHistory.push(JSON.parse(JSON.stringify(currentView)));
   currentView = view;
   setHash(view);
 }
 function goBack(){
   const prev = viewHistory.pop();
-  currentView = prev || {type:'home'};
+  const newView = prev || {type:'home'};
+  clearUnitTraitPreviewIfLeaving(newView);
+  currentView = newView;
   setHash(currentView);
   editMode=false; draftUnit=null; draftSimple=null; addingLog=false; showingShinyImage=false;
   render();
@@ -1676,7 +1684,9 @@ function renderSidebar(){
     btn.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
-      currentView = btn.dataset.id ? {type: btn.dataset.view, id: btn.dataset.id} : {type: btn.dataset.view};
+      const newView = btn.dataset.id ? {type: btn.dataset.view, id: btn.dataset.id} : {type: btn.dataset.view};
+      clearUnitTraitPreviewIfLeaving(newView);
+      currentView = newView;
       setHash(currentView);
       editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; draftStage=null; draftUpgrade=null; render(); closeMobileSidebar();
     });
@@ -1755,7 +1765,9 @@ function renderSidebar(){
     btn.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
-      currentView = {type: btn.dataset.view}; setHash(currentView);
+      const newView = {type: btn.dataset.view};
+      clearUnitTraitPreviewIfLeaving(newView);
+      currentView = newView; setHash(currentView);
       editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false; render(); closeMobileSidebar();
     });
   });
@@ -3246,7 +3258,9 @@ function renderUnit(){
             ${state.traits.map(t=>`<option value="${t.id}" ${unitPreviewTraitId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
           ${unitTraitObj ? `<button type="button" class="mark-chip trait-detail-btn" data-trait-id="${unitTraitObj.id}" style="${coloredChipStyle(unitTraitObj.color)}">${unitTraitObj.image?`<img src="${unitTraitObj.image}">`:''}详情</button>` : ''}
+          ${unitPreviewTraitId !== (unit.trait||'') ? `<button type="button" class="btn" id="resetTraitPreviewBtn" data-unit-id="${unit.id}" title="重置回默认特性" style="padding:6px 10px;font-size:12px;">↺ 重置为默认</button>` : ''}
         </div>
+        ${unitPreviewTraitId !== (unit.trait||'') ? `<div class="hint" style="margin-top:6px;">当前只是预览效果，不是这个单位真正的默认特性${unit.trait ? '（默认是「'+escapeHtml((state.traits.find(t=>t.id===unit.trait)||{}).name||'')+'」）' : '（默认是"无特性"）'}。</div>` : ''}
       </div>
       ${unit.placementLimit ? `<div class="attack-overview-cell"><label>放置限制</label><div class="stat-value">${escapeHtml(unit.placementLimit)}</div></div>` : ''}
     </div>` : '';
@@ -3331,6 +3345,11 @@ function renderUnit(){
       traitPreviewOverrides['unit:'+sel.dataset.unitTraitPreview] = sel.value;
       renderUnit();
     });
+  });
+  const resetTraitPreviewBtn = document.getElementById('resetTraitPreviewBtn');
+  if(resetTraitPreviewBtn) resetTraitPreviewBtn.addEventListener('click', ()=>{
+    delete traitPreviewOverrides['unit:'+resetTraitPreviewBtn.dataset.unitId];
+    renderUnit();
   });
 }
 
