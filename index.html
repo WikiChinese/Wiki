@@ -96,6 +96,27 @@
   .rarity-section-arrow{margin-left:auto;font-size:11px;color:var(--text-faint);transition:transform .15s;}
   .rarity-section[open] .rarity-section-arrow{transform:rotate(90deg);}
   .rarity-section:not([open]){margin-bottom:10px;}
+  .rarity-section-peek{display:flex;}
+  .rarity-section-peek img{width:24px;height:24px;border-radius:50%;object-fit:cover;border:2px solid var(--bg);margin-left:-8px;background:var(--card-hover);}
+  .rarity-section-peek img:first-child{margin-left:0;}
+  .gallery-search-bar{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:16px;}
+  .gallery-search-icon{font-size:13px;opacity:.6;}
+  .gallery-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-family:inherit;}
+  .gallery-search-input::placeholder{color:var(--text-faint);}
+  .gallery-stats-bar{margin-bottom:18px;}
+  .gallery-stats-total{display:block;font-size:12px;color:var(--text-faint);margin-bottom:9px;}
+  .gallery-distribution-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;margin-bottom:11px;background:var(--card-hover);}
+  .gallery-distribution-seg{cursor:pointer;transition:opacity .15s;}
+  .gallery-distribution-seg:hover{opacity:.7;}
+  .gallery-stats-chips{display:flex;flex-wrap:wrap;gap:7px;}
+  .gallery-stats-chip{border:none;cursor:pointer;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;font-family:inherit;}
+  .gallery-stats-chip b{font-family:'JetBrains Mono',monospace;margin-left:3px;}
+  .gallery-stats-chip:hover{filter:brightness(1.15);}
+  .gallery-recent-strip{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;margin-bottom:8px;}
+  .gallery-recent-card{flex-shrink:0;width:78px;text-align:center;text-decoration:none;color:inherit;}
+  .gallery-recent-img{width:78px;height:78px;border-radius:10px;object-fit:cover;background:var(--card-hover);border:1px solid var(--border);transition:border-color .15s, transform .15s;}
+  .gallery-recent-card:hover .gallery-recent-img{border-color:var(--gold-dim);transform:translateY(-2px);}
+  .gallery-recent-name{font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .cat-add{background:none;border:1px solid var(--border);color:var(--text-faint);width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
   .cat-add:hover{color:var(--gold);border-color:var(--gold-dim);}
   .page-list{padding:2px 0 10px;}
@@ -294,17 +315,19 @@
   .status-effect-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px;}
   .status-effect-desc{font-size:13.5px;color:var(--text-dim);line-height:1.6;white-space:pre-line;}
   .status-effect-cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:2px;}
-  .shop-item-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px;}
-  .shop-item-card{position:relative;display:flex;align-items:center;gap:12px;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;}
+  .shop-item-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));gap:14px;}
+  .shop-item-card{display:block;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:12px;overflow:hidden;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;}
   a.shop-item-card{cursor:pointer;}
   a.shop-item-card:hover{border-color:var(--gold-dim);transform:translateY(-2px);}
   .shop-item-card-unlinked{opacity:.6;}
-  .shop-item-icon{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--card-hover);flex-shrink:0;}
-  .shop-item-icon-placeholder{width:42px;height:42px;border-radius:8px;background:var(--card-hover);flex-shrink:0;}
-  .shop-item-body{flex:1;min-width:0;}
-  .shop-item-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px;}
-  .shop-item-desc{font-size:11.5px;color:var(--text-faint);line-height:1.4;}
-  .shop-item-price{flex-shrink:0;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--gold);background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:20px;padding:4px 10px;}
+  .shop-item-icon-wrap{position:relative;width:100%;aspect-ratio:1;background:var(--card-hover);}
+  .shop-item-icon{width:100%;height:100%;object-fit:cover;display:block;}
+  .shop-item-icon-placeholder{width:100%;height:100%;background:var(--card-hover);}
+  .shop-item-type-tag{position:absolute;top:6px;left:6px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.6);color:var(--text-dim);backdrop-filter:blur(2px);}
+  .shop-item-body{padding:10px 11px 4px;text-align:center;}
+  .shop-item-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:12.5px;color:var(--text);line-height:1.35;margin-bottom:5px;overflow-wrap:break-word;}
+  .shop-item-qty{font-size:10.5px;color:var(--text-faint);margin-bottom:6px;}
+  .shop-item-price{display:block;width:fit-content;margin:0 auto 11px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11.5px;color:var(--gold);background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:20px;padding:3px 10px;white-space:nowrap;}
   .attack-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--gold-dim);font-weight:700;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border);}
   .attack-section-label:first-of-type{margin-top:2px;padding-top:0;border-top:none;}
   .comments-list{margin-bottom:16px;}
@@ -761,7 +784,17 @@ function migrateState(){
     if(s.image===undefined) s.image = '';
     if(s.description===undefined) s.description = '';
     if(!Array.isArray(s.levels)) s.levels = [];
-    s.levels.forEach(lv=>{ if(lv.image===undefined) lv.image=''; if(lv.description===undefined) lv.description=''; if(!Array.isArray(lv.shop)) lv.shop=[]; lv.shop.forEach(it=>{ if(it.itemId===undefined) it.itemId=''; if(it.price===undefined) it.price=''; }); });
+    s.levels.forEach(lv=>{
+      if(lv.image===undefined) lv.image='';
+      if(lv.description===undefined) lv.description='';
+      if(!Array.isArray(lv.shop)) lv.shop=[];
+      lv.shop.forEach(it=>{
+        if(it.refType===undefined){ it.refType = it.itemId ? 'item' : ''; }
+        if(it.refId===undefined){ it.refId = it.itemId || ''; }
+        if(it.price===undefined) it.price='';
+        if(it.quantity===undefined) it.quantity='';
+      });
+    });
   });
   if(!Array.isArray(state.upgrades)) state.upgrades = [];
   state.upgrades.forEach(s=>{
@@ -1184,15 +1217,24 @@ function renderStagePage(){
   }
 }
 
+function shopRefOptionsHtml(item){
+  const optGroup = (label, list, type) => list.length ? `<optgroup label="${label}">${list.map(x=>`<option value="${type}:${x.id}" ${item.refType===type&&item.refId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</optgroup>` : '';
+  return `<option value="">选择关联内容...</option>
+    ${optGroup('物品', state.items, 'item')}
+    ${optGroup('单位', state.units, 'unit')}
+    ${optGroup('使魔', state.families, 'family')}
+    ${optGroup('记忆', state.memories, 'memory')}`;
+}
+
 function shopItemEditRowHtml(item, i){
   return `<div class="sub-card">
     <div class="sub-card-head">
-      <select class="edit-select" style="flex:2;min-width:180px;" data-bind="shop.${i}.itemId">
-        <option value="">选择物品...</option>
-        ${state.items.map(it=>`<option value="${it.id}" ${item.itemId===it.id?'selected':''}>${escapeHtml(it.name)}</option>`).join('')}
-      </select>
-      <input class="edit-input" style="flex:1;min-width:100px;" data-bind="shop.${i}.price" value="${escapeHtml(item.price||'')}" placeholder="价格，如 💰1,000">
+      <select class="edit-select" style="flex:2;min-width:200px;" data-shop-ref="${i}">${shopRefOptionsHtml(item)}</select>
       <button class="btn btn-danger" data-action="removeShopItem" data-index="${i}">删除</button>
+    </div>
+    <div class="mark-edit-row" style="margin-top:8px;margin-bottom:0;">
+      <input class="edit-input" style="flex:1;min-width:120px;" data-bind="shop.${i}.quantity" value="${escapeHtml(item.quantity||'')}" placeholder="数量，如 x10,000">
+      <input class="edit-input" style="flex:1;min-width:120px;" data-bind="shop.${i}.price" value="${escapeHtml(item.price||'')}" placeholder="价格，如 💰1,000">
     </div>
   </div>`;
 }
@@ -1241,6 +1283,14 @@ function renderStageLevelPage(){
       </div>
     `;
     wireDraftForm(container, draftStageLevel);
+    container.querySelectorAll('[data-shop-ref]').forEach(el=>{
+      el.addEventListener('change', ()=>{
+        const i = parseInt(el.dataset.shopRef);
+        const [t,id] = el.value.split(':');
+        draftStageLevel.shop[i].refType = t||'';
+        draftStageLevel.shop[i].refId = id||'';
+      });
+    });
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStageLevel=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       level.name = (draftStageLevel.name||'').trim() || '未命名关卡';
@@ -1262,21 +1312,29 @@ function renderStageLevelPage(){
     return;
   }
 
+  const REF_COLLECTIONS = {item:state.items, unit:state.units, family:state.families, memory:state.memories};
+  const REF_LABELS = {item:'物品', unit:'单位', family:'使魔', memory:'记忆'};
   const shopHtml = (level.shop&&level.shop.length) ? `<div class="shop-item-grid">${level.shop.map(it=>{
-    const linkedItem = it.itemId ? state.items.find(x=>x.id===it.itemId) : null;
-    if(!linkedItem){
+    const coll = it.refType ? REF_COLLECTIONS[it.refType] : null;
+    const linkedEntity = coll ? coll.find(x=>x.id===it.refId) : null;
+    if(!linkedEntity){
       return `<div class="shop-item-card shop-item-card-unlinked">
-        <div class="shop-item-icon-placeholder"></div>
-        <div class="shop-item-body"><div class="shop-item-name" style="color:var(--text-faint);">尚未选择物品</div></div>
+        <div class="shop-item-icon-wrap"><div class="shop-item-icon-placeholder"></div></div>
+        <div class="shop-item-body">
+          <div class="shop-item-name" style="color:var(--text-faint);">尚未选择关联内容</div>
+          ${it.quantity ? `<div class="shop-item-qty">${escapeHtml(it.quantity)}</div>` : ''}
+        </div>
         ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
       </div>`;
     }
-    const shortDesc = linkedItem.description ? (linkedItem.description.length>50 ? linkedItem.description.slice(0,50)+'…' : linkedItem.description) : '';
-    return `<a href="${viewToHash({type:'item', id:linkedItem.id})}" class="shop-item-card" data-view="item" data-id="${linkedItem.id}">
-      ${linkedItem.image ? `<img class="shop-item-icon" src="${linkedItem.image}">` : `<div class="shop-item-icon-placeholder"></div>`}
+    return `<a href="${viewToHash({type:it.refType, id:linkedEntity.id})}" class="shop-item-card" data-view="${it.refType}" data-id="${linkedEntity.id}">
+      <div class="shop-item-icon-wrap">
+        ${linkedEntity.image ? `<img class="shop-item-icon" src="${linkedEntity.image}">` : `<div class="shop-item-icon-placeholder"></div>`}
+        <span class="shop-item-type-tag">${REF_LABELS[it.refType]}</span>
+      </div>
       <div class="shop-item-body">
-        <div class="shop-item-name">${escapeHtml(linkedItem.name)}</div>
-        ${shortDesc ? `<div class="shop-item-desc">${escapeHtml(shortDesc)}</div>` : ''}
+        <div class="shop-item-name">${escapeHtml(linkedEntity.name)}</div>
+        ${it.quantity ? `<div class="shop-item-qty">${escapeHtml(it.quantity)}</div>` : ''}
       </div>
       ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
     </a>`;
@@ -1295,11 +1353,11 @@ function renderStageLevelPage(){
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStageLevel=null; render(); });
-  container.querySelectorAll('.shop-item-card[data-view="item"]').forEach(card=>{
+  container.querySelectorAll('.shop-item-card[data-view]').forEach(card=>{
     card.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
-      goToView({type:'item', id: card.dataset.id});
+      goToView({type: card.dataset.view, id: card.dataset.id});
       editMode=false; draftUnit=null; draftSimple=null;
       render();
     });
@@ -3062,7 +3120,7 @@ function handleDraftAction(ds, draft){
   else if(action==='removeFloor') draft.floors.splice(idx,1);
   else if(action==='addStageLevel') draft.levels.push({id:uid(), name:'第 '+(draft.levels.length+1)+' 关', image:'', description:'', shop:[]});
   else if(action==='removeStageLevel') draft.levels.splice(idx,1);
-  else if(action==='addShopItem'){ if(!Array.isArray(draft.shop)) draft.shop=[]; draft.shop.push({id:uid(), itemId:'', price:''}); }
+  else if(action==='addShopItem'){ if(!Array.isArray(draft.shop)) draft.shop=[]; draft.shop.push({id:uid(), refType:'', refId:'', quantity:'', price:''}); }
   else if(action==='removeShopItem') draft.shop.splice(idx,1);
   else if(action==='addUpgradeLevel') draft.levels.push({id:uid(), name:'升级 '+(draft.levels.length+1), image:'', description:''});
   else if(action==='removeUpgradeLevel') draft.levels.splice(idx,1);
@@ -3920,22 +3978,50 @@ function renderGallery(type){
     </a>`;
   }
 
-  let cardsHtml;
+  let cardsHtml, statsHtml = '', groups = [], recentHtml = '';
   if(!list.length){
     cardsHtml = `<div class="empty-hint" style="padding-left:0;">暂无${cfg.label}，${isAdmin ? '点右上角新增一个吧' : '敬请期待'}</div>`;
   } else if(hasRarity){
-    const groups = state.rarities.map(r=>({rarity:r, items:list.filter(e=>e.rarity===r.id)})).filter(g=>g.items.length);
+    groups = state.rarities.map(r=>({rarity:r, items:list.filter(e=>e.rarity===r.id)})).filter(g=>g.items.length);
     const unranked = list.filter(e=>!e.rarity || !state.rarities.some(r=>r.id===e.rarity));
     if(unranked.length) groups.push({rarity:null, items:unranked});
     cardsHtml = groups.map(g=>{
       const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
       const isOpen = openRaritySections.has(key);
+      const peekHtml = g.items.slice(0,6).filter(e=>e.image).map(e=>`<img src="${e.image}">`).join('');
       return `
       <details class="rarity-section" data-rarity-key="${key}"${isOpen?' open':''}>
-        <summary class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
+        <summary class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}${peekHtml ? `<span class="rarity-section-peek">${peekHtml}</span>` : ''}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
         <div class="gallery-grid">${g.items.map(cardHtml).join('')}</div>
       </details>`;
     }).join('');
+    if(groups.length>1){
+      const distBarHtml = `<div class="gallery-distribution-bar">${groups.map(g=>{
+        const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
+        const bg = g.rarity ? (g.rarity.color||'var(--gold-dim)') : 'var(--border-light)';
+        const label = g.rarity ? g.rarity.name : '未分级';
+        return `<div class="gallery-distribution-seg" style="flex:${g.items.length};background:${bg};" title="${escapeHtml(label)} ${g.items.length}" data-jump="${key}"></div>`;
+      }).join('')}</div>`;
+      statsHtml = `<div class="gallery-stats-bar">
+        <span class="gallery-stats-total">共 ${list.length} 个${cfg.label}</span>
+        ${distBarHtml}
+        <div class="gallery-stats-chips">${groups.map(g=>{
+          const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
+          const style = g.rarity ? dimChipStyle(g.rarity.color) : 'background:var(--card);color:var(--text-faint);';
+          return `<button type="button" class="gallery-stats-chip" style="${style}" data-jump="${key}">${g.rarity ? escapeHtml(g.rarity.name) : '未分级'} <b>${g.items.length}</b></button>`;
+        }).join('')}</div>
+      </div>`;
+    }
+    if(list.length>6){
+      const recent = [...list].filter(e=>e.updatedAt).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,10);
+      if(recent.length){
+        recentHtml = `<div class="section-label" style="margin-top:0;">最近更新</div>
+        <div class="gallery-recent-strip">${recent.map(e=>`<a href="${viewToHash({type:cfg.viewType, id:e.id})}" class="gallery-recent-card" data-view="${cfg.viewType}" data-id="${e.id}">
+          ${e.image ? `<img class="gallery-recent-img" src="${e.image}">` : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
+          <div class="gallery-recent-name">${escapeHtml(e.name)}</div>
+        </a>`).join('')}</div>`;
+      }
+    }
   } else {
     cardsHtml = `<div class="gallery-grid">${list.map(cardHtml).join('')}</div>`;
   }
@@ -3945,6 +4031,9 @@ function renderGallery(type){
       <h1 class="page-title" style="margin:0;">${cfg.label}</h1>
       ${isAdmin ? `<div class="toolbar-actions"><button class="btn btn-gold" id="galleryAddBtn">+ 新增${cfg.label}</button></div>` : ''}
     </div>
+    ${list.length>1 ? `<div class="gallery-search-bar"><span class="gallery-search-icon">🔍</span><input type="text" id="gallerySearchInput" class="gallery-search-input" placeholder="搜索${cfg.label}名称..."></div>` : ''}
+    ${statsHtml}
+    ${recentHtml}
     ${isAdmin && list.length>1 ? `<div class="hint" style="margin:-6px 0 14px;">💡 按住卡片拖动，可以调整排列顺序（比如把新的拖到前面）。</div>` : ''}
     ${cardsHtml}
   `;
@@ -3959,7 +4048,43 @@ function renderGallery(type){
     });
   });
 
-  container.querySelectorAll('.gallery-card').forEach(card=>{
+  const searchInput = document.getElementById('gallerySearchInput');
+  if(searchInput){
+    searchInput.addEventListener('input', ()=>{
+      const q = searchInput.value.trim().toLowerCase();
+      const sections = container.querySelectorAll('details.rarity-section[data-rarity-key]');
+      if(sections.length){
+        sections.forEach(section=>{
+          let anyVisible = false;
+          section.querySelectorAll('.gallery-card').forEach(card=>{
+            const name = (card.querySelector('.gallery-card-name')?.textContent||'').toLowerCase();
+            const match = !q || name.includes(q);
+            card.style.display = match ? '' : 'none';
+            if(match) anyVisible = true;
+          });
+          section.style.display = anyVisible ? '' : 'none';
+          section.open = q ? true : openRaritySections.has(section.dataset.rarityKey);
+        });
+      } else {
+        container.querySelectorAll('.gallery-card').forEach(card=>{
+          const name = (card.querySelector('.gallery-card-name')?.textContent||'').toLowerCase();
+          card.style.display = (!q || name.includes(q)) ? '' : 'none';
+        });
+      }
+    });
+  }
+
+  container.querySelectorAll('.gallery-stats-chip[data-jump], .gallery-distribution-seg[data-jump]').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const section = container.querySelector(`details.rarity-section[data-rarity-key="${chip.dataset.jump}"]`);
+      if(!section) return;
+      section.open = true;
+      openRaritySections.add(chip.dataset.jump);
+      section.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+
+  container.querySelectorAll('.gallery-card, .gallery-recent-card').forEach(card=>{
     card.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
