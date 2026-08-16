@@ -72,6 +72,8 @@
   .odyssey-card-desc{font-size:13px;color:var(--text-dim);line-height:1.55;white-space:pre-line;}
   .floor-list{display:flex;flex-direction:column;gap:14px;margin-bottom:8px;}
   .floor-card{display:flex;gap:14px;flex-wrap:wrap;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:10px;padding:14px 16px;}
+  a.floor-card{text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;cursor:pointer;}
+  a.floor-card:hover{border-color:var(--gold-dim);transform:translateX(2px);}
   .floor-card-body{flex:1;min-width:200px;padding:0;}
   .floor-card-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;}
   .floor-card-desc{font-size:13.5px;color:var(--text-dim);line-height:1.7;white-space:pre-line;}
@@ -113,6 +115,8 @@
 
   .page-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:10px;flex-wrap:wrap;}
   .crumb{font-size:12px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.1em;}
+  .crumb a{color:var(--gold-dim);text-decoration:none;}
+  .crumb a:hover{color:var(--gold);text-decoration:underline;}
   .toolbar-actions{display:flex;gap:8px;}
   .btn{background:var(--card);border:1px solid var(--border);color:var(--text-dim);padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;}
   .btn:hover{background:var(--card-hover);color:var(--text);}
@@ -290,6 +294,17 @@
   .status-effect-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px;}
   .status-effect-desc{font-size:13.5px;color:var(--text-dim);line-height:1.6;white-space:pre-line;}
   .status-effect-cat-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:2px;}
+  .shop-item-grid{display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px;}
+  .shop-item-card{position:relative;display:flex;align-items:center;gap:12px;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;}
+  a.shop-item-card{cursor:pointer;}
+  a.shop-item-card:hover{border-color:var(--gold-dim);transform:translateY(-2px);}
+  .shop-item-card-unlinked{opacity:.6;}
+  .shop-item-icon{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--card-hover);flex-shrink:0;}
+  .shop-item-icon-placeholder{width:42px;height:42px;border-radius:8px;background:var(--card-hover);flex-shrink:0;}
+  .shop-item-body{flex:1;min-width:0;}
+  .shop-item-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:13.5px;color:var(--text);margin-bottom:3px;}
+  .shop-item-desc{font-size:11.5px;color:var(--text-faint);line-height:1.4;}
+  .shop-item-price{flex-shrink:0;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--gold);background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:20px;padding:4px 10px;}
   .attack-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--gold-dim);font-weight:700;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border);}
   .attack-section-label:first-of-type{margin-top:2px;padding-top:0;border-top:none;}
   .comments-list{margin-bottom:16px;}
@@ -443,7 +458,7 @@ let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
 let openPickerKeys = new Set();
-let closedRaritySections = new Set();
+let openRaritySections = new Set();
 function wirePickerToggles(container){
   container.querySelectorAll('details.entity-picker[data-picker-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
@@ -461,13 +476,14 @@ let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
 let draftUpgrade = null;
+let draftStageLevel = null;
 let showingShinyImage = false;
 
 function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','stage','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','stage','stageLevel','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -745,7 +761,7 @@ function migrateState(){
     if(s.image===undefined) s.image = '';
     if(s.description===undefined) s.description = '';
     if(!Array.isArray(s.levels)) s.levels = [];
-    s.levels.forEach(lv=>{ if(lv.image===undefined) lv.image=''; if(lv.description===undefined) lv.description=''; });
+    s.levels.forEach(lv=>{ if(lv.image===undefined) lv.image=''; if(lv.description===undefined) lv.description=''; if(!Array.isArray(lv.shop)) lv.shop=[]; lv.shop.forEach(it=>{ if(it.itemId===undefined) it.itemId=''; if(it.price===undefined) it.price=''; }); });
   });
   if(!Array.isArray(state.upgrades)) state.upgrades = [];
   state.upgrades.forEach(s=>{
@@ -1023,6 +1039,18 @@ function traitDetailInnerHtml(t){
   `;
 }
 
+function stageLevelListEditRowHtml(lv, i){
+  return `<div class="sub-card" data-level-row-index="${i}">
+    <div class="sub-card-head">
+      ${lv.image ? `<img class="mark-icon-preview" src="${lv.image}">` : `<div class="mark-icon-placeholder"></div>`}
+      <label class="file-label" style="margin:0;">缩略图<input type="file" accept="image/*" data-image-bind="levels.${i}.image" style="display:none;"></label>
+      <input class="edit-input" style="flex:1;min-width:160px;" data-bind="levels.${i}.name" value="${escapeHtml(lv.name)}" placeholder="关卡名称">
+      <button class="btn btn-danger" data-action="removeStageLevel" data-index="${i}">删除</button>
+    </div>
+    <div class="hint" style="margin-top:6px;">关卡的详细说明和商店，保存后点进这一关自己的页面里编辑。</div>
+  </div>`;
+}
+
 function renderStagePage(){
   const container = document.getElementById('mainInner');
   const stage = state.stages.find(s=>s.id===currentView.id);
@@ -1057,8 +1085,8 @@ function renderStagePage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">关卡 (每一关)</span>
-        <div class="hint" style="margin-bottom:10px;">比如"剧情关卡"里面有很多一关一关的具体关卡，在这里一个个加。</div>
-        ${draftStage.levels.map((lv,i)=>odysseyCardEditHtml(lv,i,'levels','removeStageLevel',false,'关卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
+        <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除、拖动排序。每一关详细的说明和商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
+        ${draftStage.levels.map((lv,i)=>stageLevelListEditRowHtml(lv,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
         <button class="btn btn-gold" data-action="addStageLevel">+ 添加关</button>
       </div>
     `;
@@ -1085,13 +1113,13 @@ function renderStagePage(){
   }
 
   const levelsHtml = stage.levels.length ? stage.levels.map(lv=>`
-    <div class="floor-card" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
-      ${lv.image ? `<img class="skill-image zoomable" src="${lv.image}">` : ''}
+    <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id+'__'+lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
+      ${lv.image ? `<img class="skill-image" src="${lv.image}">` : ''}
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
-        <div class="floor-card-desc">${lv.description ? renderMarkdownLite(lv.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="floor-card-desc">${(lv.shop&&lv.shop.length) ? `🛒 商店 · ${lv.shop.length} 件商品` : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>')}</div>
       </div>
-    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
+    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -1102,14 +1130,24 @@ function renderStagePage(){
     <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(stage.name)}</h1>
     <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">关卡列表</div>
-    ${isAdmin && stage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 按住卡片拖动，可以调整关卡顺序。</div>` : ''}
+    ${isAdmin && stage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击关卡进入详情页；按住卡片拖动可以调整关卡顺序。</div>` : ''}
     <div class="floor-list" id="stageLevelsList">${levelsHtml}</div>
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStage=null; render(); });
 
+  const listEl = document.getElementById('stageLevelsList');
+  listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'stageLevel', id: card.dataset.id});
+      editMode = false; draftStage=null; draftStageLevel=null;
+      render();
+    });
+  });
+
   if(isAdmin){
-    const listEl = document.getElementById('stageLevelsList');
     let dragSrcId = null;
     listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
       card.addEventListener('dragstart', (e)=>{
@@ -1145,6 +1183,137 @@ function renderStagePage(){
     });
   }
 }
+
+function shopItemEditRowHtml(item, i){
+  return `<div class="sub-card">
+    <div class="sub-card-head">
+      <select class="edit-select" style="flex:2;min-width:180px;" data-bind="shop.${i}.itemId">
+        <option value="">选择物品...</option>
+        ${state.items.map(it=>`<option value="${it.id}" ${item.itemId===it.id?'selected':''}>${escapeHtml(it.name)}</option>`).join('')}
+      </select>
+      <input class="edit-input" style="flex:1;min-width:100px;" data-bind="shop.${i}.price" value="${escapeHtml(item.price||'')}" placeholder="价格，如 💰1,000">
+      <button class="btn btn-danger" data-action="removeShopItem" data-index="${i}">删除</button>
+    </div>
+  </div>`;
+}
+
+function renderStageLevelPage(){
+  const container = document.getElementById('mainInner');
+  const compositeId = currentView.id || '';
+  const [stageId, levelId] = compositeId.split('__');
+  const stage = state.stages.find(s=>s.id===stageId);
+  const level = stage ? stage.levels.find(lv=>lv.id===levelId) : null;
+  if(!stage || !level){ container.innerHTML = `<div class="empty-state"><h2>未找到该关卡</h2></div>`; return; }
+
+  if(editMode){
+    if(!draftStageLevel) draftStageLevel = JSON.parse(JSON.stringify(level));
+    if(!Array.isArray(draftStageLevel.shop)) draftStageLevel.shop = [];
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <div class="crumb">编辑关卡 · ${escapeHtml(stage.name)}</div>
+        <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteStageLevelBtn">删除</button>
+          <button class="btn" id="cancelBtn">取消</button>
+          <button class="btn btn-gold" id="saveBtn">保存</button>
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">名称</span>
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStageLevel.name)}" placeholder="关卡名称">
+      </div>
+      <div class="image-upload-box" style="margin-bottom:18px;">
+        ${draftStageLevel.image ? `<img class="image-preview zoomable" src="${draftStageLevel.image}">` : `<div class="image-placeholder">无图片</div>`}
+        <div class="upload-controls">
+          <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
+          ${draftStageLevel.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="这一关的怪物、机制、掉落、注意事项...">${escapeHtml(draftStageLevel.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">商店</span>
+        <div class="hint" style="margin-bottom:10px;">这一关商店里能买到的东西，比如限定道具、装备。</div>
+        ${draftStageLevel.shop.map((it,i)=>shopItemEditRowHtml(it,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无商品</div>'}
+        <button class="btn btn-gold" data-action="addShopItem">+ 添加商品</button>
+      </div>
+    `;
+    wireDraftForm(container, draftStageLevel);
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStageLevel=null; render(); });
+    document.getElementById('saveBtn').addEventListener('click', async ()=>{
+      level.name = (draftStageLevel.name||'').trim() || '未命名关卡';
+      level.image = draftStageLevel.image || '';
+      level.description = draftStageLevel.description || '';
+      level.shop = draftStageLevel.shop || [];
+      editMode = false; draftStageLevel = null;
+      await saveData(false);
+      render();
+    });
+    document.getElementById('deleteStageLevelBtn').addEventListener('click', async ()=>{
+      if(!confirm(`确定删除「${level.name}」这一关？`)) return;
+      stage.levels = stage.levels.filter(lv=>lv.id!==level.id);
+      editMode = false; draftStageLevel = null;
+      currentView = {type:'stage', id: stage.id}; setHash(currentView);
+      await saveData(false);
+      render();
+    });
+    return;
+  }
+
+  const shopHtml = (level.shop&&level.shop.length) ? `<div class="shop-item-grid">${level.shop.map(it=>{
+    const linkedItem = it.itemId ? state.items.find(x=>x.id===it.itemId) : null;
+    if(!linkedItem){
+      return `<div class="shop-item-card shop-item-card-unlinked">
+        <div class="shop-item-icon-placeholder"></div>
+        <div class="shop-item-body"><div class="shop-item-name" style="color:var(--text-faint);">尚未选择物品</div></div>
+        ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
+      </div>`;
+    }
+    const shortDesc = linkedItem.description ? (linkedItem.description.length>50 ? linkedItem.description.slice(0,50)+'…' : linkedItem.description) : '';
+    return `<a href="${viewToHash({type:'item', id:linkedItem.id})}" class="shop-item-card" data-view="item" data-id="${linkedItem.id}">
+      ${linkedItem.image ? `<img class="shop-item-icon" src="${linkedItem.image}">` : `<div class="shop-item-icon-placeholder"></div>`}
+      <div class="shop-item-body">
+        <div class="shop-item-name">${escapeHtml(linkedItem.name)}</div>
+        ${shortDesc ? `<div class="shop-item-desc">${escapeHtml(shortDesc)}</div>` : ''}
+      </div>
+      ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
+    </a>`;
+  }).join('')}</div>` : '<div class="empty-hint" style="padding-left:0;">这一关暂时没有商店商品。</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(level.name)}</div>
+      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+    </div>
+    ${level.image ? `<img class="unit-image zoomable" src="${level.image}">` : ''}
+    <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(level.name)}</h1>
+    <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="section-label">商店</div>
+    ${shopHtml}
+  `;
+  const editBtn = document.getElementById('editBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStageLevel=null; render(); });
+  container.querySelectorAll('.shop-item-card[data-view="item"]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'item', id: card.dataset.id});
+      editMode=false; draftUnit=null; draftSimple=null;
+      render();
+    });
+  });
+  const crumbLink = container.querySelector('.crumb a[data-view="stage"]');
+  if(crumbLink) crumbLink.addEventListener('click', (e)=>{
+    if(!isPlainLeftClick(e)) return;
+    e.preventDefault();
+    goToView({type:'stage', id: stage.id});
+    editMode=false; draftStage=null; draftStageLevel=null;
+    render();
+  });
+}
+
 
 function renderUpgradePage(){
   const container = document.getElementById('mainInner');
@@ -2891,8 +3060,10 @@ function handleDraftAction(ds, draft){
   else if(action==='removeBasicCard') draft.basicCards.splice(idx,1);
   else if(action==='addFloor') draft.floors.push({id:uid(), name:'第 '+(draft.floors.length+1)+' 层', image:'', description:''});
   else if(action==='removeFloor') draft.floors.splice(idx,1);
-  else if(action==='addStageLevel') draft.levels.push({id:uid(), name:'第 '+(draft.levels.length+1)+' 关', image:'', description:''});
+  else if(action==='addStageLevel') draft.levels.push({id:uid(), name:'第 '+(draft.levels.length+1)+' 关', image:'', description:'', shop:[]});
   else if(action==='removeStageLevel') draft.levels.splice(idx,1);
+  else if(action==='addShopItem'){ if(!Array.isArray(draft.shop)) draft.shop=[]; draft.shop.push({id:uid(), itemId:'', price:''}); }
+  else if(action==='removeShopItem') draft.shop.splice(idx,1);
   else if(action==='addUpgradeLevel') draft.levels.push({id:uid(), name:'升级 '+(draft.levels.length+1), image:'', description:''});
   else if(action==='removeUpgradeLevel') draft.levels.splice(idx,1);
   else if(action==='toggleOdysseyUnit'){
@@ -3713,6 +3884,7 @@ function renderMain(){
   else if(currentView.type==='enemyMechanics') renderEnemyMechanics();
   else if(currentView.type==='traits') renderTraitsPage();
   else if(currentView.type==='stage') renderStagePage();
+  else if(currentView.type==='stageLevel') renderStageLevelPage();
   else if(currentView.type==='upgrade') renderUpgradePage();
   else if(currentView.type==='settings') renderSettings();
   else if(currentView.type==='unit') renderUnit();
@@ -3757,7 +3929,7 @@ function renderGallery(type){
     if(unranked.length) groups.push({rarity:null, items:unranked});
     cardsHtml = groups.map(g=>{
       const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
-      const isOpen = !closedRaritySections.has(key);
+      const isOpen = openRaritySections.has(key);
       return `
       <details class="rarity-section" data-rarity-key="${key}"${isOpen?' open':''}>
         <summary class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
@@ -3782,8 +3954,8 @@ function renderGallery(type){
 
   container.querySelectorAll('details.rarity-section[data-rarity-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
-      if(d.open) closedRaritySections.delete(d.dataset.rarityKey);
-      else closedRaritySections.add(d.dataset.rarityKey);
+      if(d.open) openRaritySections.add(d.dataset.rarityKey);
+      else openRaritySections.delete(d.dataset.rarityKey);
     });
   });
 
