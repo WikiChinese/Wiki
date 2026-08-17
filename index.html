@@ -85,6 +85,8 @@
   .odyssey-card-unit-tag{display:inline-block;font-size:11px;color:var(--teal);background:rgba(63,158,143,.12);border:1px solid var(--teal);border-radius:20px;padding:2px 10px;margin-bottom:6px;cursor:pointer;text-decoration:none;}
   .odyssey-card-unit-tag:hover{background:rgba(63,158,143,.25);}
   .gallery-card{text-align:center;cursor:pointer;transition:opacity .15s, outline-color .15s;text-decoration:none;display:block;color:inherit;}
+  .gallery-card-img-wrap{position:relative;}
+  .gallery-card-limited-tag{position:absolute;top:6px;right:6px;font-size:13px;background:rgba(20,22,31,.75);border:1px solid var(--teal);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
   .gallery-card[draggable="true"]{cursor:grab;}
   .gallery-card.dragging{opacity:.35;cursor:grabbing;}
   .gallery-card.drag-over{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
@@ -159,6 +161,9 @@
   .page-title{font-size:32px;margin:0 0 4px;color:var(--text);}
   .unit-english-name{color:var(--text-faint);font-size:14px;font-family:'JetBrains Mono',monospace;letter-spacing:.03em;margin-bottom:14px;}
   .meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .badge-limited-return{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;font-family:'Noto Sans SC',sans-serif;color:var(--teal);background:rgba(63,158,143,.14);border:1px solid var(--teal);border-radius:20px;padding:3px 10px;}
+  .checkbox-field{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-dim);cursor:pointer;}
+  .checkbox-field input[type="checkbox"]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;}
   .meta-row + .stat-plate{margin-top:14px;}
   .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;letter-spacing:.05em;}
   .badge-common{background:rgba(138,138,138,.15);color:var(--common);}
@@ -287,9 +292,6 @@
   .log-top-left{display:flex;flex-direction:column-reverse;gap:3px;}
   .log-date{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gold-dim);letter-spacing:.04em;}
   .log-title{font-size:17px;font-family:'Noto Serif SC',serif;font-weight:700;color:var(--text);margin:0;}
-  .badge-limited-return{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;font-family:'Noto Sans SC',sans-serif;color:var(--teal);background:rgba(63,158,143,.14);border:1px solid var(--teal);border-radius:20px;padding:2px 9px;vertical-align:middle;margin-left:2px;}
-  .checkbox-field{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-dim);cursor:pointer;}
-  .checkbox-field input[type="checkbox"]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;}
   .log-actions{display:flex;gap:4px;flex-shrink:0;}
   .icon-btn{background:none;border:none;color:var(--text-faint);font-size:12px;padding:2px 6px;}
   .icon-btn:hover{color:var(--text);}
@@ -847,7 +849,6 @@ function migrateState(){
     if(!Array.isArray(l.linkedUnits)) l.linkedUnits = [];
     if(!Array.isArray(l.linkedMemories)) l.linkedMemories = [];
     if(!Array.isArray(l.linkedFamilies)) l.linkedFamilies = [];
-    if(l.isLimitedReturn===undefined) l.isLimitedReturn = false;
   });
   if(!Array.isArray(state.families)) state.families = [];
   if(!Array.isArray(state.memories)) state.memories = [];
@@ -913,6 +914,7 @@ function migrateState(){
     u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; if(s.referenceUrl===undefined) s.referenceUrl=''; if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : []; });
     if(!Array.isArray(u.passives)) u.passives = u.passive ? [{id:uid(), name:'被动1', description:u.passive}] : [];
     if(u.placementLimit===undefined) u.placementLimit = '';
+    if(u.isLimitedReturn===undefined) u.isLimitedReturn = false;
     if(u.englishName===undefined) u.englishName = '';
     if(!Array.isArray(u.comments)) u.comments = [];
     if(u.unitLv60===undefined) u.unitLv60 = (u.attacks && u.attacks[0] && u.attacks[0].unitLv60) || '';
@@ -2340,9 +2342,6 @@ function renderHome(){
           <span class="edit-label">内容</span>
           <textarea class="edit-textarea" data-bind="content" placeholder="更新内容...">${escapeHtml(draftLogEntry.content)}</textarea>
         </div>
-        <div class="edit-field">
-          <label class="checkbox-field"><input type="checkbox" data-bind="isLimitedReturn" ${draftLogEntry.isLimitedReturn?'checked':''}><span>🔄 这条更新是「限定复刻」单位（限时返场）</span></label>
-        </div>
         ${logEntityPickerHtml('单位', state.units, draftLogEntry.linkedUnits, 'toggleLogUnit', 'unit-id', '新单位', 'log-units')}
         ${logEntityPickerHtml('记忆', state.memories, draftLogEntry.linkedMemories, 'toggleLogMemory', 'memory-id', '新记忆', 'log-memories')}
         ${logEntityPickerHtml('使魔', state.families, draftLogEntry.linkedFamilies, 'toggleLogFamily', 'family-id', '新使魔', 'log-families')}
@@ -2369,7 +2368,7 @@ function renderHome(){
         <div class="log-entry">
           <div class="log-top">
             <div class="log-top-left">
-              <span class="log-title">${escapeHtml(l.title)}${l.isLimitedReturn ? ` <span class="badge-limited-return">🔄 限定复刻</span>` : ''}</span>
+              <span class="log-title">${escapeHtml(l.title)}</span>
               <span class="log-date">${escapeHtml(l.date)}</span>
             </div>
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
@@ -2392,7 +2391,7 @@ function renderHome(){
   const addLogBtn = document.getElementById('addLogBtn');
   if(addLogBtn) addLogBtn.addEventListener('click', ()=>{
     if(!requireAdmin()) return;
-    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', isLimitedReturn:false, linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
+    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
     addingLog = true;
     renderHome();
   });
@@ -2411,7 +2410,6 @@ function renderHome(){
         existing.title = title;
         existing.content = content;
         existing.image = draftLogEntry.image || '';
-        existing.isLimitedReturn = !!draftLogEntry.isLimitedReturn;
         existing.linkedUnits = draftLogEntry.linkedUnits || [];
         existing.linkedMemories = draftLogEntry.linkedMemories || [];
         existing.linkedFamilies = draftLogEntry.linkedFamilies || [];
@@ -2419,7 +2417,7 @@ function renderHome(){
       }
     } else {
       state.updateLog.unshift({
-        id:uid(), date, title, content, image: draftLogEntry.image||'', isLimitedReturn: !!draftLogEntry.isLimitedReturn,
+        id:uid(), date, title, content, image: draftLogEntry.image||'',
         linkedUnits: draftLogEntry.linkedUnits||[], linkedMemories: draftLogEntry.linkedMemories||[], linkedFamilies: draftLogEntry.linkedFamilies||[],
         updatedAt:Date.now()
       });
@@ -2436,7 +2434,7 @@ function renderHome(){
       const existing = state.updateLog.find(l=>l.id===id);
       if(!existing) return;
       draftLogEntry = {
-        id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'', isLimitedReturn: !!existing.isLimitedReturn,
+        id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'',
         linkedUnits: [...(existing.linkedUnits||[])], linkedMemories: [...(existing.linkedMemories||[])], linkedFamilies: [...(existing.linkedFamilies||[])]
       };
       addingLog = true;
@@ -2763,7 +2761,10 @@ function renderOdyssey(){
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}">
-      ${u.image ? `<img class="gallery-card-img" src="${u.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+      <div class="gallery-card-img-wrap">
+        ${u.image ? `<img class="gallery-card-img" src="${u.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
+      </div>
       <div class="gallery-card-name">${escapeHtml(u.name)}</div>
     </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
@@ -3389,6 +3390,10 @@ function renderUnit(){
       </div>
 
       <div class="edit-field">
+        <label class="checkbox-field"><input type="checkbox" data-bind="isLimitedReturn" ${draftUnit.isLimitedReturn?'checked':''}><span>🔄 限定复刻单位（限时返场）</span></label>
+      </div>
+
+      <div class="edit-field">
         <span class="edit-label">元素</span>
         <div class="mark-row-list">
           ${draftUnit.elements.length ? draftUnit.elements.map(eid=>{
@@ -3553,6 +3558,7 @@ function renderUnit(){
       unit.elements = draftUnit.elements || [];
       unit.tags = (draftUnit.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
       unit.placementLimit = draftUnit.placementLimit || '';
+      unit.isLimitedReturn = !!draftUnit.isLimitedReturn;
       unit.unitLv60 = draftUnit.unitLv60 || '';
       unit.trait = draftUnit.trait || '';
       unit.obtainWay = draftUnit.obtainWay || '';
@@ -3791,7 +3797,7 @@ function renderUnit(){
         <div class="page-header">
           <h1 class="page-title">${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
-          <div class="meta-row">${rarityBadge(unit.rarity)}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
+          <div class="meta-row">${rarityBadge(unit.rarity)}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
         </div>
       </div>
@@ -3990,7 +3996,10 @@ function renderGallery(type){
 
   function cardHtml(entity){
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}"${isAdmin ? ' draggable="true"' : ''}>
-      ${entity.image ? `<img class="gallery-card-img" src="${entity.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+      <div class="gallery-card-img-wrap">
+        ${entity.image ? `<img class="gallery-card-img" src="${entity.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
+      </div>
       <div class="gallery-card-name">${escapeHtml(entity.name)}</div>
     </a>`;
   }
