@@ -2307,7 +2307,8 @@ function logEntityChipsHtml(allEntities, selectedIds, viewType, label){
       const e = allEntities.find(x=>x.id===id);
       if(!e) return '';
       const icon = e.image ? `<img src="${e.image}">` : '';
-      return `<a href="${viewToHash({type:viewType, id:e.id})}" class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle('#8a713a')}cursor:pointer;">${icon}${escapeHtml(e.name)}</a>`;
+      const limitedTag = e.isLimitedReturn ? `<span title="限定复刻">🔄</span>` : '';
+      return `<a href="${viewToHash({type:viewType, id:e.id})}" class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle('#8a713a')}cursor:pointer;">${icon}${limitedTag}${escapeHtml(e.name)}</a>`;
     }).join('')}</div>
   </div>`;
 }
@@ -2364,11 +2365,16 @@ function renderHome(){
     </div>
     ${addFormHtml}
     <div id="logList" class="log-timeline">
-      ${logs.length ? logs.map(l=>`
+      ${logs.length ? logs.map(l=>{
+        const hasLimitedUnit = (l.linkedUnits||[]).some(id=>{
+          const u = state.units.find(x=>x.id===id);
+          return u && u.isLimitedReturn;
+        });
+        return `
         <div class="log-entry">
           <div class="log-top">
             <div class="log-top-left">
-              <span class="log-title">${escapeHtml(l.title)}</span>
+              <span class="log-title">${escapeHtml(l.title)}${hasLimitedUnit ? ` <span class="badge-limited-return">🔄 限定复刻</span>` : ''}</span>
               <span class="log-date">${escapeHtml(l.date)}</span>
             </div>
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
@@ -2378,7 +2384,8 @@ function renderHome(){
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
           ${logEntityChipsHtml(state.families, l.linkedFamilies, 'family', '新使魔')}
-        </div>`).join('') : `<div class="empty-hint" style="padding-left:0;">暂无更新记录</div>`}
+        </div>`;
+      }).join('') : `<div class="empty-hint" style="padding-left:0;">暂无更新记录</div>`}
     </div>
   `;
 
