@@ -374,7 +374,13 @@
   .entity-picker{margin-top:10px;}
   .entity-picker summary{list-style:none;cursor:pointer;display:inline-flex;}
   .entity-picker summary::-webkit-details-marker{display:none;}
-  .entity-picker-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;}
+  .entity-picker-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;}
+  .entity-picker-search{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;outline:none;font-family:inherit;}
+  .entity-picker-search:focus{border-color:var(--gold-dim);}
+  .entity-picker-search::placeholder{color:var(--text-faint);}
+  .entity-picker-items{display:flex;flex-wrap:wrap;gap:8px;max-height:280px;overflow-y:auto;}
+  .entity-picker-en{opacity:.6;font-size:11px;}
+  .entity-picker-noresult{font-size:12px;color:var(--text-faint);padding:4px 2px;}
   .entity-picker-item{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;background:var(--card-hover);border:1px solid var(--border);color:var(--text-dim);}
   .entity-picker-item .badge,.mark-toggle .badge{margin-left:2px;transform:scale(.92);}
   .entity-picker-item:hover{color:var(--gold);border-color:var(--gold-dim);}
@@ -500,6 +506,20 @@ function wirePickerToggles(container){
     d.addEventListener('toggle', ()=>{
       if(d.open) openPickerKeys.add(d.dataset.pickerKey);
       else openPickerKeys.delete(d.dataset.pickerKey);
+    });
+  });
+  container.querySelectorAll('.entity-picker-search').forEach(input=>{
+    input.addEventListener('input', ()=>{
+      const q = input.value.trim().toLowerCase();
+      const list = input.closest('.entity-picker-list');
+      let anyVisible = false;
+      list.querySelectorAll('.entity-picker-item').forEach(btn=>{
+        const match = !q || (btn.dataset.search||'').includes(q);
+        btn.style.display = match ? '' : 'none';
+        if(match) anyVisible = true;
+      });
+      const noResult = list.querySelector('.entity-picker-noresult');
+      if(noResult) noResult.style.display = anyVisible ? 'none' : '';
     });
   });
 }
@@ -2286,10 +2306,13 @@ function logEntityPickerHtml(label, allEntities, selectedIds, action, idAttr, he
   const remaining = allEntities.filter(e=>!selectedIds.includes(e.id));
   const key = pickerKey || ('log-'+idAttr);
   const isOpen = openPickerKeys.has(key);
+  const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索${label}名称（中文/英文均可）...">` : '';
   const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
     <summary class="btn btn-gold">+ 选择${label}</summary>
     <div class="entity-picker-list">
-      ${remaining.map(e=>`<button type="button" class="entity-picker-item" data-action="${action}" data-${idAttr}="${e.id}">${e.image?`<img src="${e.image}">`:''}${escapeHtml(e.name)}${rarityTag(e)}</button>`).join('')}
+      ${searchHtml}
+      <div class="entity-picker-items">${remaining.map(e=>`<button type="button" class="entity-picker-item" data-action="${action}" data-${idAttr}="${e.id}" data-search="${escapeHtml(((e.name||'')+' '+(e.englishName||'')).toLowerCase())}">${e.image?`<img src="${e.image}">`:''}${escapeHtml(e.name)}${e.englishName?` <span class="entity-picker-en">${escapeHtml(e.englishName)}</span>`:''}${rarityTag(e)}</button>`).join('')}</div>
+      <div class="entity-picker-noresult" style="display:none;">没有匹配的${label}</div>
     </div>
   </details>` : '';
   return `<div class="edit-field">
