@@ -869,6 +869,7 @@ function migrateState(){
     if(!Array.isArray(l.linkedUnits)) l.linkedUnits = [];
     if(!Array.isArray(l.linkedMemories)) l.linkedMemories = [];
     if(!Array.isArray(l.linkedFamilies)) l.linkedFamilies = [];
+    if(l.limitedReturnNote===undefined) l.limitedReturnNote = '';
   });
   if(!Array.isArray(state.families)) state.families = [];
   if(!Array.isArray(state.memories)) state.memories = [];
@@ -2366,6 +2367,10 @@ function renderHome(){
           <span class="edit-label">内容</span>
           <textarea class="edit-textarea" data-bind="content" placeholder="更新内容...">${escapeHtml(draftLogEntry.content)}</textarea>
         </div>
+        <div class="edit-field">
+          <span class="edit-label">限定复刻说明（可选，填了就会在标题旁显示标签）</span>
+          <input class="edit-input" data-bind="limitedReturnNote" value="${escapeHtml(draftLogEntry.limitedReturnNote||'')}" placeholder="例如：限定复刻活动、限时特别模式、复刻返场...">
+        </div>
         ${logEntityPickerHtml('单位', state.units, draftLogEntry.linkedUnits, 'toggleLogUnit', 'unit-id', '新单位', 'log-units')}
         ${logEntityPickerHtml('记忆', state.memories, draftLogEntry.linkedMemories, 'toggleLogMemory', 'memory-id', '新记忆', 'log-memories')}
         ${logEntityPickerHtml('使魔', state.families, draftLogEntry.linkedFamilies, 'toggleLogFamily', 'family-id', '新使魔', 'log-families')}
@@ -2393,11 +2398,12 @@ function renderHome(){
           const u = state.units.find(x=>x.id===id);
           return u && u.isLimitedReturn;
         });
+        const limitedText = (l.limitedReturnNote||'').trim() || (hasLimitedUnit ? '限定复刻' : '');
         return `
         <div class="log-entry">
           <div class="log-top">
             <div class="log-top-left">
-              <span class="log-title">${escapeHtml(l.title)}${hasLimitedUnit ? ` <span class="badge-limited-return">🔄 限定复刻</span>` : ''}</span>
+              <span class="log-title">${escapeHtml(l.title)}${limitedText ? ` <span class="badge-limited-return">🔄 ${escapeHtml(limitedText)}</span>` : ''}</span>
               <span class="log-date">${escapeHtml(l.date)}</span>
             </div>
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
@@ -2421,7 +2427,7 @@ function renderHome(){
   const addLogBtn = document.getElementById('addLogBtn');
   if(addLogBtn) addLogBtn.addEventListener('click', ()=>{
     if(!requireAdmin()) return;
-    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
+    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', limitedReturnNote:'', linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
     addingLog = true;
     renderHome();
   });
@@ -2440,6 +2446,7 @@ function renderHome(){
         existing.title = title;
         existing.content = content;
         existing.image = draftLogEntry.image || '';
+        existing.limitedReturnNote = (draftLogEntry.limitedReturnNote||'').trim();
         existing.linkedUnits = draftLogEntry.linkedUnits || [];
         existing.linkedMemories = draftLogEntry.linkedMemories || [];
         existing.linkedFamilies = draftLogEntry.linkedFamilies || [];
@@ -2447,7 +2454,7 @@ function renderHome(){
       }
     } else {
       state.updateLog.unshift({
-        id:uid(), date, title, content, image: draftLogEntry.image||'',
+        id:uid(), date, title, content, image: draftLogEntry.image||'', limitedReturnNote: (draftLogEntry.limitedReturnNote||'').trim(),
         linkedUnits: draftLogEntry.linkedUnits||[], linkedMemories: draftLogEntry.linkedMemories||[], linkedFamilies: draftLogEntry.linkedFamilies||[],
         updatedAt:Date.now()
       });
@@ -2464,7 +2471,7 @@ function renderHome(){
       const existing = state.updateLog.find(l=>l.id===id);
       if(!existing) return;
       draftLogEntry = {
-        id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'',
+        id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'', limitedReturnNote: existing.limitedReturnNote||'',
         linkedUnits: [...(existing.linkedUnits||[])], linkedMemories: [...(existing.linkedMemories||[])], linkedFamilies: [...(existing.linkedFamilies||[])]
       };
       addingLog = true;
