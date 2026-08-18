@@ -169,6 +169,10 @@
   .meta-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .badge-limited-return{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;font-family:'Noto Sans SC',sans-serif;color:var(--teal);background:rgba(63,158,143,.14);border:1px solid var(--teal);border-radius:20px;padding:3px 10px;}
   .checkbox-field{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--text-dim);cursor:pointer;}
+  .limited-return-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:13.5px;color:var(--text-dim);cursor:pointer;}
+  .limited-return-row:hover{border-color:var(--gold-dim);}
+  .limited-return-row input[type="checkbox"]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;}
+  .limited-return-row img,.limited-return-row .mark-icon-placeholder{width:28px;height:28px;border-radius:6px;object-fit:cover;background:var(--card-hover);flex-shrink:0;}
   .checkbox-field input[type="checkbox"]{width:16px;height:16px;accent-color:var(--gold);cursor:pointer;flex-shrink:0;}
   .meta-row + .stat-plate{margin-top:14px;}
   .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;letter-spacing:.05em;}
@@ -580,6 +584,7 @@ function goToView(view){
   viewHistory.push({view: JSON.parse(JSON.stringify(currentView)), scrollTop: mainEl ? mainEl.scrollTop : 0});
   currentView = view;
   setHash(view);
+  if(mainEl) mainEl.scrollTop = 0;
 }
 function goBack(){
   const prev = viewHistory.pop();
@@ -976,7 +981,7 @@ function migrateState(){
     if(u.trait===undefined) u.trait = (u.attacks && u.attacks[0] && u.attacks[0].trait) || '';
     if(u.obtainWay===undefined) u.obtainWay = '';
     if(!Array.isArray(u.obtainMethods)) u.obtainMethods = [];
-    if(u.group===undefined) u.group = null;
+    if(!Array.isArray(u.groups)) u.groups = u.group ? [u.group] : [];
     if(!Array.isArray(u.elements)) u.elements = u.element ? [u.element] : [];
     if(u.shinyImage===undefined) u.shinyImage = '';
     if(!Array.isArray(u.otherForms)){
@@ -1735,6 +1740,8 @@ async function loadData(){
     currentView = hashToView();
     editMode = false; draftUnit=null; draftSimple=null; draftOdyssey=null; showingShinyImage=false;
     render();
+    const mainEl = document.querySelector('.main');
+    if(mainEl) mainEl.scrollTop = 0;
   });
   renderAuthFoot();
   render();
@@ -3027,7 +3034,7 @@ function startUnitEdit(unit){
   if(!Array.isArray(draftUnit.otherForms)) draftUnit.otherForms = [];
   if(!Array.isArray(draftUnit.linkedMemories)) draftUnit.linkedMemories = [];
   if(!Array.isArray(draftUnit.linkedFamilies)) draftUnit.linkedFamilies = [];
-  draftUnit.group = unit.group || '';
+  draftUnit.groups = Array.isArray(unit.groups) ? [...unit.groups] : (unit.group ? [unit.group] : []);
   draftUnit.elements = Array.isArray(unit.elements) ? [...unit.elements] : [];
   draftUnit.tagsRaw = (unit.tags||[]).join(', ');
   editMode = true;
@@ -3348,7 +3355,10 @@ function handleDraftAction(ds, draft){
     if(i>=0) draft.marks.splice(i,1); else draft.marks.push(markId);
   }
   else if(action==='selectGroup'){
-    draft.group = (draft.group === ds.groupId) ? null : ds.groupId;
+    const gid = ds.groupId;
+    if(!Array.isArray(draft.groups)) draft.groups = [];
+    const gi = draft.groups.indexOf(gid);
+    if(gi>=0) draft.groups.splice(gi,1); else draft.groups.push(gid);
   }
   else if(action==='selectElement'){
     const eid = ds.elementId;
@@ -3568,9 +3578,9 @@ function renderUnit(){
       <div class="edit-field">
         <span class="edit-label">分组</span>
         <div class="mark-row-list">
-          ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.group===g.id)).join('') : ''}
+          ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.groups.includes(g.id))).join('') : ''}
         </div>
-        ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : '<div class="hint">点击选择该单位所属的分组，再点一次可取消选择。</div>'}
+        ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : '<div class="hint">可以多选，点击选中，再点一次可取消。</div>'}
       </div>
 
       <div class="edit-field">
@@ -3707,7 +3717,7 @@ function renderUnit(){
       unit.image = draftUnit.image || '';
       unit.shinyImage = draftUnit.shinyImage || '';
       unit.rarity = draftUnit.rarity || null;
-      unit.group = draftUnit.group || null;
+      unit.groups = draftUnit.groups || [];
       unit.elements = draftUnit.elements || [];
       unit.tags = (draftUnit.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
       unit.placementLimit = draftUnit.placementLimit || '';
@@ -3751,8 +3761,9 @@ function renderUnit(){
   }
 
   const tagsHtml = (unit.tags||[]).map(t=>`<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${escapeHtml(t)}</span>`).join('');
-  const groupObj = unit.group ? state.groups.find(g=>g.id===unit.group) : null;
-  const groupChipHtml = groupObj ? (()=>{ const icon = groupObj.image ? `<img src="${groupObj.image}">` : ''; return `<span class="mark-chip" style="${coloredChipStyle(groupObj.color)}">${icon}${escapeHtml(groupObj.name)}</span>`; })() : '';
+  const unitGroups = (unit.groups||[]).map(gid=>state.groups.find(g=>g.id===gid)).filter(Boolean);
+  const groupObj = unitGroups[0] || null;
+  const groupChipHtml = unitGroups.map(g=>{ const icon = g.image ? `<img src="${g.image}">` : ''; return `<span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>`; }).join('');
   const elementChipHtml = (unit.elements && unit.elements.length) ? unit.elements.map(eid=>{
     const eObj = state.elements.find(e=>e.id===eid);
     if(!eObj) return '';
@@ -4878,6 +4889,16 @@ function renderSettings(){
     return;
   }
   const marksHtml = state.marks.length ? state.marks.map((m,i)=>markEditRowHtml(m,i,state.marks.length)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无标记</div>';
+  const limitedReturnUnits = state.units.filter(u=>u.isLimitedReturn);
+  const limitedReturnUnitsHtml = limitedReturnUnits.length ? `
+    <div id="limitedReturnUnitsList">${limitedReturnUnits.map(u=>`
+      <label class="limited-return-row">
+        <input type="checkbox" class="limited-return-checkbox" data-unit-id="${u.id}">
+        ${u.image ? `<img src="${u.image}">` : `<div class="mark-icon-placeholder"></div>`}
+        <span>${escapeHtml(u.name)}</span>
+      </label>`).join('')}</div>
+    <button class="btn btn-danger" id="untickLimitedReturnBtn" style="margin-top:10px;">取消勾选的限定复刻标记</button>
+  ` : '<div class="empty-hint" style="padding-left:0;">目前没有单位被标记为限定复刻</div>';
   const markCategoriesHtml = state.markCategories.length ? state.markCategories.map(markCategoryEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分类</div>';
   const itemCategoriesHtml = state.itemCategories.length ? state.itemCategories.map(itemCategoryEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分类</div>';
   const obtainMethodsHtml = state.obtainMethods.length ? state.obtainMethods.map(obtainMethodEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无获取方式</div>';
@@ -4917,6 +4938,12 @@ function renderSettings(){
       <div class="section-label" style="margin-top:0;">数据恢复</div>
       <div class="hint" style="margin-bottom:14px;">如果单位/物品/使魔/记忆显示为0，但你确定以前有数据，点这个按钮可以从最早的旧版备份数据（<code>wiki/data</code>）强制重新读取并覆盖保存一次。这不会删除任何东西，只是重新同步。</div>
       <button class="btn" id="recoverFromLegacyBtn">🔄 从旧版数据强制恢复</button>
+    </div>
+
+    <div class="settings-block">
+      <div class="section-label" style="margin-top:0;">限定复刻单位管理</div>
+      <div class="hint" style="margin-bottom:14px;">这里汇总了所有被标记为「限定复刻」的单位。活动结束后，不用一个个进单位页面取消，勾选想取消的单位，点下面的按钮批量取消标记。</div>
+      ${limitedReturnUnitsHtml}
     </div>
 
     <div class="settings-block">
@@ -5119,6 +5146,18 @@ function renderSettings(){
     }
     recoverBtn.disabled = false;
     recoverBtn.textContent = '🔄 从旧版数据强制恢复';
+  });
+  const untickLimitedReturnBtn = document.getElementById('untickLimitedReturnBtn');
+  if(untickLimitedReturnBtn) untickLimitedReturnBtn.addEventListener('click', async ()=>{
+    const checked = Array.from(document.querySelectorAll('.limited-return-checkbox:checked')).map(el=>el.dataset.unitId);
+    if(!checked.length){ showToast('先勾选想取消标记的单位', 3000); return; }
+    checked.forEach(id=>{
+      const u = state.units.find(x=>x.id===id);
+      if(u) u.isLimitedReturn = false;
+    });
+    await saveData(true);
+    showToast(`已取消 ${checked.length} 个单位的限定复刻标记`, 4000);
+    renderSettings();
   });
   const addGroupBtn = document.getElementById('addGroupBtn');
   if(addGroupBtn) addGroupBtn.addEventListener('click', async ()=>{
