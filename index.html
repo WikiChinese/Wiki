@@ -1294,8 +1294,14 @@ function renderStagePage(){
 
 function shopRefOptionsHtml(item){
   const optGroup = (label, list, type) => list.length ? `<optgroup label="${label}">${list.map(x=>`<option value="${type}:${x.id}" ${item.refType===type&&item.refId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</optgroup>` : '';
+  const itemOptGroups = state.itemCategories.length
+    ? state.itemCategories.map(cat=>{
+        const inCat = state.items.filter(x=>x.categoryId===cat.id);
+        return inCat.length ? `<optgroup label="物品 · ${escapeHtml(cat.name)}">${inCat.map(x=>`<option value="item:${x.id}" ${item.refType==='item'&&item.refId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</optgroup>` : '';
+      }).join('') + optGroup('物品 · 未分类', state.items.filter(x=>!x.categoryId || !state.itemCategories.some(c=>c.id===x.categoryId)), 'item')
+    : optGroup('物品', state.items, 'item');
   return `<option value="">选择关联内容...</option>
-    ${optGroup('物品', state.items, 'item')}
+    ${itemOptGroups}
     ${optGroup('单位', state.units, 'unit')}
     ${optGroup('使魔', state.families, 'family')}
     ${optGroup('记忆', state.memories, 'memory')}`;
@@ -1402,10 +1408,16 @@ function renderStageLevelPage(){
         ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
       </div>`;
     }
+    let typeTagLabel = REF_LABELS[it.refType];
+    let typeTagStyle = '';
+    if(it.refType==='item' && linkedEntity.categoryId){
+      const cat = state.itemCategories.find(c=>c.id===linkedEntity.categoryId);
+      if(cat){ typeTagLabel = cat.name; typeTagStyle = `background:${/gradient/.test(cat.color||'')?'rgba(0,0,0,.6)':hexToRgba(cat.color||'#4a8fd1',0.75)};`; }
+    }
     return `<a href="${viewToHash({type:it.refType, id:linkedEntity.id})}" class="shop-item-card" data-view="${it.refType}" data-id="${linkedEntity.id}">
       <div class="shop-item-icon-wrap">
         ${linkedEntity.image ? `<img class="shop-item-icon" src="${linkedEntity.image}">` : `<div class="shop-item-icon-placeholder"></div>`}
-        <span class="shop-item-type-tag">${REF_LABELS[it.refType]}</span>
+        <span class="shop-item-type-tag" style="${typeTagStyle}">${escapeHtml(typeTagLabel)}</span>
       </div>
       <div class="shop-item-body">
         <div class="shop-item-name">${escapeHtml(linkedEntity.name)}</div>
