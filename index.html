@@ -390,6 +390,10 @@
 
   .settings-block{margin-bottom:36px;}
   .mark-edit-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px;}
+  .reorder-btns{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
+  .btn-icon-sm{width:22px;height:18px;background:var(--card-hover);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;font-size:9px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+  .btn-icon-sm:hover:not(:disabled){background:var(--panel);color:var(--gold);border-color:var(--gold-dim);}
+  .btn-icon-sm:disabled{opacity:.3;cursor:default;}
   .mark-icon-preview{width:40px;height:40px;border-radius:50%;object-fit:cover;background:var(--card-hover);flex-shrink:0;border:1px solid var(--border);}
   .mark-icon-placeholder{width:40px;height:40px;border-radius:50%;background:var(--card-hover);flex-shrink:0;border:1px dashed var(--border-light);}
   .mark-edit-row .edit-input{flex:1;}
@@ -495,7 +499,7 @@
 <script>
 function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], stages:[], upgrades:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -657,6 +661,12 @@ function wireComments(container){
 function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 
+function moveArrayItem(arr, index, delta){
+  const target = index + delta;
+  if(target<0 || target>=arr.length) return;
+  const [item] = arr.splice(index,1);
+  arr.splice(target,0,item);
+}
 function setPath(obj, path, value){
   const parts = path.split('.');
   let cur = obj;
@@ -798,6 +808,10 @@ function hexToRgba(hex, alpha){
 
 function migrateState(){
   if(!state.items) state.items = [];
+  state.items.forEach(it=>{
+    if(it.questline===undefined) it.questline = '';
+    if(it.evolvesUnitId===undefined) it.evolvesUnitId = '';
+  });
   if(!Array.isArray(state.adminEmails)) state.adminEmails = [];
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
@@ -811,7 +825,9 @@ function migrateState(){
     if(t.color===undefined) t.color = '#b8544a';
     if(t.image===undefined) t.image = '';
     if(t.description===undefined) t.description = '';
+    if(t.categoryId===undefined) t.categoryId = '';
   });
+  if(!Array.isArray(state.enemyMechanicCategories)) state.enemyMechanicCategories = [];
   if(!Array.isArray(state.stages)) state.stages = [];
   state.stages.forEach(s=>{
     if(s.image===undefined) s.image = '';
@@ -869,7 +885,7 @@ function migrateState(){
     if(!Array.isArray(l.linkedUnits)) l.linkedUnits = [];
     if(!Array.isArray(l.linkedMemories)) l.linkedMemories = [];
     if(!Array.isArray(l.linkedFamilies)) l.linkedFamilies = [];
-    if(l.limitedReturnNote===undefined) l.limitedReturnNote = '';
+    if(l.isLimitedReturn===undefined) l.isLimitedReturn = false;
   });
   if(!Array.isArray(state.families)) state.families = [];
   if(!Array.isArray(state.memories)) state.memories = [];
@@ -1594,7 +1610,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','enemyMechanics','stages','upgrades'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','stages','upgrades'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -2368,8 +2384,7 @@ function renderHome(){
           <textarea class="edit-textarea" data-bind="content" placeholder="更新内容...">${escapeHtml(draftLogEntry.content)}</textarea>
         </div>
         <div class="edit-field">
-          <span class="edit-label">限定复刻说明（可选，填了就会在标题旁显示标签）</span>
-          <input class="edit-input" data-bind="limitedReturnNote" value="${escapeHtml(draftLogEntry.limitedReturnNote||'')}" placeholder="例如：限定复刻活动、限时特别模式、复刻返场...">
+          <label class="checkbox-field"><input type="checkbox" data-bind="isLimitedReturn" ${draftLogEntry.isLimitedReturn?'checked':''}><span>🔄 限定复刻单位</span></label>
         </div>
         ${logEntityPickerHtml('单位', state.units, draftLogEntry.linkedUnits, 'toggleLogUnit', 'unit-id', '新单位', 'log-units')}
         ${logEntityPickerHtml('记忆', state.memories, draftLogEntry.linkedMemories, 'toggleLogMemory', 'memory-id', '新记忆', 'log-memories')}
@@ -2398,7 +2413,7 @@ function renderHome(){
           const u = state.units.find(x=>x.id===id);
           return u && u.isLimitedReturn;
         });
-        const limitedText = (l.limitedReturnNote||'').trim() || (hasLimitedUnit ? '限定复刻' : '');
+        const limitedText = (l.isLimitedReturn || hasLimitedUnit) ? '限定复刻单位' : '';
         return `
         <div class="log-entry">
           <div class="log-top">
@@ -2427,7 +2442,7 @@ function renderHome(){
   const addLogBtn = document.getElementById('addLogBtn');
   if(addLogBtn) addLogBtn.addEventListener('click', ()=>{
     if(!requireAdmin()) return;
-    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', limitedReturnNote:'', linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
+    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', isLimitedReturn:false, linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
     addingLog = true;
     renderHome();
   });
@@ -2446,7 +2461,7 @@ function renderHome(){
         existing.title = title;
         existing.content = content;
         existing.image = draftLogEntry.image || '';
-        existing.limitedReturnNote = (draftLogEntry.limitedReturnNote||'').trim();
+        existing.isLimitedReturn = !!draftLogEntry.isLimitedReturn;
         existing.linkedUnits = draftLogEntry.linkedUnits || [];
         existing.linkedMemories = draftLogEntry.linkedMemories || [];
         existing.linkedFamilies = draftLogEntry.linkedFamilies || [];
@@ -2454,7 +2469,7 @@ function renderHome(){
       }
     } else {
       state.updateLog.unshift({
-        id:uid(), date, title, content, image: draftLogEntry.image||'', limitedReturnNote: (draftLogEntry.limitedReturnNote||'').trim(),
+        id:uid(), date, title, content, image: draftLogEntry.image||'', isLimitedReturn: !!draftLogEntry.isLimitedReturn,
         linkedUnits: draftLogEntry.linkedUnits||[], linkedMemories: draftLogEntry.linkedMemories||[], linkedFamilies: draftLogEntry.linkedFamilies||[],
         updatedAt:Date.now()
       });
@@ -2471,7 +2486,7 @@ function renderHome(){
       const existing = state.updateLog.find(l=>l.id===id);
       if(!existing) return;
       draftLogEntry = {
-        id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'', limitedReturnNote: existing.limitedReturnNote||'',
+        id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'', isLimitedReturn: !!existing.isLimitedReturn,
         linkedUnits: [...(existing.linkedUnits||[])], linkedMemories: [...(existing.linkedMemories||[])], linkedFamilies: [...(existing.linkedFamilies||[])]
       };
       addingLog = true;
@@ -2568,6 +2583,18 @@ function renderAttackTypes(){
 
 let editingEnemyMechanics = false;
 
+function enemyMechanicCategoryEditRowHtml(cat, i){
+  const isGradient = /gradient/.test(cat.color||'');
+  const colorPickerVal = isGradient ? '#b8544a' : (cat.color||'#b8544a');
+  const formulaVal = isGradient ? escapeHtml(cat.color) : '';
+  return `<div class="mark-edit-row">
+    <input class="edit-input" style="flex:2;min-width:160px;" data-em-cat-bind="${i}.name" value="${escapeHtml(cat.name)}" placeholder="分类名称，如：护盾类、召唤类">
+    <input type="color" data-em-cat-bind="${i}.color" value="${colorPickerVal}">
+    <input class="edit-input" style="flex:1;min-width:140px;" data-em-cat-color-formula="${i}" value="${formulaVal}" placeholder="自定义颜色公式（可选）">
+    <button class="btn btn-danger" data-em-cat-action="removeEnemyMechanicCategory" data-index="${i}">删除</button>
+  </div>`;
+}
+
 function enemyMechanicEditRowHtml(m, i){
   const iconHtml = m.image ? `<img class="mark-icon-preview zoomable" src="${m.image}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(m.color||'');
@@ -2581,6 +2608,11 @@ function enemyMechanicEditRowHtml(m, i){
       <button class="btn btn-danger" data-em-action="removeEnemyMechanic" data-index="${i}">删除</button>
     </div>
     <div class="mark-edit-row" style="margin-top:8px;margin-bottom:0;">
+      <label style="font-size:12px;color:var(--text-faint);flex-shrink:0;">分类</label>
+      <select class="edit-select" style="flex:1;min-width:160px;" data-em-bind="${i}.categoryId">
+        <option value="">未分类</option>
+        ${state.enemyMechanicCategories.map(c=>`<option value="${c.id}" ${m.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+      </select>
       <input type="color" data-em-bind="${i}.color" value="${colorPickerVal}">
       <input class="edit-input" style="flex:1;min-width:160px;" data-em-color-formula="${i}" value="${formulaVal}" placeholder="自定义颜色公式，例如渐变色 linear-gradient(...)">
     </div>
@@ -2596,12 +2628,18 @@ function renderEnemyMechanics(){
 
   if(editingEnemyMechanics && isAdmin){
     const rowsHtml = state.enemyMechanics.length ? state.enemyMechanics.map(enemyMechanicEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无机制</div>';
+    const catRowsHtml = state.enemyMechanicCategories.length ? state.enemyMechanicCategories.map(enemyMechanicCategoryEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分类</div>';
     container.innerHTML = `
       <div class="page-toolbar">
         <h1 class="page-title" style="margin:0;">敌方机制</h1>
         <div class="toolbar-actions"><button class="btn btn-gold" id="doneEditEnemyMechanicsBtn">✓ 完成编辑</button></div>
       </div>
       <div class="hint" style="margin:-6px 0 16px;">编辑敌人可能带有的特殊机制，例如护盾、免疫控制、狂暴、召唤小怪等。改动会自动保存。</div>
+      <div class="section-label" style="margin-top:0;">机制分类</div>
+      <div class="hint" style="margin-bottom:12px;">管理机制的分类，比如护盾类、召唤类、控制类，可以自由新增/改名/删除。设置好之后，下面每个机制可以选择归入哪个分类，「敌方机制」页面会按分类分组显示。</div>
+      <div id="enemyMechanicCategoriesList">${catRowsHtml}</div>
+      <button class="btn" id="addEnemyMechanicCategoryBtn" style="margin-bottom:20px;">+ 新增分类</button>
+      <div class="section-label">机制列表</div>
       <div id="enemyMechanicsList">${rowsHtml}</div>
       <button class="btn btn-gold" id="addEnemyMechanicBtn">+ 新增机制</button>
     `;
@@ -2609,7 +2647,13 @@ function renderEnemyMechanics(){
     if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingEnemyMechanics = false; renderEnemyMechanics(); });
     const addBtn = document.getElementById('addEnemyMechanicBtn');
     if(addBtn) addBtn.addEventListener('click', async ()=>{
-      state.enemyMechanics.push({id:uid(), name:'新机制', image:'', color:'#b8544a', description:''});
+      state.enemyMechanics.push({id:uid(), name:'新机制', image:'', color:'#b8544a', categoryId:'', description:''});
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+    const addCatBtn = document.getElementById('addEnemyMechanicCategoryBtn');
+    if(addCatBtn) addCatBtn.addEventListener('click', async ()=>{
+      state.enemyMechanicCategories.push({id:uid(), name:'新分类', color:'#b8544a'});
       await saveData(true);
       renderEnemyMechanics();
     });
@@ -2617,14 +2661,35 @@ function renderEnemyMechanics(){
     return;
   }
 
-  const cardsHtml = state.enemyMechanics.length ? state.enemyMechanics.map(m=>`
+  const mechCardHtml = m => `
     <div class="status-effect-card">
       ${m.image ? `<img class="status-effect-icon zoomable" src="${m.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
         <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
-    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何敌方机制，管理员可以点右上角「编辑」新增。</div>';
+    </div>`;
+
+  let cardsHtml;
+  if(!state.enemyMechanics.length){
+    cardsHtml = '<div class="empty-hint" style="padding-left:0;">还没有任何敌方机制，管理员可以点右上角「编辑」新增。</div>';
+  } else if(!state.enemyMechanicCategories.length){
+    cardsHtml = `<div class="status-effect-list">${state.enemyMechanics.map(mechCardHtml).join('')}</div>`;
+  } else {
+    const grouped = state.enemyMechanicCategories.map(cat=>({
+      cat, items: state.enemyMechanics.filter(m=>m.categoryId===cat.id)
+    })).filter(g=>g.items.length);
+    const uncategorized = state.enemyMechanics.filter(m=>!m.categoryId || !state.enemyMechanicCategories.some(c=>c.id===m.categoryId));
+    cardsHtml = grouped.map(g=>`
+      <div class="status-effect-category-group">
+        <div class="section-label" style="margin-top:1.4em;"><span class="status-effect-cat-dot" style="background:${/gradient/.test(g.cat.color||'')?'var(--gold)':(g.cat.color||'var(--gold-dim)')}"></span>${escapeHtml(g.cat.name)}</div>
+        <div class="status-effect-list">${g.items.map(mechCardHtml).join('')}</div>
+      </div>`).join('') + (uncategorized.length ? `
+      <div class="status-effect-category-group">
+        <div class="section-label" style="margin-top:1.4em;">未分类</div>
+        <div class="status-effect-list">${uncategorized.map(mechCardHtml).join('')}</div>
+      </div>` : '');
+  }
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -2632,7 +2697,7 @@ function renderEnemyMechanics(){
       ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="editEnemyMechanicsBtn">编辑</button></div>` : ''}
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了敌人可能带有的特殊机制，比如护盾、免疫控制、狂暴、召唤小怪等，方便查阅每种机制具体是什么效果、该怎么应对。</div>
-    <div class="status-effect-list">${cardsHtml}</div>
+    ${cardsHtml}
   `;
   const editBtn = document.getElementById('editEnemyMechanicsBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingEnemyMechanics = true; renderEnemyMechanics(); });
@@ -2672,6 +2737,34 @@ function wireEnemyMechanicsForm(container){
       const action = el.dataset.emAction;
       const idx = parseInt(el.dataset.index);
       if(action==='removeEnemyMechanic') state.enemyMechanics.splice(idx,1);
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+  });
+  container.querySelectorAll('[data-em-cat-bind]').forEach(el=>{
+    const sync = ()=>{
+      setPath(state.enemyMechanicCategories, el.dataset.emCatBind, el.value);
+      pendingLocalSave = true;
+      clearTimeout(settingsSyncTimer);
+      settingsSyncTimer = setTimeout(()=>{ saveData(true); renderEnemyMechanics(); }, 400);
+    };
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+  });
+  container.querySelectorAll('[data-em-cat-color-formula]').forEach(el=>{
+    el.addEventListener('change', async ()=>{
+      const i = parseInt(el.dataset.emCatColorFormula);
+      const val = el.value.trim();
+      if(val) state.enemyMechanicCategories[i].color = val;
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+  });
+  container.querySelectorAll('[data-em-cat-action]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const action = el.dataset.emCatAction;
+      const idx = parseInt(el.dataset.index);
+      if(action==='removeEnemyMechanicCategory') state.enemyMechanicCategories.splice(idx,1);
       await saveData(true);
       renderEnemyMechanics();
     });
@@ -3823,6 +3916,13 @@ function renderUnit(){
       ${unit.shinyImage ? `<button type="button" class="shiny-toggle-btn ${showingShinyImage?'active':''}" id="shinyToggleBtn">✨ ${showingShinyImage?'普通':'闪光'}</button>` : ''}
     </div>` : '';
 
+  const evolutionItems = state.items.filter(it=>it.evolvesUnitId===unit.id);
+  const evolutionItemsHtml = evolutionItems.length ? `<div class="shop-item-grid">${evolutionItems.map(it=>`
+    <a href="${viewToHash({type:'item', id:it.id})}" class="shop-item-card" data-view="item" data-id="${it.id}">
+      <div class="shop-item-icon-wrap">${it.image ? `<img class="shop-item-icon" src="${it.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(it.name)}</div>${it.questline ? `<div class="shop-item-qty">📜 有任务线</div>` : ''}</div>
+    </a>`).join('')}</div>` : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">单位${groupObj ? ' · ' + escapeHtml(groupObj.name) : ''}</div>
@@ -3846,6 +3946,7 @@ function renderUnit(){
     ${unit.linkedMemories&&unit.linkedMemories.length ? `<div class="section-label">记忆</div>${linkedMemoriesHtml}` : ''}
     ${unit.linkedFamilies&&unit.linkedFamilies.length ? `<div class="section-label">使魔</div>${linkedFamiliesHtml}` : ''}
     ${unit.skins&&unit.skins.length ? `<div class="section-label">皮肤</div>${skinsHtml}` : ''}
+    ${evolutionItems.length ? `<div class="section-label">进化道具</div><div class="hint" style="margin:-6px 0 12px;">完成对应物品的任务线后可用于进化这个单位。</div>${evolutionItemsHtml}` : ''}
     <div class="section-label">攻击方式</div>
     ${attackOverviewBarHtml}
     ${attacksHtml}
@@ -3882,6 +3983,15 @@ function renderUnit(){
       render();
     });
   });
+  container.querySelectorAll('.shop-item-card[data-view="item"]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'item', id: card.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      render();
+    });
+  });
   container.querySelectorAll('[data-trait-id]').forEach(chip=>{
     chip.addEventListener('click', ()=> openTraitOverlay(chip.dataset.traitId));
   });
@@ -3902,6 +4012,7 @@ function renderItem(){
   const container = document.getElementById('mainInner');
   const item = state.items.find(i=>i.id===currentView.id);
   if(!item){ container.innerHTML = `<div class="empty-state"><h2>未找到该物品</h2></div>`; return; }
+  const evolvesUnit = item.evolvesUnitId ? state.units.find(u=>u.id===item.evolvesUnitId) : null;
 
   if(editMode){
     container.innerHTML = `
@@ -3933,6 +4044,18 @@ function renderItem(){
         <span class="edit-label">描述</span>
         <textarea class="edit-textarea" id="editDesc" placeholder="物品描述...">${escapeHtml(item.description||'')}</textarea>
       </div>
+      <div class="edit-field">
+        <span class="edit-label">任务线（可选，获得这个物品后需要完成的任务步骤）</span>
+        <textarea class="edit-textarea" id="editQuestline" placeholder="例如：&#10;1. 前往XX地图击败XX敌人&#10;2. 收集X个XX材料&#10;3. 找NPC提交任务&#10;完成后即可用于单位进化">${escapeHtml(item.questline||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
+        <select class="edit-select" id="editEvolvesUnit">
+          <option value="">不用于进化任何单位</option>
+          ${state.units.map(u=>`<option value="${u.id}" ${item.evolvesUnitId===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}
+        </select>
+      </div>
       <div class="save-bar">
         <button class="btn btn-danger" id="deleteBtn">删除物品</button>
       </div>
@@ -3961,6 +4084,8 @@ function renderItem(){
       item.image = pendingImage;
       item.rarity = document.getElementById('editRarity').value || null;
       item.description = document.getElementById('editDesc').value;
+      item.questline = document.getElementById('editQuestline').value;
+      item.evolvesUnitId = document.getElementById('editEvolvesUnit').value || '';
       item.updatedAt = Date.now();
       editMode = false;
       await saveData(false);
@@ -3988,7 +4113,20 @@ function renderItem(){
       <div class="meta-row">${rarityBadge(item.rarity)}</div>
     </div>
     <div class="content-body">${renderMarkdownLite(item.description) || '<p style="color:var(--text-faint);">暂无内容</p>'}</div>
+    ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderMarkdownLite(item.questline)}</div>` : ''}
+    ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
+      <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${evolvesUnit.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div><div class="shop-item-qty">🔄 进化道具</div></div>
+    </a>` : ''}
   `;
+  const evoCard = container.querySelector('.shop-item-card[data-view="unit"]');
+  if(evoCard) evoCard.addEventListener('click', (e)=>{
+    if(!isPlainLeftClick(e)) return;
+    e.preventDefault();
+    goToView({type:'unit', id: evoCard.dataset.id});
+    editMode=false; draftUnit=null; draftSimple=null;
+    render();
+  });
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; render(); });
   wireBackButton(container);
 }
@@ -4482,12 +4620,16 @@ function markCategoryEditRowHtml(cat, i){
   </div>`;
 }
 
-function markEditRowHtml(mark, i){
+function markEditRowHtml(mark, i, total){
   const iconHtml = mark.image ? `<img class="mark-icon-preview zoomable" src="${mark.image}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(mark.color||'');
   const colorPickerVal = isGradient ? '#c9a24b' : (mark.color||'#c9a24b');
   return `<div class="sub-card">
     <div class="mark-edit-row">
+      <div class="reorder-btns">
+        <button class="btn-icon-sm" data-settings-action="moveMarkUp" data-index="${i}" ${i===0?'disabled':''} title="上移">▲</button>
+        <button class="btn-icon-sm" data-settings-action="moveMarkDown" data-index="${i}" ${i===total-1?'disabled':''} title="下移">▼</button>
+      </div>
       ${iconHtml}
       <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="marks.${i}.image" style="display:none;"></label>
       <input class="edit-input" style="flex:3;min-width:180px;" data-settings-bind="marks.${i}.name" value="${escapeHtml(mark.name)}" placeholder="标记名称，如：灼烧">
@@ -4673,7 +4815,7 @@ function renderSettings(){
     `;
     return;
   }
-  const marksHtml = state.marks.length ? state.marks.map(markEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无标记</div>';
+  const marksHtml = state.marks.length ? state.marks.map((m,i)=>markEditRowHtml(m,i,state.marks.length)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无标记</div>';
   const markCategoriesHtml = state.markCategories.length ? state.markCategories.map(markCategoryEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无分类</div>';
   const obtainMethodsHtml = state.obtainMethods.length ? state.obtainMethods.map(obtainMethodEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无获取方式</div>';
   const attackTypesHtml = state.attackTypes.length ? state.attackTypes.map(attackTypeEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无攻击类型</div>';
@@ -4823,6 +4965,8 @@ function renderSettings(){
       const action = el.dataset.settingsAction;
       const idx = parseInt(el.dataset.index);
       if(action==='removeMark') state.marks.splice(idx,1);
+      else if(action==='moveMarkUp') moveArrayItem(state.marks, idx, -1);
+      else if(action==='moveMarkDown') moveArrayItem(state.marks, idx, 1);
       else if(action==='removeMarkCategory') state.markCategories.splice(idx,1);
       else if(action==='removeObtainMethod') state.obtainMethods.splice(idx,1);
       else if(action==='removeAttackType') state.attackTypes.splice(idx,1);
