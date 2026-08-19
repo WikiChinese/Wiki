@@ -349,6 +349,11 @@
   .shop-item-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:12.5px;color:var(--text);line-height:1.35;margin-bottom:5px;overflow-wrap:break-word;}
   .shop-item-qty{font-size:10.5px;color:var(--text-faint);margin-bottom:6px;}
   .shop-item-price{display:block;width:fit-content;margin:0 auto 11px;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11.5px;color:var(--gold);background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:20px;padding:3px 10px;white-space:nowrap;}
+  .evo-compare{display:flex;align-items:center;justify-content:center;gap:18px;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:14px;padding:22px;flex-wrap:wrap;}
+  .evo-compare-side{text-align:center;flex:1;min-width:140px;max-width:220px;}
+  .evo-compare-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;background:var(--card-hover);border:1px solid var(--border-light);}
+  .evo-compare-label{margin-top:9px;font-size:12.5px;font-weight:600;color:var(--text-dim);}
+  .evo-compare-arrow{font-size:24px;color:var(--gold-dim);flex-shrink:0;}
   .attack-section-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--gold-dim);font-weight:700;margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--border);}
   .attack-section-label:first-of-type{margin-top:2px;padding-top:0;border-top:none;}
   .comments-list{margin-bottom:16px;}
@@ -826,6 +831,7 @@ function migrateState(){
   state.items.forEach(it=>{
     if(it.questline===undefined) it.questline = '';
     if(it.evolvesUnitId===undefined) it.evolvesUnitId = '';
+    if(it.evolveQuantity===undefined) it.evolveQuantity = '';
     if(it.categoryId===undefined) it.categoryId = '';
   });
   if(!Array.isArray(state.itemCategories)){
@@ -975,6 +981,8 @@ function migrateState(){
     if(!Array.isArray(u.passives)) u.passives = u.passive ? [{id:uid(), name:'被动1', description:u.passive}] : [];
     if(u.placementLimit===undefined) u.placementLimit = '';
     if(u.isLimitedReturn===undefined) u.isLimitedReturn = false;
+    if(u.evolvedName===undefined) u.evolvedName = '';
+    if(u.evolvedImage===undefined) u.evolvedImage = '';
     if(u.englishName===undefined) u.englishName = '';
     if(!Array.isArray(u.comments)) u.comments = [];
     if(u.unitLv60===undefined) u.unitLv60 = (u.attacks && u.attacks[0] && u.attacks[0].unitLv60) || '';
@@ -3557,6 +3565,15 @@ function renderUnit(){
             ${draftUnit.shinyImage ? `<button class="btn btn-danger" data-image-remove="shinyImage" style="width:fit-content;">移除图片</button>` : ''}
           </div>
         </div>
+        <div class="hint" style="margin:12px 0 6px;">进化后图片（可选，用于「进化」板块的进化前/进化后对比）</div>
+        <input class="edit-input" data-bind="evolvedName" value="${escapeHtml(draftUnit.evolvedName||'')}" placeholder="进化后名称（可选，不填就沿用原名）" style="margin-bottom:8px;">
+        <div class="image-upload-box">
+          ${draftUnit.evolvedImage ? (isVideoUrl(draftUnit.evolvedImage) ? `<video class="image-preview zoomable" src="${draftUnit.evolvedImage}" autoplay loop muted playsinline></video>` : `<img class="image-preview zoomable" src="${draftUnit.evolvedImage}">`) : `<div class="image-placeholder">无图片</div>`}
+          <div class="upload-controls">
+            <label class="file-label">选择图片/视频<input type="file" accept="image/*,video/*" data-image-bind="evolvedImage" style="display:none;"></label>
+            ${draftUnit.evolvedImage ? `<button class="btn btn-danger" data-image-remove="evolvedImage" style="width:fit-content;">移除图片</button>` : ''}
+          </div>
+        </div>
       </div>
 
       <div class="edit-field">
@@ -3734,6 +3751,8 @@ function renderUnit(){
       unit.tags = (draftUnit.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
       unit.placementLimit = draftUnit.placementLimit || '';
       unit.isLimitedReturn = !!draftUnit.isLimitedReturn;
+      unit.evolvedName = draftUnit.evolvedName || '';
+      unit.evolvedImage = draftUnit.evolvedImage || '';
       unit.unitLv60 = draftUnit.unitLv60 || '';
       unit.trait = draftUnit.trait || '';
       unit.obtainWay = draftUnit.obtainWay || '';
@@ -3967,8 +3986,20 @@ function renderUnit(){
   const evolutionItemsHtml = evolutionItems.length ? `<div class="shop-item-grid">${evolutionItems.map(it=>`
     <a href="${viewToHash({type:'item', id:it.id})}" class="shop-item-card" data-view="item" data-id="${it.id}">
       <div class="shop-item-icon-wrap">${it.image ? `<img class="shop-item-icon" src="${it.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
-      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(it.name)}</div>${it.questline ? `<div class="shop-item-qty">📜 有任务线</div>` : ''}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(it.name)}</div>${it.evolveQuantity ? `<div class="shop-item-qty">${escapeHtml(it.evolveQuantity)}</div>` : ''}${it.questline ? `<div class="shop-item-qty">📜 有任务线</div>` : ''}</div>
     </a>`).join('')}</div>` : '';
+  const hasEvolution = !!unit.evolvedImage || evolutionItems.length>0;
+  const evolutionCompareHtml = unit.evolvedImage ? `<div class="evo-compare">
+    <div class="evo-compare-side">
+      ${unit.image ? (isVideoUrl(unit.image) ? `<video class="evo-compare-img zoomable" src="${unit.image}" autoplay loop muted playsinline></video>` : `<img class="evo-compare-img zoomable" src="${unit.image}">`) : `<div class="image-placeholder">无图片</div>`}
+      <div class="evo-compare-label">进化前 · ${escapeHtml(unit.name)}</div>
+    </div>
+    <div class="evo-compare-arrow">→</div>
+    <div class="evo-compare-side">
+      ${isVideoUrl(unit.evolvedImage) ? `<video class="evo-compare-img zoomable" src="${unit.evolvedImage}" autoplay loop muted playsinline></video>` : `<img class="evo-compare-img zoomable" src="${unit.evolvedImage}">`}
+      <div class="evo-compare-label">进化后 · ${escapeHtml(unit.evolvedName || unit.name)}</div>
+    </div>
+  </div>` : '';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -3993,7 +4024,7 @@ function renderUnit(){
     ${unit.linkedMemories&&unit.linkedMemories.length ? `<div class="section-label">记忆</div>${linkedMemoriesHtml}` : ''}
     ${unit.linkedFamilies&&unit.linkedFamilies.length ? `<div class="section-label">使魔</div>${linkedFamiliesHtml}` : ''}
     ${unit.skins&&unit.skins.length ? `<div class="section-label">皮肤</div>${skinsHtml}` : ''}
-    ${evolutionItems.length ? `<div class="section-label">进化道具</div><div class="hint" style="margin:-6px 0 12px;">完成对应物品的任务线后可用于进化这个单位。</div>${evolutionItemsHtml}` : ''}
+    ${hasEvolution ? `<div class="section-label">进化</div>${evolutionCompareHtml}${evolutionItems.length ? `<div class="hint" style="margin:${unit.evolvedImage?'14px':'-6px'} 0 12px;">需要以下材料，完成对应物品的任务线后即可进化：</div>${evolutionItemsHtml}` : ''}` : ''}
     <div class="section-label">攻击方式</div>
     ${attackOverviewBarHtml}
     ${attacksHtml}
@@ -4111,6 +4142,10 @@ function renderItem(){
           ${state.units.map(u=>`<option value="${u.id}" ${item.evolvesUnitId===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}
         </select>
       </div>
+      <div class="edit-field">
+        <span class="edit-label">进化所需数量（可选，比如需要3个这个物品）</span>
+        <input class="edit-input" id="editEvolveQuantity" value="${escapeHtml(item.evolveQuantity||'')}" placeholder="例如：x3">
+      </div>
       <div class="save-bar">
         <button class="btn btn-danger" id="deleteBtn">删除物品</button>
       </div>
@@ -4142,6 +4177,7 @@ function renderItem(){
       item.description = document.getElementById('editDesc').value;
       item.questline = document.getElementById('editQuestline').value;
       item.evolvesUnitId = document.getElementById('editEvolvesUnit').value || '';
+      item.evolveQuantity = document.getElementById('editEvolveQuantity').value || '';
       item.updatedAt = Date.now();
       editMode = false;
       await saveData(false);
@@ -4172,7 +4208,7 @@ function renderItem(){
     ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderMarkdownLite(item.questline)}</div>` : ''}
     ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
       <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${evolvesUnit.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
-      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div><div class="shop-item-qty">🔄 进化道具</div></div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${escapeHtml(item.evolveQuantity)}</div>` : ''}</div>
     </a>` : ''}
   `;
   const evoCard = container.querySelector('.shop-item-card[data-view="unit"]');
