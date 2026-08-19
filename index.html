@@ -681,6 +681,12 @@ function wireComments(container){
 function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 
+function handleGalleryImgError(imgEl){
+  const placeholder = document.createElement('div');
+  placeholder.className = 'gallery-card-placeholder';
+  placeholder.textContent = '⚠️ 图片加载失败';
+  imgEl.replaceWith(placeholder);
+}
 function moveArrayItem(arr, index, delta){
   const target = index + delta;
   if(target<0 || target>=arr.length) return;
@@ -4264,7 +4270,7 @@ function renderGallery(type){
   function cardHtml(entity){
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${isAdmin ? ' draggable="true"' : ''}>
       <div class="gallery-card-img-wrap">
-        ${entity.image ? `<img class="gallery-card-img" src="${entity.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${entity.image ? `<img class="gallery-card-img" src="${entity.image}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
       <div class="gallery-card-name">${escapeHtml(entity.name)}</div>
