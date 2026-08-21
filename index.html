@@ -878,6 +878,7 @@ function migrateState(){
         if(it.price===undefined) it.price='';
         if(it.quantity===undefined) it.quantity='';
       });
+      if(!Array.isArray(lv.mechanics)) lv.mechanics=[];
     });
   });
   if(!Array.isArray(state.upgrades)) state.upgrades = [];
@@ -1230,14 +1231,20 @@ function renderStagePage(){
     return;
   }
 
-  const levelsHtml = stage.levels.length ? stage.levels.map(lv=>`
+  const levelsHtml = stage.levels.length ? stage.levels.map(lv=>{
+    const hints = [];
+    if(lv.mechanics && lv.mechanics.length) hints.push(`☠️ ${lv.mechanics.length} 个机制`);
+    if(lv.shop && lv.shop.length) hints.push(`🛒 商店 · ${lv.shop.length} 件商品`);
+    const descText = hints.length ? hints.join(' · ') : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
+    return `
     <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id+'__'+lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
       ${lv.image ? `<img class="skill-image" src="${lv.image}">` : ''}
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
-        <div class="floor-card-desc">${(lv.shop&&lv.shop.length) ? `🛒 商店 · ${lv.shop.length} 件商品` : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>')}</div>
+        <div class="floor-card-desc">${descText}</div>
       </div>
-    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
+    </a>`;
+  }).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -1341,6 +1348,7 @@ function renderStageLevelPage(){
   if(editMode){
     if(!draftStageLevel) draftStageLevel = JSON.parse(JSON.stringify(level));
     if(!Array.isArray(draftStageLevel.shop)) draftStageLevel.shop = [];
+    if(!Array.isArray(draftStageLevel.mechanics)) draftStageLevel.mechanics = [];
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑关卡 · ${escapeHtml(stage.name)}</div>
@@ -1367,6 +1375,13 @@ function renderStageLevelPage(){
         <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
       </div>
       <div class="edit-field">
+        <span class="edit-label">敌方机制</span>
+        <div class="hint" style="margin-bottom:8px;">这一关的敌人可能带有的特殊机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
+        <div class="mark-row-list">
+          ${state.enemyMechanics.length ? state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStageLevel.mechanics.includes(m.id))).join('') : '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>'}
+        </div>
+      </div>
+      <div class="edit-field">
         <span class="edit-label">商店</span>
         <div class="hint" style="margin-bottom:10px;">这一关商店里能买到的东西，比如限定道具、装备。</div>
         ${draftStageLevel.shop.map((it,i)=>shopItemEditRowHtml(it,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无商品</div>'}
@@ -1388,6 +1403,7 @@ function renderStageLevelPage(){
       level.image = draftStageLevel.image || '';
       level.description = draftStageLevel.description || '';
       level.shop = draftStageLevel.shop || [];
+      level.mechanics = draftStageLevel.mechanics || [];
       editMode = false; draftStageLevel = null;
       await saveData(false);
       render();
@@ -1437,13 +1453,21 @@ function renderStageLevelPage(){
     </a>`;
   }).join('')}</div>` : '<div class="empty-hint" style="padding-left:0;">这一关暂时没有商店商品。</div>';
 
+  const levelMechanicsHtml = (level.mechanics&&level.mechanics.length) ? level.mechanics.map(mid=>{
+    const m = state.enemyMechanics.find(x=>x.id===mid);
+    if(!m) return '';
+    const icon = m.image ? `<img src="${m.image}">` : '';
+    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
+  }).join('') : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(level.name)}</div>
       <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${level.image ? `<img class="unit-image zoomable" src="${level.image}">` : ''}
-    <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(level.name)}</h1>
+    <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(level.name)}</h1>
+    ${levelMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${levelMechanicsHtml}</div>` : ''}
     <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">商店</div>
     ${shopHtml}
@@ -3376,6 +3400,12 @@ function handleDraftAction(ds, draft){
     const i = draft.marks.indexOf(markId);
     if(i>=0) draft.marks.splice(i,1); else draft.marks.push(markId);
   }
+  else if(action==='toggleLevelMechanic'){
+    const mechId = ds.mechanicId;
+    if(!Array.isArray(draft.mechanics)) draft.mechanics = [];
+    const i = draft.mechanics.indexOf(mechId);
+    if(i>=0) draft.mechanics.splice(i,1); else draft.mechanics.push(mechId);
+  }
   else if(action==='selectGroup'){
     const gid = ds.groupId;
     if(!Array.isArray(draft.groups)) draft.groups = [];
@@ -3453,6 +3483,11 @@ function handleDraftAction(ds, draft){
 function markToggleHtml(mark, isActive){
   const icon = mark.image ? `<img src="${mark.image}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mark.color, isActive)}" data-action="toggleMark" data-mark-id="${mark.id}" title="${escapeHtml(mark.description||mark.name)}">${icon}${escapeHtml(mark.name)}</button>`;
+}
+
+function enemyMechanicToggleHtml(mech, isActive){
+  const icon = mech.image ? `<img src="${mech.image}">` : '';
+  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
 }
 
 function groupToggleHtml(group, isActive){
