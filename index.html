@@ -405,6 +405,18 @@
   .mark-quickadd .edit-input{width:auto;flex:1;min-width:160px;}
 
   .settings-block{margin-bottom:36px;}
+  .collapsible-toggle{cursor:pointer;display:flex;align-items:center;justify-content:space-between;user-select:none;}
+  .collapsible-toggle:hover{color:var(--gold);}
+  .collapsible-arrow{font-size:11px;color:var(--text-faint);transition:transform .15s, color .15s;flex-shrink:0;margin-left:10px;}
+  .collapsible-toggle:hover .collapsible-arrow{color:var(--gold);}
+  .collapsible-content{display:none;margin-top:14px;}
+  .open > .collapsible-content{display:block;}
+  .open > .collapsible-toggle .collapsible-arrow{transform:rotate(90deg);}
+  summary.section-label{cursor:pointer;list-style:none;user-select:none;}
+  summary.section-label::-webkit-details-marker{display:none;}
+  summary.section-label::after{content:'▸';margin-left:auto;font-size:11px;color:var(--text-faint);transition:transform .15s;}
+  summary.section-label:hover::after{color:var(--gold);}
+  details.settings-block[open] > summary.section-label::after{transform:rotate(90deg);}
   .mark-edit-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px;}
   .reorder-btns{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
   .btn-icon-sm{width:22px;height:18px;background:var(--card-hover);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;font-size:9px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
@@ -521,6 +533,31 @@ let viewHistory = [];
 let traitPreviewOverrides = {};
 let openPickerKeys = new Set();
 let openRaritySections = new Set();
+let closedCollapsibleBlocks = new Set();
+
+function wireCollapsibleBlocks(container, blockSelector, keyPrefix){
+  container.querySelectorAll(blockSelector).forEach((block, i)=>{
+    if(block.dataset.collapsibleWired || block.tagName==='DETAILS') return;
+    const label = block.querySelector(':scope > .section-label');
+    if(!label) return;
+    block.dataset.collapsibleWired = '1';
+    const key = keyPrefix + '-' + i;
+    label.classList.add('collapsible-toggle');
+    const arrow = document.createElement('span');
+    arrow.className = 'collapsible-arrow';
+    arrow.textContent = '▸';
+    label.appendChild(arrow);
+    const contentWrap = document.createElement('div');
+    contentWrap.className = 'collapsible-content';
+    Array.from(block.children).filter(c=>c!==label && c!==contentWrap).forEach(el=> contentWrap.appendChild(el));
+    block.appendChild(contentWrap);
+    if(!closedCollapsibleBlocks.has(key)) block.classList.add('open');
+    label.addEventListener('click', ()=>{
+      const nowOpen = block.classList.toggle('open');
+      if(nowOpen) closedCollapsibleBlocks.delete(key); else closedCollapsibleBlocks.add(key);
+    });
+  });
+}
 function wirePickerToggles(container){
   container.querySelectorAll('details.entity-picker[data-picker-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
@@ -867,6 +904,7 @@ function migrateState(){
   state.stages.forEach(s=>{
     if(s.image===undefined) s.image = '';
     if(s.description===undefined) s.description = '';
+    if(!Array.isArray(s.mechanics)) s.mechanics = [];
     if(!Array.isArray(s.levels)) s.levels = [];
     s.levels.forEach(lv=>{
       if(lv.image===undefined) lv.image='';
@@ -1177,6 +1215,7 @@ function renderStagePage(){
 
   if(editMode){
     if(!draftStage) draftStage = JSON.parse(JSON.stringify(stage));
+    if(!Array.isArray(draftStage.mechanics)) draftStage.mechanics = [];
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑关卡分类</div>
@@ -1203,6 +1242,13 @@ function renderStagePage(){
         <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
       </div>
       <div class="edit-field">
+        <span class="edit-label">敌方机制</span>
+        <div class="hint" style="margin-bottom:8px;">整个关卡分类（比如这个地下城）普遍会遇到的敌方机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
+        <div class="mark-row-list">
+          ${state.enemyMechanics.length ? state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStage.mechanics.includes(m.id))).join('') : '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>'}
+        </div>
+      </div>
+      <div class="edit-field">
         <span class="edit-label">关卡 (每一关)</span>
         <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除、拖动排序。每一关详细的说明和商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
         ${draftStage.levels.map((lv,i)=>stageLevelListEditRowHtml(lv,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
@@ -1215,6 +1261,7 @@ function renderStagePage(){
       stage.name = (draftStage.name||'').trim() || '未命名关卡';
       stage.image = draftStage.image || '';
       stage.description = draftStage.description || '';
+      stage.mechanics = draftStage.mechanics || [];
       stage.levels = draftStage.levels || [];
       editMode = false; draftStage = null;
       await saveData(false);
@@ -1246,13 +1293,21 @@ function renderStagePage(){
     </a>`;
   }).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
 
+  const stageMechanicsHtml = (stage.mechanics&&stage.mechanics.length) ? stage.mechanics.map(mid=>{
+    const m = state.enemyMechanics.find(x=>x.id===mid);
+    if(!m) return '';
+    const icon = m.image ? `<img src="${m.image}">` : '';
+    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
+  }).join('') : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">关卡</div>
       <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${stage.image ? `<img class="unit-image zoomable" src="${stage.image}">` : ''}
-    <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(stage.name)}</h1>
+    <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
+    ${stageMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${stageMechanicsHtml}</div>` : ''}
     <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">关卡列表</div>
     ${isAdmin && stage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击关卡进入详情页；按住卡片拖动可以调整关卡顺序。</div>` : ''}
@@ -2628,6 +2683,7 @@ function renderStatusEffects(){
   `;
   const goBtn = document.getElementById('goToMarkSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  wireCollapsibleBlocks(container, '.status-effect-category-group', 'statusEffects');
 }
 
 function renderAttackTypes(){
@@ -2707,13 +2763,17 @@ function renderEnemyMechanics(){
         <div class="toolbar-actions"><button class="btn btn-gold" id="doneEditEnemyMechanicsBtn">✓ 完成编辑</button></div>
       </div>
       <div class="hint" style="margin:-6px 0 16px;">编辑敌人可能带有的特殊机制，例如护盾、免疫控制、狂暴、召唤小怪等。改动会自动保存。</div>
-      <div class="section-label" style="margin-top:0;">机制分类</div>
-      <div class="hint" style="margin-bottom:12px;">管理机制的分类，比如护盾类、召唤类、控制类，可以自由新增/改名/删除。设置好之后，下面每个机制可以选择归入哪个分类，「敌方机制」页面会按分类分组显示。</div>
-      <div id="enemyMechanicCategoriesList">${catRowsHtml}</div>
-      <button class="btn" id="addEnemyMechanicCategoryBtn" style="margin-bottom:20px;">+ 新增分类</button>
-      <div class="section-label">机制列表</div>
-      <div id="enemyMechanicsList">${rowsHtml}</div>
-      <button class="btn btn-gold" id="addEnemyMechanicBtn">+ 新增机制</button>
+      <details class="settings-block">
+        <summary class="section-label" style="margin-top:0;">机制分类</summary>
+        <div class="hint" style="margin-bottom:12px;">管理机制的分类，比如护盾类、召唤类、控制类，可以自由新增/改名/删除。设置好之后，下面每个机制可以选择归入哪个分类，「敌方机制」页面会按分类分组显示。</div>
+        <div id="enemyMechanicCategoriesList">${catRowsHtml}</div>
+        <button class="btn" id="addEnemyMechanicCategoryBtn">+ 新增分类</button>
+      </details>
+      <details class="settings-block" open>
+        <summary class="section-label">机制列表</summary>
+        <div id="enemyMechanicsList">${rowsHtml}</div>
+        <button class="btn btn-gold" id="addEnemyMechanicBtn">+ 新增机制</button>
+      </details>
     `;
     const doneBtn = document.getElementById('doneEditEnemyMechanicsBtn');
     if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingEnemyMechanics = false; renderEnemyMechanics(); });
@@ -2773,6 +2833,7 @@ function renderEnemyMechanics(){
   `;
   const editBtn = document.getElementById('editEnemyMechanicsBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingEnemyMechanics = true; renderEnemyMechanics(); });
+  wireCollapsibleBlocks(container, '.status-effect-category-group', 'enemyMechanics');
 }
 
 function wireEnemyMechanicsForm(container){
@@ -4933,8 +4994,8 @@ function dbSizeReportHtml(){
   const pct = Math.min(100, Math.round((worstBytes/limitBytes)*100));
   const barColor = pct >= 90 ? '#e05555' : (pct >= 70 ? '#c9a24b' : 'var(--teal)');
 
-  return `<div class="settings-block">
-    <div class="section-label" style="margin-top:0;">数据库大小</div>
+  return `<details class="settings-block" open>
+    <summary class="section-label" style="margin-top:0;">数据库大小</summary>
     <div class="hint" style="margin-bottom:10px;">现在的存储方式是：每个单位/物品/使魔/记忆各自存成一份独立文档；更新日志、状态标记、特性、稀有度、获取方式、分级榜、Odyssey模式等也都<b>各自单独存成一份文档</b>，互不共用额度。以后新增的功能，也会照这个规则各自拆开存。Firestore 对<b>单个文档</b>的1MB上限还在，但现在是分开算的——只有"某一份具体的文档自己"异常庞大，才会撑到上限，不会因为整体内容变多就全部一起炸掉。</div>
     <div style="background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden;height:10px;margin-bottom:8px;">
       <div style="width:${pct}%;height:100%;background:${barColor};"></div>
@@ -4944,7 +5005,7 @@ function dbSizeReportHtml(){
       占用最多的设置类文档：${biggestMeta.key||'（暂无）'} ${biggestMeta.bytes?`(${(biggestMeta.bytes/1024).toFixed(1)} KB)`:''}　|　占用最多的单条数据：${biggest.label?`${escapeHtml(biggest.label)}「${escapeHtml(biggest.name)}」`:'（暂无）'} ${biggest.bytes?`(${(biggest.bytes/1024).toFixed(1)} KB)`:''}
     </div>
     ${pct>=85 ? `<div class="hint" style="color:#e05555;margin-bottom:12px;">⚠️ 上面提到的这份文档快满了，去检查一下它是不是有图片/视频没走Cloudinary直接存进来了。</div>` : ''}
-  </div>`;
+  </details>`;
 }
 
 function renderSettings(){
@@ -5019,90 +5080,90 @@ function renderSettings(){
 
     ${dbSizeReportHtml()}
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">数据恢复</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">数据恢复</summary>
       <div class="hint" style="margin-bottom:14px;">如果单位/物品/使魔/记忆显示为0，但你确定以前有数据，点这个按钮可以从最早的旧版备份数据（<code>wiki/data</code>）强制重新读取并覆盖保存一次。这不会删除任何东西，只是重新同步。</div>
       <button class="btn" id="recoverFromLegacyBtn">🔄 从旧版数据强制恢复</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">限定复刻单位管理</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">限定复刻单位管理</summary>
       <div class="hint" style="margin-bottom:14px;">这里汇总了所有被标记为「限定复刻」的单位。活动结束后，不用一个个进单位页面取消，勾选想取消的单位，点下面的按钮批量取消标记。</div>
       ${limitedReturnUnitsHtml}
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">状态标记分类</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">状态标记分类</summary>
       <div class="hint" style="margin-bottom:14px;">管理状态标记的分类，例如持续伤害（DOT）、控制（CC）、增伤（Damage Amplification），可以自由新增/改名/删除。设置好分类后，下面「状态标记」里每个标记可以选择归入哪个分类，「状态标记」页面会按分类分组显示。</div>
       <div id="markCategoriesList">${markCategoriesHtml}</div>
       <button class="btn btn-gold" id="addMarkCategoryBtn">+ 新增分类</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">物品分类</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">物品分类</summary>
       <div class="hint" style="margin-bottom:14px;">管理物品的分类，例如表情（Emote）、普通物品（Item）、进化道具（Evo Item），可以自由新增/改名/删除。设置好分类后，编辑物品时可以选择归入哪个分类。</div>
       <div id="itemCategoriesList">${itemCategoriesHtml}</div>
       <button class="btn btn-gold" id="addItemCategoryBtn">+ 新增分类</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">状态标记</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">状态标记</summary>
       <div class="hint" style="margin-bottom:14px;">管理可用于单位的状态效果标记，例如持续伤害（DOT）、灼烧、流血等。每个标记可以上传一个小图标，选择所属分类，编辑单位时可以勾选添加。</div>
       <div id="marksList">${marksHtml}</div>
       <button class="btn btn-gold" id="addMarkBtn">+ 新增标记</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">获取方式</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">获取方式</summary>
       <div class="hint" style="margin-bottom:14px;">管理可选的获取方式标签，例如 Raids、Story Stage、常驻招募、限时活动。编辑单位/使魔/记忆时，可以点开列表勾选（可多选），不用再手打文字。</div>
       <div id="obtainMethodsList">${obtainMethodsHtml}</div>
       <button class="btn btn-gold" id="addObtainMethodBtn">+ 新增获取方式</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">攻击类型</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">攻击类型</summary>
       <div class="hint" style="margin-bottom:14px;">管理攻击方式可以选择的攻击类型，例如 AOE、CONE（扇形）、半圆。编辑单位攻击方式时可以直接选，不用手打文字；左侧栏的「攻击类型」页面会把每个类型的说明列出来给大家查阅。</div>
       <div id="attackTypesList">${attackTypesHtml}</div>
       <button class="btn btn-gold" id="addAttackTypeBtn">+ 新增攻击类型</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">分组</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">分组</summary>
       <div class="hint" style="margin-bottom:14px;">管理单位所属的分组，例如忍者、骑士、女巫。每个分组可以上传一个小图标，编辑单位时可以选择所属分组。</div>
       <div id="groupsList">${groupsHtml}</div>
       <button class="btn btn-gold" id="addGroupBtn">+ 新增分组</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">元素</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">元素</summary>
       <div class="hint" style="margin-bottom:14px;">管理单位的元素属性，例如火、水、风、雷等。编辑单位时可以在稀有度下方选择所属元素。</div>
       <div id="elementsList">${elementsHtml}</div>
       <button class="btn btn-gold" id="addElementBtn">+ 新增元素</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">系列 / 活动</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">系列 / 活动</summary>
       <div class="hint" style="margin-bottom:14px;">管理皮肤所属的系列或活动分类，例如夏日、冬日、周年庆、春季等。编辑皮肤时可以选择所属系列。</div>
       <div id="seriesList">${seriesHtml}</div>
       <button class="btn btn-gold" id="addSeriesBtn">+ 新增系列</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">稀有度</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">稀有度</summary>
       <div class="hint" style="margin-bottom:14px;">管理稀有度名称和颜色，会应用到整个图鉴中的标签与列表标记。颜色支持渐变（比如神话稀有度），在后面的文本框粘贴 CSS 渐变即可。</div>
       <div id="rarityColorList">${rarityRowsHtml}</div>
       <button class="btn btn-gold" id="addRarityBtn">+ 新增稀有度</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">特性</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">特性</summary>
       <div class="hint" style="margin-bottom:14px;">管理单位可以挂载的特性（比如 Monarch、Ethereal、Solar），每个特性可以填写概率、保底、简介、数值加成，以及一个可选的对照表。在单位编辑页「攻击方式」上方选好特性后，会自动应用到这个单位<b>所有</b>攻击方式的伤害/范围/攻速上；浏览页面点击特性标签就能弹出这里填写的详细数值。</div>
       <div id="traitsList">${traitsHtml}</div>
       <button class="btn btn-gold" id="addTraitBtn">+ 新增特性</button>
-    </div>
+    </details>
 
-    <div class="settings-block">
-      <div class="section-label" style="margin-top:0;">管理员账号</div>
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">管理员账号</summary>
       <div class="hint" style="margin-bottom:14px;">
         浏览网站本来就不需要账号，任何人拿到链接都能直接查看。<br>
         这里管理的是"哪些登录账号算管理员（可以编辑）"：每行填一个邮箱。你可以先去 Firebase 控制台的 Authentication 里新建一个账号给别人用，只要那个账号的邮箱<b>不在</b>下面的名单里，对方登录后就只能查看，看不到任何编辑按钮，等于一个"普通账号"。<br>
@@ -5110,7 +5171,7 @@ function renderSettings(){
       </div>
       <textarea class="edit-input" id="adminEmailsTextarea" rows="4" placeholder="admin@example.com&#10;another-admin@example.com">${escapeHtml((state.adminEmails||[]).join('\n'))}</textarea>
       <div class="hint" style="margin-top:6px;">当前登录账号：${isAdmin ? (auth&&auth.currentUser?escapeHtml(auth.currentUser.email):'（未知）') : '未登录'}</div>
-    </div>
+    </details>
   `;
 
   const adminEmailsTextarea = document.getElementById('adminEmailsTextarea');
@@ -5282,6 +5343,7 @@ function renderSettings(){
       renderSettings();
     });
   });
+  wireCollapsibleBlocks(container, '.settings-block', 'settings');
 }
 
 function render(){
