@@ -1314,7 +1314,7 @@ function renderStagePage(){
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">关卡</div>
-      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${stage.image ? `<img class="unit-image zoomable" src="${stage.image}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
@@ -1326,6 +1326,7 @@ function renderStagePage(){
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStage=null; render(); });
+  wireBackButton(container);
 
   const listEl = document.getElementById('stageLevelsList');
   listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
@@ -1531,7 +1532,7 @@ function renderStageLevelPage(){
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(level.name)}</div>
-      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${level.image ? `<img class="unit-image zoomable" src="${level.image}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(level.name)}</h1>
@@ -1542,6 +1543,7 @@ function renderStageLevelPage(){
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStageLevel=null; render(); });
+  wireBackButton(container);
   container.querySelectorAll('.shop-item-card[data-view]').forEach(card=>{
     card.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
@@ -1559,6 +1561,7 @@ function renderStageLevelPage(){
     editMode=false; draftStage=null; draftStageLevel=null;
     render();
   });
+  wireBackButton(container);
 }
 
 
@@ -1635,7 +1638,7 @@ function renderUpgradePage(){
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">升级</div>
-      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${upgrade.image ? `<img class="unit-image zoomable" src="${upgrade.image}">` : ''}
     <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(upgrade.name)}</h1>
@@ -1646,6 +1649,7 @@ function renderUpgradePage(){
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftUpgrade=null; render(); });
+  wireBackButton(container);
 
   if(isAdmin){
     const listEl = document.getElementById('upgradeLevelsList');
@@ -1693,13 +1697,14 @@ function renderTraitsPage(){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">特性</h1>
-      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="goToTraitSettingsBtn">去设置页管理</button></div>` : ''}
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToTraitSettingsBtn">去设置页管理</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了所有特性的完整信息（简介、数值加成、对照表）。以后想改某个特性的说明或数值，去「设置」页面改，这里会自动同步显示最新内容。</div>
     <div class="trait-page-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToTraitSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  wireBackButton(container);
 }
 
 function openTraitOverlay(traitId){
@@ -2540,6 +2545,7 @@ function renderHome(){
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">更新日志</h1>
       <div class="toolbar-actions">
+        ${backButtonHtml()}
         ${isAdmin ? `
         <button class="btn" id="addUnitHomeBtn">+ 新增单位</button>
         <button class="btn" id="addItemHomeBtn">+ 新增物品</button>
@@ -2652,6 +2658,7 @@ function renderHome(){
       render();
     });
   });
+  wireBackButton(container);
 }
 
 function renderStatusEffects(){
@@ -2689,7 +2696,7 @@ function renderStatusEffects(){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">状态标记</h1>
-      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="goToMarkSettingsBtn">去设置页管理</button></div>` : ''}
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToMarkSettingsBtn">去设置页管理</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了所有单位可能带有的状态效果标记，方便查阅每种标记具体是什么效果。</div>
     ${cardsHtml}
@@ -2697,6 +2704,7 @@ function renderStatusEffects(){
   const goBtn = document.getElementById('goToMarkSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
   wireCollapsibleBlocks(container, '.status-effect-category-group', 'statusEffects');
+  wireBackButton(container);
 }
 
 function renderAttackTypes(){
@@ -2713,13 +2721,14 @@ function renderAttackTypes(){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">攻击类型</h1>
-      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="goToAttackTypeSettingsBtn">去设置页管理</button></div>` : ''}
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToAttackTypeSettingsBtn">去设置页管理</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了单位攻击方式可能用到的攻击类型（比如 AOE、CONE、半圆），方便查阅每种类型具体是什么形状/范围。</div>
     <div class="status-effect-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToAttackTypeSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  wireBackButton(container);
 }
 
 let editingEnemyMechanics = false;
@@ -2839,7 +2848,7 @@ function renderEnemyMechanics(){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">敌方机制</h1>
-      ${isAdmin ? `<div class="toolbar-actions"><button class="btn" id="editEnemyMechanicsBtn">编辑</button></div>` : ''}
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editEnemyMechanicsBtn">编辑</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了敌人可能带有的特殊机制，比如护盾、免疫控制、狂暴、召唤小怪等，方便查阅每种机制具体是什么效果、该怎么应对。</div>
     ${cardsHtml}
@@ -2847,6 +2856,7 @@ function renderEnemyMechanics(){
   const editBtn = document.getElementById('editEnemyMechanicsBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingEnemyMechanics = true; renderEnemyMechanics(); });
   wireCollapsibleBlocks(container, '.status-effect-category-group', 'enemyMechanics');
+  wireBackButton(container);
 }
 
 function wireEnemyMechanicsForm(container){
@@ -3065,7 +3075,7 @@ function renderOdyssey(){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">Odyssey 模式</h1>
-      ${isAdmin ? '<div class="toolbar-actions"><button class="btn" id="editBtn">编辑</button></div>' : ''}
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     <div class="content-body">${renderMarkdownLite(od.intro) || '<p style="color:var(--text-faint);">暂无介绍</p>'}</div>
     <div class="section-label">楼层 (Floor)</div>
@@ -3080,6 +3090,7 @@ function renderOdyssey(){
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftOdyssey=null; render(); });
+  wireBackButton(container);
   container.querySelectorAll('.gallery-card').forEach(card=>{
     card.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
@@ -3128,11 +3139,12 @@ function renderTierlist(){
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">分级榜</div>
-      <div class="toolbar-actions">${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : '<span class="view-only-note" style="margin:0;padding:6px 12px;">仅查看</span>'}</div>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : '<span class="view-only-note" style="margin:0;padding:6px 12px;">仅查看</span>'}</div>
     </div>
     <div class="content-body">${renderMarkdownLite(state.tierlist.content)}</div>
   `;
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; render(); });
+  wireBackButton(container);
 }
 
 async function duplicateUnit(unitId){
@@ -4462,7 +4474,7 @@ function renderGallery(type){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">${cfg.label}</h1>
-      ${isAdmin ? `<div class="toolbar-actions"><button class="btn btn-gold" id="galleryAddBtn">+ 新增${cfg.label}</button></div>` : ''}
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? `<button class="btn btn-gold" id="galleryAddBtn">+ 新增${cfg.label}</button>` : ''}</div>
     </div>
     ${list.length>1 ? `<div class="gallery-search-bar"><span class="gallery-search-icon">🔍</span><input type="text" id="gallerySearchInput" class="gallery-search-input" placeholder="搜索${cfg.label}名称..."></div>` : ''}
     ${categoryFilterHtml}
@@ -4474,6 +4486,7 @@ function renderGallery(type){
 
   const addBtn = document.getElementById('galleryAddBtn');
   if(addBtn) addBtn.addEventListener('click', ()=> document.getElementById(cfg.addBtnId).click());
+  wireBackButton(container);
 
   container.querySelectorAll('details.rarity-section[data-rarity-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
@@ -5113,7 +5126,7 @@ function renderSettings(){
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">设置</h1>
-      <div class="toolbar-actions"><button class="btn btn-gold" id="settingsSaveBtn">💾 保存</button></div>
+      <div class="toolbar-actions">${backButtonHtml()}<button class="btn btn-gold" id="settingsSaveBtn">💾 保存</button></div>
     </div>
 
     ${dbSizeReportHtml()}
@@ -5382,6 +5395,7 @@ function renderSettings(){
     });
   });
   wireCollapsibleBlocks(container, '.settings-block', 'settings');
+  wireBackButton(container);
 }
 
 function render(){
