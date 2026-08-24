@@ -3806,7 +3806,13 @@ function renderUnit(){
 
       <div class="edit-field">
         <span class="edit-label">4. 技能 / 能力</span>
-        ${draftUnit.skills.map(skillCardHtml).join('') || '<div class="empty-hint" style="padding-left:0;">暂无技能</div>'}
+        ${draftUnit.skills.length ? `
+        <div class="skill-tab-row">
+          ${draftUnit.skills.map((s,i)=>`<button type="button" class="skill-tab ${i===0?'active':''}" data-skill-edit-tab="${i}">${escapeHtml(s.name||'未命名技能')}</button>`).join('')}
+        </div>
+        <div class="skill-tab-panels">
+          ${draftUnit.skills.map((s,i)=>`<div class="skill-tab-panel ${i===0?'active':''}" data-skill-edit-panel="${i}">${skillCardHtml(s,i)}</div>`).join('')}
+        </div>` : '<div class="empty-hint" style="padding-left:0;">暂无技能</div>'}
         <button class="btn btn-gold" data-action="addSkill">+ 新增技能</button>
       </div>
 
@@ -3902,6 +3908,13 @@ function renderUnit(){
 
     wireDraftForm(container);
     wirePickerToggles(container);
+    container.querySelectorAll('.skill-tab[data-skill-edit-tab]').forEach(tab=>{
+      tab.addEventListener('click', ()=>{
+        const idx = tab.dataset.skillEditTab;
+        container.querySelectorAll('.skill-tab[data-skill-edit-tab]').forEach(t=> t.classList.toggle('active', t===tab));
+        container.querySelectorAll('.skill-tab-panel[data-skill-edit-panel]').forEach(p=> p.classList.toggle('active', p.dataset.skillEditPanel===idx));
+      });
+    });
 
     let pendingNewMarkImage = '';
     const newMarkImageInput = document.getElementById('newMarkImageInput');
