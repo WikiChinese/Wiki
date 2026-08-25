@@ -220,6 +220,11 @@
   .skill-tab-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 0 1.5px rgba(255,255,255,.5);}
   .skill-tab-panel{display:none;}
   .skill-tab-panel.active{display:block;}
+  .skill-menu-header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--gold-dim);border-radius:10px 10px 0 0;padding:12px 16px;margin-bottom:0;}
+  .skill-menu-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:16px;color:var(--text);}
+  .skill-menu-cost{margin-left:auto;font-family:'JetBrains Mono',monospace;font-weight:700;font-size:13px;color:var(--gold);background:rgba(201,162,75,.1);border:1px solid var(--gold-dim);border-radius:20px;padding:3px 11px;white-space:nowrap;}
+  .skill-menu-effect-label{font-size:10px;text-transform:uppercase;letter-spacing:.09em;color:var(--gold-dim);font-weight:600;margin-bottom:6px;}
+  .skill-tab-panel .skill-view{border-radius:0 0 10px 10px;border-top:none;margin-top:0;}
   .skill-view-media-stack{display:flex;flex-direction:column;gap:12px;flex-shrink:0;}
   .skill-image{width:120px;height:120px;border-radius:10px;object-fit:cover;flex-shrink:0;background:var(--card-hover);}
   .skin-showcase{display:flex;flex-wrap:wrap;gap:14px;}
@@ -434,6 +439,8 @@
   summary.section-label::after{content:'▸';margin-left:auto;font-size:11px;color:var(--text-faint);transition:transform .15s;}
   summary.section-label:hover::after{color:var(--gold);}
   details.settings-block[open] > summary.section-label::after{transform:rotate(90deg);}
+  .group-field-details[open] > summary .group-toggle-arrow{transform:rotate(90deg);}
+  .group-toggle-arrow{transition:transform .15s;}
   .mark-edit-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px;}
   .reorder-btns{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}
   .btn-icon-sm{width:22px;height:18px;background:var(--card-hover);border:1px solid var(--border);color:var(--text-dim);border-radius:4px;font-size:9px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
@@ -605,6 +612,7 @@ let draftUnit = null;
 let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
+let itemEditEvolvesUnitId = '';
 let draftUpgrade = null;
 let draftStageLevel = null;
 let showingShinyImage = false;
@@ -2444,11 +2452,16 @@ function exclusiveTargetPickerHtml(selectedArr, fieldName){
   const remainingElements = state.elements.filter(e=>!selected.includes('element:'+e.id));
   const key = 'target-'+fieldName;
   const isOpen = openPickerKeys.has(key);
+  const searchHtml = (remainingUnits.length+remainingElements.length)>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位/元素名称（中文/英文均可）...">` : '';
   const pickerHtml = (remainingUnits.length || remainingElements.length) ? `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
     <summary class="btn btn-gold">+ 选择单位/元素</summary>
     <div class="entity-picker-list">
-      ${remainingUnits.map(u=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="unit:${u.id}">${u.image?`<img src="${u.image}">`:''}${escapeHtml(u.name)}</button>`).join('')}
-      ${remainingElements.map(e=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="element:${e.id}">${e.image?`<img src="${e.image}">`:''}${escapeHtml(e.name)}</button>`).join('')}
+      ${searchHtml}
+      <div class="entity-picker-items">
+        ${remainingUnits.map(u=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="unit:${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${u.image}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}
+        ${remainingElements.map(e=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="element:${e.id}" data-search="${escapeHtml((e.name||'').toLowerCase())}">${e.image?`<img src="${e.image}">`:''}${escapeHtml(e.name)}</button>`).join('')}
+      </div>
+      <div class="entity-picker-noresult" style="display:none;">没有匹配的单位/元素</div>
     </div>
   </details>` : '';
 
@@ -3786,11 +3799,13 @@ function renderUnit(){
       </div>
 
       <div class="edit-field">
-        <span class="edit-label">分组</span>
-        <div class="mark-row-list">
-          ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.groups.includes(g.id))).join('') : ''}
-        </div>
-        ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : '<div class="hint">可以多选，点击选中，再点一次可取消。</div>'}
+        <details class="settings-block group-field-details" open style="margin-bottom:0;">
+          <summary class="edit-label" style="cursor:pointer;list-style:none;display:flex;align-items:center;">分组<span class="group-toggle-arrow" style="margin-left:auto;font-size:11px;color:var(--text-faint);">▸</span></summary>
+          <div class="mark-row-list" style="margin-top:10px;">
+            ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.groups.includes(g.id))).join('') : ''}
+          </div>
+          ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : '<div class="hint">可以多选，点击选中，再点一次可取消。</div>'}
+        </details>
       </div>
 
       <div class="edit-field">
@@ -4013,10 +4028,14 @@ function renderUnit(){
       const mediaList = Array.isArray(s.media) ? s.media : [];
       const mediaHtml = mediaList.map(url=> url ? (isVideoUrl(url) ? `<video class="skill-image zoomable" src="${url}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${url}">`) : '').join('');
       return `<div class="skill-tab-panel ${i===0?'active':''}" data-skill-panel="${i}">
+        <div class="skill-menu-header">
+          <span class="skill-menu-name">${escapeHtml(s.name)}</span>
+          ${s.cost ? `<span class="skill-menu-cost">${escapeHtml(s.cost)}</span>` : ''}
+        </div>
         <div class="skill-view">
           ${mediaHtml ? `<div class="skill-view-media-stack">${mediaHtml}</div>` : ''}
           <div class="skill-view-body">
-            <h3 class="skill-name">${escapeHtml(s.name)}</h3>
+            <div class="skill-menu-effect-label">效果</div>
             <div class="content-body">${renderMarkdownLite(s.description)}</div>
           </div>
         </div>
@@ -4351,10 +4370,21 @@ function renderItem(){
       </div>
       <div class="edit-field">
         <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
-        <select class="edit-select" id="editEvolvesUnit">
-          <option value="">不用于进化任何单位</option>
-          ${state.units.map(u=>`<option value="${u.id}" ${item.evolvesUnitId===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}
-        </select>
+        ${(()=>{
+          const selUnit = itemEditEvolvesUnitId ? state.units.find(u=>u.id===itemEditEvolvesUnitId) : null;
+          const selectedHtml = selUnit ? `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-evo-clear="1">${selUnit.image?`<img src="${selUnit.image}">`:''}${escapeHtml(selUnit.name)} ✕</button>` : `<div class="empty-hint" style="padding-left:0;">不用于进化任何单位</div>`;
+          const remaining = state.units.filter(u=>u.id!==itemEditEvolvesUnitId);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称（中文/英文均可）...">` : '';
+          const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="item-evo-unit">
+            <summary class="btn btn-gold">+ 选择单位</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(u=>`<button type="button" class="entity-picker-item" data-item-evo-select="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${u.image}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
+            </div>
+          </details>` : '';
+          return `<div class="mark-row-list">${selectedHtml}</div>${pickerHtml}`;
+        })()}
       </div>
       <div class="edit-field">
         <span class="edit-label">进化所需数量（可选，比如需要3个这个物品）</span>
@@ -4382,6 +4412,19 @@ function renderItem(){
       ph.className='image-placeholder'; ph.id='imgPreview'; ph.textContent='无图片';
       preview.replaceWith(ph);
     });
+    container.querySelectorAll('[data-item-evo-select]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        itemEditEvolvesUnitId = btn.dataset.itemEvoSelect;
+        render();
+      });
+    });
+    container.querySelectorAll('[data-item-evo-clear]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        itemEditEvolvesUnitId = '';
+        render();
+      });
+    });
+    wirePickerToggles(container);
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       item.name = document.getElementById('editName').value.trim() || '未命名物品';
@@ -4391,7 +4434,7 @@ function renderItem(){
       item.categoryId = document.getElementById('editItemCategory').value || '';
       item.description = document.getElementById('editDesc').value;
       item.questline = document.getElementById('editQuestline').value;
-      item.evolvesUnitId = document.getElementById('editEvolvesUnit').value || '';
+      item.evolvesUnitId = itemEditEvolvesUnitId || '';
       item.evolveQuantity = document.getElementById('editEvolveQuantity').value || '';
       item.updatedAt = Date.now();
       editMode = false;
@@ -4435,7 +4478,7 @@ function renderItem(){
     editMode=false; draftUnit=null; draftSimple=null;
     render();
   });
-  const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; render(); });
+  const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; itemEditEvolvesUnitId = item.evolvesUnitId || ''; render(); });
   wireBackButton(container);
 }
 
