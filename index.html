@@ -4242,7 +4242,7 @@ function renderUnit(){
       ${unit.placementLimit ? `<div class="attack-overview-cell"><label>放置限制</label><div class="stat-value">${escapeHtml(unit.placementLimit)}</div></div>` : ''}
     </div>` : '';
 
-  const odysseyCardForUnit = (state.odyssey.characterCards||[]).find(c=>c.unitId===unit.id) || null;
+  const odysseyCardsForUnit = (state.odyssey.characterCards||[]).filter(c=>c.unitId===unit.id);
 
   const obtainMethodsChipsHtml = (unit.obtainMethods&&unit.obtainMethods.length) ? unit.obtainMethods.map(id=>{
     const t = state.obtainMethods.find(x=>x.id===id);
@@ -4316,7 +4316,7 @@ function renderUnit(){
     ${attacksHtml}
     ${unit.attacks&&unit.attacks.length>1 ? `<div class="attack-cost-bar" style="border-color:var(--gold);background:rgba(201,162,75,0.14);"><span class="label">全部攻击方式总花费</span><span class="value" style="font-size:17px;">${unit.attacks.reduce((sum,a)=>sum+sumAttackCost(a),0).toLocaleString()}</span></div>` : ''}
     ${unit.otherForms&&unit.otherForms.length ? `<div class="section-label">其他形态</div>${otherFormsHtml}` : ''}
-    ${odysseyCardForUnit ? `<div class="section-label">Odyssey 角色卡</div><div class="odyssey-card-grid">${odysseyCardViewHtml(odysseyCardForUnit, true)}</div>` : ''}
+    ${odysseyCardsForUnit.length ? `<div class="section-label">Odyssey 角色卡</div><div class="odyssey-card-grid">${odysseyCardsForUnit.map(c=>odysseyCardViewHtml(c, true)).join('')}</div>` : ''}
     ${commentsSectionHtml(unit, 'unit')}
   `;
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; startUnitEdit(unit); render(); });
