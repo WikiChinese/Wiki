@@ -3189,7 +3189,7 @@ function renderOdyssey(){
   const selectedUnits = (od.unitIds||[]).map(id=>state.units.find(u=>u.id===id)).filter(Boolean);
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
-    <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}">
+    <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
       <div class="gallery-card-img-wrap">
         ${u.image ? `<img class="gallery-card-img" src="${u.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
@@ -3206,7 +3206,8 @@ function renderOdyssey(){
     <div class="section-label">楼层 (Floor)</div>
     <div class="floor-list">${od.floors.length ? od.floors.map(odysseyFloorViewHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无楼层说明</div>'}</div>
     <div class="section-label">可选择的单位</div>
-    <div class="gallery-grid">${unitsHtml}</div>
+    ${selectedUnits.length>1 ? `<div class="gallery-search-bar"><span class="gallery-search-icon">🔍</span><input type="text" id="odysseyUnitSearchInput" class="gallery-search-input" placeholder="搜索单位名称（中文/英文均可）..."></div>` : ''}
+    <div class="gallery-grid" id="odysseyUnitGrid">${unitsHtml}</div>
     <div class="section-label">角色卡 (Character Card)</div>
     <div class="hint" style="margin:-6px 0 12px;">已经关联到某个单位的角色卡，只会显示在那个单位的详情页里，这里只列出还没关联单位的角色卡。</div>
     <div class="odyssey-card-grid">${unassignedCharacterCards.length ? unassignedCharacterCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无未关联单位的角色卡</div>'}</div>
@@ -3216,6 +3217,14 @@ function renderOdyssey(){
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftOdyssey=null; render(); });
   wireBackButton(container);
+  const odysseyUnitSearchInput = document.getElementById('odysseyUnitSearchInput');
+  if(odysseyUnitSearchInput) odysseyUnitSearchInput.addEventListener('input', ()=>{
+    const q = odysseyUnitSearchInput.value.trim().toLowerCase();
+    document.getElementById('odysseyUnitGrid').querySelectorAll('.gallery-card').forEach(card=>{
+      const match = !q || (card.dataset.search||'').includes(q);
+      card.style.display = match ? '' : 'none';
+    });
+  });
   container.querySelectorAll('.gallery-card').forEach(card=>{
     card.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
