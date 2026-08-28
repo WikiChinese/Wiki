@@ -876,7 +876,7 @@ function defaultData(){
       {id:uid(), name:'限时活动', image:'', color:'#c9a24b'}
     ],
     odyssey:{
-      intro:'# Odyssey 模式\n\n介绍一下这个玩法模式的规则、目标和流程...',
+      intro:'# Odyssey 冒险模式\n\n介绍一下这个玩法模式的规则、目标和流程...',
       unitIds:[],
       characterCards:[],
       basicCards:[],
@@ -2124,7 +2124,7 @@ function renderSidebar(){
     <div class="nav-section-label">浏览</div>
     <a href="#/" class="top-link ${currentView.type==='home'?'active':''}" data-view="home"><span class="nav-icon">📰</span>首页 · 更新日志</a>
     <a href="#/tierlist" class="top-link ${currentView.type==='tierlist'?'active':''}" data-view="tierlist"><span class="nav-icon">📊</span>分级榜</a>
-    <a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey"><span class="nav-icon">🗺️</span>Odyssey 模式</a>
+    <a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey"><span class="nav-icon">🗺️</span>Odyssey 冒险模式</a>
   </div>
 
   <div class="nav-section">
@@ -3131,7 +3131,7 @@ function renderOdyssey(){
     const unitPickerHtml = logEntityPickerHtml('单位', state.units, draftOdyssey.unitIds, 'toggleOdysseyUnit', 'unit-id', '可选择的单位', 'odyssey-units');
     container.innerHTML = `
       <div class="page-toolbar">
-        <div class="crumb">编辑 Odyssey 模式</div>
+        <div class="crumb">编辑 Odyssey 冒险模式</div>
         <div class="toolbar-actions">
           <button class="btn" id="cancelBtn">取消</button>
           <button class="btn btn-gold" id="saveBtn">保存</button>
@@ -3199,7 +3199,7 @@ function renderOdyssey(){
 
   container.innerHTML = `
     <div class="page-toolbar">
-      <h1 class="page-title" style="margin:0;">Odyssey 模式</h1>
+      <h1 class="page-title" style="margin:0;">Odyssey 冒险模式</h1>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     <div class="content-body">${renderMarkdownLite(od.intro) || '<p style="color:var(--text-faint);">暂无介绍</p>'}</div>
