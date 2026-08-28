@@ -85,6 +85,9 @@
   .floor-card-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;}
   .floor-card-desc{font-size:13.5px;color:var(--text-dim);line-height:1.7;white-space:pre-line;}
   .odyssey-card-unit-tag{display:inline-block;font-size:11px;color:var(--teal);background:rgba(63,158,143,.12);border:1px solid var(--teal);border-radius:20px;padding:2px 10px;margin-bottom:6px;cursor:pointer;text-decoration:none;}
+  .odyssey-card-editable-wrap{position:relative;}
+  .odyssey-card-edit-btn{position:absolute;top:8px;right:8px;font-size:11px;font-weight:600;background:rgba(20,22,31,.75);color:#fff;border:1px solid var(--border-light);border-radius:20px;padding:4px 10px;cursor:pointer;backdrop-filter:blur(2px);}
+  .odyssey-card-edit-btn:hover{background:var(--gold);border-color:var(--gold);color:#14161f;}
   .odyssey-card-unit-tag:hover{background:rgba(63,158,143,.25);}
   .gallery-card{text-align:center;cursor:pointer;transition:opacity .15s, outline-color .15s;text-decoration:none;display:block;color:inherit;}
   .gallery-card-img-wrap{position:relative;}
@@ -621,6 +624,8 @@ let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
 let itemEditEvolvesUnitId = '';
+let addingCharacterCardForUnit = false;
+let newCharacterCardDraft = null;
 let draftUpgrade = null;
 let draftStageLevel = null;
 let showingShinyImage = false;
@@ -1894,7 +1899,7 @@ async function loadData(){
   window.addEventListener('hashchange', ()=>{
     if(suppressNextHashChange){ suppressNextHashChange = false; return; }
     currentView = hashToView();
-    editMode = false; draftUnit=null; draftSimple=null; draftOdyssey=null; showingShinyImage=false;
+    editMode = false; draftUnit=null; draftSimple=null; draftOdyssey=null; showingShinyImage=false; addingCharacterCardForUnit=false; newCharacterCardDraft=null; editingOdysseyCardId=null;
     render();
     const mainEl = document.querySelector('.main');
     if(mainEl) mainEl.scrollTop = 0;
@@ -2774,6 +2779,7 @@ function renderAttackTypes(){
 }
 
 let editingEnemyMechanics = false;
+let editingOdysseyCardId = null;
 
 function enemyMechanicCategoryEditRowHtml(cat, i){
   const isGradient = /gradient/.test(cat.color||'');
@@ -3037,6 +3043,83 @@ function odysseyCardViewHtml(card, hideUnitTag){
       <div class="odyssey-card-desc">${card.description ? renderMarkdownLite(card.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
+}
+
+function odysseyCardInlineEditHtml(card){
+  return `<div class="sub-card">
+    <div class="image-upload-box" style="margin-bottom:10px;">
+      ${card.image ? `<img class="image-preview small zoomable" src="${card.image}">` : `<div class="image-placeholder small">无图片</div>`}
+      <div class="upload-controls">
+        <label class="file-label">选择图片<input type="file" accept="image/*" data-oc-image-bind="image" style="display:none;"></label>
+        ${card.image ? `<button class="btn" data-oc-image-clear="1">移除图片</button>` : ''}
+      </div>
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">卡片名称</span>
+      <input class="edit-input" data-oc-bind="name" value="${escapeHtml(card.name)}" placeholder="角色卡名称">
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">稀有度</span>
+      <select class="edit-select" data-oc-bind="rarity">
+        <option value="">未分级</option>
+        ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${r.id}" ${card.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
+      </select>
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">说明</span>
+      <textarea class="edit-input" data-oc-bind="description" rows="3" placeholder="这张卡的效果/用途说明...">${escapeHtml(card.description||'')}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-danger" id="deleteOdysseyCardBtn">删除这张卡</button>
+      <button class="btn btn-gold" id="doneEditOdysseyCardBtn">✓ 完成</button>
+    </div>
+  </div>`;
+}
+
+function wireOdysseyCardInlineEdit(container, cardId){
+  const findCard = ()=> state.odyssey.characterCards.find(c=>c.id===cardId);
+  container.querySelectorAll('[data-oc-bind]').forEach(el=>{
+    const sync = ()=>{
+      const card = findCard();
+      if(!card) return;
+      card[el.dataset.ocBind] = el.value;
+      pendingLocalSave = true;
+      clearTimeout(settingsSyncTimer);
+      settingsSyncTimer = setTimeout(()=>{ saveData(true); }, 400);
+    };
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+  });
+  container.querySelectorAll('[data-oc-image-bind]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      handleImageUpload(el, async (dataUrl)=>{
+        const card = findCard();
+        if(!card) return;
+        card.image = dataUrl;
+        await saveData(true);
+        render();
+      });
+    });
+  });
+  container.querySelectorAll('[data-oc-image-clear]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const card = findCard();
+      if(!card) return;
+      card.image = '';
+      await saveData(true);
+      render();
+    });
+  });
+  const doneBtn = container.querySelector('#doneEditOdysseyCardBtn');
+  if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingOdysseyCardId = null; render(); });
+  const deleteBtn = container.querySelector('#deleteOdysseyCardBtn');
+  if(deleteBtn) deleteBtn.addEventListener('click', async ()=>{
+    if(!confirm('确定删除这张角色卡？')) return;
+    state.odyssey.characterCards = state.odyssey.characterCards.filter(c=>c.id!==cardId);
+    editingOdysseyCardId = null;
+    await saveData(true);
+    render();
+  });
 }
 
 function renderOdyssey(){
@@ -4316,7 +4399,42 @@ function renderUnit(){
     ${attacksHtml}
     ${unit.attacks&&unit.attacks.length>1 ? `<div class="attack-cost-bar" style="border-color:var(--gold);background:rgba(201,162,75,0.14);"><span class="label">全部攻击方式总花费</span><span class="value" style="font-size:17px;">${unit.attacks.reduce((sum,a)=>sum+sumAttackCost(a),0).toLocaleString()}</span></div>` : ''}
     ${unit.otherForms&&unit.otherForms.length ? `<div class="section-label">其他形态</div>${otherFormsHtml}` : ''}
-    ${odysseyCardsForUnit.length ? `<div class="section-label">Odyssey 角色卡</div><div class="odyssey-card-grid">${odysseyCardsForUnit.map(c=>odysseyCardViewHtml(c, true)).join('')}</div>` : ''}
+    ${odysseyCardsForUnit.length || isAdmin ? `<div class="section-label">Odyssey 角色卡</div>` : ''}
+    ${odysseyCardsForUnit.length ? `<div class="odyssey-card-grid">${odysseyCardsForUnit.map(c=>{
+      if(isAdmin && editingOdysseyCardId===c.id) return odysseyCardInlineEditHtml(c);
+      const viewHtml = odysseyCardViewHtml(c, true);
+      return isAdmin ? `<div class="odyssey-card-editable-wrap">${viewHtml}<button type="button" class="odyssey-card-edit-btn" data-oc-edit-trigger="${c.id}">✏️ 编辑</button></div>` : viewHtml;
+    }).join('')}</div>` : ''}
+    ${isAdmin ? (addingCharacterCardForUnit ? `
+    <div class="sub-card" style="margin-top:12px;">
+      <div class="edit-field">
+        <span class="edit-label">卡片名称</span>
+        <input class="edit-input" id="newCharCardName" value="${escapeHtml(newCharacterCardDraft?.name||'')}" placeholder="角色卡名称">
+      </div>
+      <div class="image-upload-box" style="margin:10px 0;">
+        ${newCharacterCardDraft?.image ? `<img class="image-preview small zoomable" src="${newCharacterCardDraft.image}">` : `<div class="image-placeholder small">无图片</div>`}
+        <div class="upload-controls">
+          <label class="file-label">选择图片<input type="file" accept="image/*" id="newCharCardImageInput" style="display:none;"></label>
+          ${newCharacterCardDraft?.image ? `<button class="btn" id="newCharCardImageRemove">移除图片</button>` : ''}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">稀有度</span>
+        <select class="edit-select" id="newCharCardRarity">
+          <option value="">未分级</option>
+          ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${r.id}" ${newCharacterCardDraft?.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
+        </select>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-input" id="newCharCardDesc" rows="3" placeholder="这张角色卡的效果/用途说明...">${escapeHtml(newCharacterCardDraft?.description||'')}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+        <button class="btn" id="newCharCardCancel">取消</button>
+        <button class="btn btn-gold" id="newCharCardSave">保存角色卡</button>
+      </div>
+    </div>
+    ` : `<button class="btn btn-gold" id="addCharCardForUnitBtn" style="margin-top:${odysseyCardsForUnit.length?'12px':'0'};">+ 为这个单位新增角色卡</button>`) : ''}
     ${commentsSectionHtml(unit, 'unit')}
   `;
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; startUnitEdit(unit); render(); });
@@ -4362,6 +4480,55 @@ function renderUnit(){
       container.querySelectorAll('.skill-tab').forEach(t=> t.classList.toggle('active', t===tab));
       container.querySelectorAll('.skill-tab-panel').forEach(p=> p.classList.toggle('active', p.dataset.skillPanel===idx));
     });
+  });
+  const addCharCardForUnitBtn = document.getElementById('addCharCardForUnitBtn');
+  if(addCharCardForUnitBtn) addCharCardForUnitBtn.addEventListener('click', ()=>{
+    if(!requireAdmin()) return;
+    addingCharacterCardForUnit = true;
+    newCharacterCardDraft = {name:'', image:'', rarity:'', description:''};
+    render();
+  });
+  container.querySelectorAll('[data-oc-edit-trigger]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(!requireAdmin()) return;
+      editingOdysseyCardId = el.dataset.ocEditTrigger;
+      render();
+    });
+  });
+  if(editingOdysseyCardId) wireOdysseyCardInlineEdit(container, editingOdysseyCardId);
+  const newCharCardCancel = document.getElementById('newCharCardCancel');
+  if(newCharCardCancel) newCharCardCancel.addEventListener('click', ()=>{
+    addingCharacterCardForUnit = false;
+    newCharacterCardDraft = null;
+    render();
+  });
+  const newCharCardImageInput = document.getElementById('newCharCardImageInput');
+  if(newCharCardImageInput) newCharCardImageInput.addEventListener('change', (e)=>{
+    handleImageUpload(e.target, (dataUrl)=>{
+      newCharacterCardDraft.image = dataUrl;
+      render();
+    });
+  });
+  const newCharCardImageRemove = document.getElementById('newCharCardImageRemove');
+  if(newCharCardImageRemove) newCharCardImageRemove.addEventListener('click', ()=>{
+    newCharacterCardDraft.image = '';
+    render();
+  });
+  const newCharCardSave = document.getElementById('newCharCardSave');
+  if(newCharCardSave) newCharCardSave.addEventListener('click', async ()=>{
+    const name = document.getElementById('newCharCardName').value.trim();
+    if(!name){ showToast('请填写卡片名称'); return; }
+    const rarity = document.getElementById('newCharCardRarity').value;
+    const description = document.getElementById('newCharCardDesc').value;
+    if(!Array.isArray(state.odyssey.characterCards)) state.odyssey.characterCards = [];
+    state.odyssey.characterCards.push({
+      id: uid(), name, image: newCharacterCardDraft.image||'', rarity, description, unitId: unit.id
+    });
+    addingCharacterCardForUnit = false;
+    newCharacterCardDraft = null;
+    await saveData(true);
+    showToast('角色卡已新增');
+    render();
   });
   container.querySelectorAll('[data-trait-id]').forEach(chip=>{
     chip.addEventListener('click', ()=> openTraitOverlay(chip.dataset.traitId));
