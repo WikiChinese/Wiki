@@ -3588,6 +3588,8 @@ function wireDraftForm(container, draft){
 
 function handleDraftAction(ds, draft){
   draft = draft || draftUnit;
+  const mainEl = document.querySelector('.main');
+  const preservedScrollTop = mainEl ? mainEl.scrollTop : 0;
   const action = ds.action;
   const ai = ds.attackIndex !== undefined ? parseInt(ds.attackIndex) : null;
   const idx = ds.index !== undefined ? parseInt(ds.index) : null;
@@ -3735,15 +3737,28 @@ function handleDraftAction(ds, draft){
     const token = trimmed ? `[[${markName}|${trimmed}]]` : `[[${markName}]]`;
     const current = getPath(draft, field) || '';
     const textarea = document.querySelector(`[data-bind="${field}"]`);
+    const textareaScrollTop = textarea ? textarea.scrollTop : 0;
     const selStart = (textarea && typeof textarea.selectionStart === 'number') ? textarea.selectionStart : current.length;
     const selEnd = (textarea && typeof textarea.selectionEnd === 'number') ? textarea.selectionEnd : selStart;
     const before = current.slice(0, selStart);
     const after = current.slice(selEnd);
     const spaceBefore = before && !/\s$/.test(before) ? ' ' : '';
     const spaceAfter = after && !/^\s/.test(after) ? ' ' : '';
-    setPath(draft, field, before + spaceBefore + token + spaceAfter + after);
+    const inserted = spaceBefore + token + spaceAfter;
+    setPath(draft, field, before + inserted + after);
+    renderMain();
+    if(mainEl) mainEl.scrollTop = preservedScrollTop;
+    const newTextarea = document.querySelector(`[data-bind="${field}"]`);
+    if(newTextarea){
+      const newCursorPos = selStart + inserted.length;
+      newTextarea.focus();
+      newTextarea.setSelectionRange(newCursorPos, newCursorPos);
+      newTextarea.scrollTop = textareaScrollTop;
+    }
+    return;
   }
   renderMain();
+  if(mainEl) mainEl.scrollTop = preservedScrollTop;
 }
 
 function markToggleHtml(mark, isActive){
