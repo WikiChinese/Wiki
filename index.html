@@ -625,6 +625,7 @@ let draftOdyssey = null;
 let draftStage = null;
 let itemEditEvolvesUnitId = '';
 let addingCharacterCardForUnit = false;
+let activeSkillEditTabIndex = 0;
 let newCharacterCardDraft = null;
 let draftUpgrade = null;
 let draftStageLevel = null;
@@ -3300,6 +3301,7 @@ async function duplicateUnit(unitId){
 
 function startUnitEdit(unit){
   draftUnit = JSON.parse(JSON.stringify(unit));
+  activeSkillEditTabIndex = 0;
   if(!Array.isArray(draftUnit.skills)) draftUnit.skills = [];
   if(!Array.isArray(draftUnit.attacks)) draftUnit.attacks = [];
   draftUnit.attacks.forEach(a=>{
@@ -3952,13 +3954,17 @@ function renderUnit(){
 
       <div class="edit-field">
         <span class="edit-label">4. 技能 / 能力</span>
-        ${draftUnit.skills.length ? `
+        ${draftUnit.skills.length ? (()=>{
+          if(activeSkillEditTabIndex >= draftUnit.skills.length) activeSkillEditTabIndex = draftUnit.skills.length - 1;
+          if(activeSkillEditTabIndex < 0) activeSkillEditTabIndex = 0;
+          return `
         <div class="skill-tab-row">
-          ${draftUnit.skills.map((s,i)=>`<button type="button" class="skill-tab ${i===0?'active':''}" data-skill-edit-tab="${i}">${escapeHtml(s.name||'未命名技能')}</button>`).join('')}
+          ${draftUnit.skills.map((s,i)=>`<button type="button" class="skill-tab ${i===activeSkillEditTabIndex?'active':''}" data-skill-edit-tab="${i}">${escapeHtml(s.name||'未命名技能')}</button>`).join('')}
         </div>
         <div class="skill-tab-panels">
-          ${draftUnit.skills.map((s,i)=>`<div class="skill-tab-panel ${i===0?'active':''}" data-skill-edit-panel="${i}">${skillCardHtml(s,i)}</div>`).join('')}
-        </div>` : '<div class="empty-hint" style="padding-left:0;">暂无技能</div>'}
+          ${draftUnit.skills.map((s,i)=>`<div class="skill-tab-panel ${i===activeSkillEditTabIndex?'active':''}" data-skill-edit-panel="${i}">${skillCardHtml(s,i)}</div>`).join('')}
+        </div>`;
+        })() : '<div class="empty-hint" style="padding-left:0;">暂无技能</div>'}
         <button class="btn btn-gold" data-action="addSkill">+ 新增技能</button>
       </div>
 
@@ -4084,6 +4090,7 @@ function renderUnit(){
     container.querySelectorAll('.skill-tab[data-skill-edit-tab]').forEach(tab=>{
       tab.addEventListener('click', ()=>{
         const idx = tab.dataset.skillEditTab;
+        activeSkillEditTabIndex = parseInt(idx);
         container.querySelectorAll('.skill-tab[data-skill-edit-tab]').forEach(t=> t.classList.toggle('active', t===tab));
         container.querySelectorAll('.skill-tab-panel[data-skill-edit-panel]').forEach(p=> p.classList.toggle('active', p.dataset.skillEditPanel===idx));
       });
@@ -4582,6 +4589,7 @@ function renderItem(){
       <div class="page-toolbar">
         <div class="crumb">编辑物品</div>
         <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteBtnTop">删除物品</button>
           <button class="btn" id="cancelBtn">取消</button>
           <button class="btn btn-gold" id="saveBtn">保存</button>
         </div>
@@ -4693,14 +4701,17 @@ function renderItem(){
       await saveData(false);
       render();
     });
-    document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+    const doDeleteItem = async ()=>{
       if(!confirm(`删除「${item.name}」？此操作无法撤销。`)) return;
       state.items = state.items.filter(i=>i.id!==item.id);
       currentView = {type:'home'};
       editMode = false;
       await saveData(false);
       render();
-    });
+    };
+    document.getElementById('deleteBtn').addEventListener('click', doDeleteItem);
+    const deleteBtnTop = document.getElementById('deleteBtnTop');
+    if(deleteBtnTop) deleteBtnTop.addEventListener('click', doDeleteItem);
     return;
   }
 
@@ -5017,6 +5028,7 @@ function renderSimpleEntity(type){
       <div class="page-toolbar">
         <div class="crumb">编辑${cfg.label}</div>
         <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteBtnTop">删除${cfg.label}</button>
           <button class="btn" id="cancelBtn">取消</button>
           <button class="btn btn-gold" id="saveBtn">保存</button>
         </div>
@@ -5119,7 +5131,7 @@ function renderSimpleEntity(type){
       await saveData(false);
       render();
     });
-    document.getElementById('deleteBtn').addEventListener('click', async ()=>{
+    const doDeleteSimpleEntity = async ()=>{
       if(!confirm(`删除「${entity.name}」？此操作无法撤销。`)) return;
       state[cfg.collection] = state[cfg.collection].filter(e=>e.id!==entity.id);
       currentView = {type:'home'};
@@ -5127,7 +5139,10 @@ function renderSimpleEntity(type){
       draftSimple = null;
       await saveData(false);
       render();
-    });
+    };
+    document.getElementById('deleteBtn').addEventListener('click', doDeleteSimpleEntity);
+    const deleteBtnTop = document.getElementById('deleteBtnTop');
+    if(deleteBtnTop) deleteBtnTop.addEventListener('click', doDeleteSimpleEntity);
     return;
   }
 
