@@ -3584,11 +3584,11 @@ function wireDraftForm(container, draft){
     el.addEventListener('click', ()=>{ setPath(draft, el.dataset.imageRemove, ''); renderMain(); });
   });
   container.querySelectorAll('[data-action]').forEach(el=>{
-    el.addEventListener('click', ()=> handleDraftAction(el.dataset, draft));
+    el.addEventListener('click', ()=> handleDraftAction(el.dataset, draft, el));
   });
 }
 
-function handleDraftAction(ds, draft){
+function handleDraftAction(ds, draft, el){
   draft = draft || draftUnit;
   const mainEl = document.querySelector('.main');
   const preservedScrollTop = mainEl ? mainEl.scrollTop : 0;
@@ -3747,6 +3747,10 @@ function handleDraftAction(ds, draft){
     const spaceBefore = before && !/\s$/.test(before) ? ' ' : '';
     const spaceAfter = after && !/^\s/.test(after) ? ' ' : '';
     const inserted = spaceBefore + token + spaceAfter;
+    const pickerList = el ? el.closest('.entity-picker-items') : null;
+    const pickerListScrollTop = pickerList ? pickerList.scrollTop : 0;
+    const pickerDetails = el ? el.closest('details[data-picker-key]') : null;
+    const pickerKey = pickerDetails ? pickerDetails.dataset.pickerKey : null;
     setPath(draft, field, before + inserted + after);
     renderMain();
     if(mainEl) mainEl.scrollTop = preservedScrollTop;
@@ -3756,6 +3760,11 @@ function handleDraftAction(ds, draft){
       newTextarea.focus();
       newTextarea.setSelectionRange(newCursorPos, newCursorPos);
       newTextarea.scrollTop = textareaScrollTop;
+    }
+    if(pickerKey){
+      const newPickerDetails = document.querySelector(`details[data-picker-key="${pickerKey}"]`);
+      const newPickerList = newPickerDetails ? newPickerDetails.querySelector('.entity-picker-items') : null;
+      if(newPickerList) newPickerList.scrollTop = pickerListScrollTop;
     }
     return;
   }
