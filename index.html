@@ -5452,6 +5452,7 @@ function dbSizeReportHtml(){
 
 function renderSettings(){
   const container = document.getElementById('mainInner');
+  const prevSettingsBlockOpenStates = Array.from(container.querySelectorAll('details.settings-block')).map(d=>d.open);
   if(!isAdmin){
     container.innerHTML = `
       <div class="page-toolbar"><h1 class="page-title" style="margin:0;">设置</h1></div>
@@ -5784,6 +5785,9 @@ function renderSettings(){
           await saveData(true);
       renderSettings();
     });
+  });
+  Array.from(container.querySelectorAll('details.settings-block')).forEach((d,i)=>{
+    if(prevSettingsBlockOpenStates[i] !== undefined) d.open = prevSettingsBlockOpenStates[i];
   });
   wireCollapsibleBlocks(container, '.settings-block', 'settings');
   wireBackButton(container);
