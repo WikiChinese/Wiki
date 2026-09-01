@@ -1183,6 +1183,7 @@ function initFirebase(){
     if(!authReadyResolved){ authReadyResolved = true; resolveAuthReady(); }
     renderAuthFoot();
     render();
+    maybeAutoBackupToday();
   });
   return true;
 }
@@ -1907,6 +1908,7 @@ async function loadData(){
   });
   renderAuthFoot();
   render();
+  maybeAutoBackupToday();
 
   // Live sync: reflect other people's edits without a manual refresh
   db.collection('meta').onSnapshot((snap)=>{
@@ -2037,6 +2039,81 @@ function saveData(silent){
     };
     if(silent){ doSave(); } else { saveTimer = setTimeout(doSave, 200); }
   });
+}
+
+// ---- Version backups ----
+// Snapshots the CURRENT LIVE Firestore data (freshly read, not the in-memory `state`, so it's
+// accurate even if local state has unsaved/out-of-sync edits) into backups/{backupId}/... .
+// This is what both the daily auto-backup and the "restore" safety-net use.
+let backupsListCache = null;
+let backupsListLoading = false;
+
+function todayDateKey(){
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+async function snapshotCollectionsToBackup(backupId, label){
+  const counts = {};
+  const writes = [];
+  const metaSnap = await db.collection('meta').get();
+  metaSnap.docs.forEach(d=> writes.push({ref: db.collection('backups').doc(backupId).collection('meta').doc(d.id), data:d.data()}));
+  counts.meta = metaSnap.docs.length;
+  for(const name of ENTITY_COLLECTIONS){
+    const snap = await db.collection(name).get();
+    snap.docs.forEach(d=> writes.push({ref: db.collection('backups').doc(backupId).collection(name).doc(d.id), data:d.data()}));
+    counts[name] = snap.docs.length;
+  }
+  writes.push({ref: db.collection('backups').doc(backupId), data:{createdAt: Date.now(), label: label||'', counts}});
+  for(let i=0;i<writes.length;i+=450){
+    const batch = db.batch();
+    writes.slice(i,i+450).forEach(w=> batch.set(w.ref, w.data));
+    await batch.commit();
+  }
+  return counts;
+}
+
+// Once per calendar day (per admin session), silently snapshot whatever is currently live in
+// Firestore before anyone has a chance to edit anything that day. This is the safety net that
+// was missing — it's what lets us undo a bad "force recover"/restore instead of losing data for good.
+async function maybeAutoBackupToday(){
+  if(!db || !isAdmin) return;
+  try{
+    const key = todayDateKey();
+    const logSnap = await db.collection('meta').doc('backupLog').get();
+    const lastDate = logSnap.exists ? logSnap.data().lastDate : null;
+    if(lastDate === key) return;
+    await snapshotCollectionsToBackup('daily-'+key, '每日自动备份');
+    await db.collection('meta').doc('backupLog').set({lastDate:key}, {merge:true});
+  }catch(e){ console.error('auto backup failed:', e); }
+}
+
+async function fetchBackupsList(){
+  if(!db) return [];
+  const snap = await db.collection('backups').orderBy('createdAt','desc').limit(30).get();
+  return snap.docs.map(d=>({id:d.id, ...d.data()}));
+}
+
+// Restores Firestore's live meta/units/items/families/memories collections to exactly match a
+// stored backup. Always takes a fresh "pre-restore" safety backup of whatever is live FIRST, so a
+// restore is itself always undoable — this is the key protection the old recovery button lacked.
+async function restoreFromBackup(backupId, label){
+  await snapshotCollectionsToBackup('pre-restore-'+Date.now(), '恢复前自动安全备份（恢复到「'+(label||backupId)+'」之前）');
+  const writes = [];
+  const metaSnap = await db.collection('backups').doc(backupId).collection('meta').get();
+  metaSnap.docs.forEach(d=> writes.push({type:'set', ref: db.collection('meta').doc(d.id), data:d.data()}));
+  for(const name of ENTITY_COLLECTIONS){
+    const backupEntitySnap = await db.collection('backups').doc(backupId).collection(name).get();
+    const backupIds = new Set(backupEntitySnap.docs.map(d=>d.id));
+    backupEntitySnap.docs.forEach(d=> writes.push({type:'set', ref: db.collection(name).doc(d.id), data:d.data()}));
+    const liveSnap = await db.collection(name).get();
+    liveSnap.docs.forEach(d=>{ if(!backupIds.has(d.id)) writes.push({type:'delete', ref: db.collection(name).doc(d.id)}); });
+  }
+  for(let i=0;i<writes.length;i+=450){
+    const batch = db.batch();
+    writes.slice(i,i+450).forEach(w=>{ if(w.type==='set') batch.set(w.ref, w.data); else batch.delete(w.ref); });
+    await batch.commit();
+  }
 }
 
 function showToast(msg, duration){
@@ -5450,8 +5527,27 @@ function dbSizeReportHtml(){
   </details>`;
 }
 
+function backupsListHtml(){
+  if(backupsListLoading) return '<div class="empty-hint" style="padding-left:0;">加载备份列表中...</div>';
+  if(backupsListCache === null) return '<div class="empty-hint" style="padding-left:0;">点击上面"刷新备份列表"查看已有备份。</div>';
+  if(!backupsListCache.length) return '<div class="empty-hint" style="padding-left:0;">还没有任何备份记录。</div>';
+  return `<div class="mark-row-list" style="flex-direction:column;align-items:stretch;gap:6px;">${backupsListCache.map(b=>{
+    const date = b.createdAt ? new Date(b.createdAt).toLocaleString() : '（未知时间）';
+    const c = b.counts||{};
+    const countStr = `单位${c.units||0} 物品${c.items||0} 使魔${c.families||0} 记忆${c.memories||0}`;
+    return `<div class="sub-card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:200px;">
+        <div style="font-weight:600;">${escapeHtml(b.label||b.id)}</div>
+        <div class="hint" style="margin:2px 0 0;">${date} ・ ${countStr}</div>
+      </div>
+      <button class="btn btn-danger" data-restore-backup-id="${b.id}" data-restore-backup-label="${escapeHtml(b.label||b.id)}">⏪ 恢复这份</button>
+    </div>`;
+  }).join('')}</div>`;
+}
+
 function renderSettings(){
   const container = document.getElementById('mainInner');
+  const prevSettingsBlockOpenStates = Array.from(container.querySelectorAll('details.settings-block')).map(d=>d.open);
   if(!isAdmin){
     container.innerHTML = `
       <div class="page-toolbar"><h1 class="page-title" style="margin:0;">设置</h1></div>
@@ -5522,9 +5618,23 @@ function renderSettings(){
 
     ${dbSizeReportHtml()}
 
+    <details class="settings-block" open>
+      <summary class="section-label" style="margin-top:0;">备份与恢复</summary>
+      <div class="hint" style="margin-bottom:14px;">
+        网站现在每天（每个管理员会话）会自动把当时 Firestore 里的真实数据存一份快照到 <code>backups</code> 集合里，互不影响正常数据。<br>
+        <b>⚠️ 恢复到某个备份，会让 units/items/families/memories 这几类数据完全变回那份备份当时的样子——包括删除备份之后新建的条目。</b>点"恢复"前系统会自动先把<b>恢复前的当前数据</b>也存一份安全快照，所以哪怕恢复错了，也还能再恢复回来。
+      </div>
+      <button class="btn" id="createBackupNowBtn">📸 立即创建一份备份</button>
+      <button class="btn" id="refreshBackupsBtn" style="margin-left:8px;">🔄 刷新备份列表</button>
+      <div id="backupsListWrap" style="margin-top:14px;">${backupsListHtml()}</div>
+    </details>
+
     <details class="settings-block">
-      <summary class="section-label" style="margin-top:0;">数据恢复</summary>
-      <div class="hint" style="margin-bottom:14px;">如果单位/物品/使魔/记忆显示为0，但你确定以前有数据，点这个按钮可以从最早的旧版备份数据（<code>wiki/data</code>）强制重新读取并覆盖保存一次。这不会删除任何东西，只是重新同步。</div>
+      <summary class="section-label" style="margin-top:0;">从迁移前的极旧数据恢复（极端后备）</summary>
+      <div class="hint" style="margin-bottom:14px;">
+        这是改用现在这套"每类数据各自存一份文档"的存储方式<b>之前</b>遗留下来的一份旧快照（<code>wiki/data</code>），从那次迁移之后就再也没被更新过，基本可以认为是"很久以前"的数据。<br>
+        <b>⚠️ 这不是无害的重新同步——点下去会用这份很旧的数据覆盖并删除现在 Firestore 里比它新的所有内容。</b>只有在上面的"备份与恢复"完全没有可用记录时，才把这个当最后手段。同样，点击前会自动先给当前数据做一次安全备份。
+      </div>
       <button class="btn" id="recoverFromLegacyBtn">🔄 从旧版数据强制恢复</button>
     </details>
 
@@ -5714,7 +5824,8 @@ function renderSettings(){
   const recoverBtn = document.getElementById('recoverFromLegacyBtn');
   if(recoverBtn) recoverBtn.addEventListener('click', async ()=>{
     if(!requireAdmin()) return;
-    if(!confirm('确定要从旧版备份数据强制恢复吗？这会用旧数据覆盖你现在看到的内容（如果现在显示是空的/不对的，这正是你想要的）。')) return;
+    if(!confirm('⚠️ 这会用很久以前迁移前的旧数据，覆盖并删除现在 Firestore 里比它新的所有单位/物品/使魔/记忆数据。真的确定吗？（点击前会自动先给当前数据做一次安全备份）')) return;
+    if(!confirm('再确认一次：这是不可逆的强制覆盖操作（虽然会先自动备份），确定继续？')) return;
     recoverBtn.disabled = true;
     recoverBtn.textContent = '恢复中...';
     try{
@@ -5722,10 +5833,11 @@ function renderSettings(){
       if(!legacySnap.exists || !legacySnap.data().json){
         showToast('没有找到旧版备份数据（wiki/data 这份文档是空的或不存在）。', 8000);
       } else {
+        await snapshotCollectionsToBackup('pre-legacy-recover-'+Date.now(), '恢复前自动安全备份（恢复到迁移前极旧数据之前）');
         state = JSON.parse(legacySnap.data().json);
         migrateState();
         await saveData(false);
-        showToast('已从旧版数据恢复并重新保存！', 5000);
+        showToast('已从旧版数据恢复并重新保存！（恢复前的数据已自动备份，可在上方"备份与恢复"里找回）', 8000);
         render();
       }
     }catch(e){
@@ -5734,6 +5846,53 @@ function renderSettings(){
     }
     recoverBtn.disabled = false;
     recoverBtn.textContent = '🔄 从旧版数据强制恢复';
+  });
+  const createBackupNowBtn = document.getElementById('createBackupNowBtn');
+  if(createBackupNowBtn) createBackupNowBtn.addEventListener('click', async ()=>{
+    if(!requireAdmin()) return;
+    createBackupNowBtn.disabled = true;
+    createBackupNowBtn.textContent = '备份中...';
+    try{
+      await snapshotCollectionsToBackup('manual-'+Date.now(), '手动备份');
+      showToast('已创建备份', 4000);
+      backupsListCache = await fetchBackupsList();
+      renderSettings();
+    }catch(e){
+      showToast(`创建备份失败：${e && e.message ? e.message : '请检查网络或权限'}`, 8000);
+      console.error('create backup error:', e);
+    }
+    createBackupNowBtn.disabled = false;
+    createBackupNowBtn.textContent = '📸 立即创建一份备份';
+  });
+  const refreshBackupsBtn = document.getElementById('refreshBackupsBtn');
+  if(refreshBackupsBtn) refreshBackupsBtn.addEventListener('click', async ()=>{
+    backupsListLoading = true;
+    const wrap = document.getElementById('backupsListWrap');
+    if(wrap) wrap.innerHTML = backupsListHtml();
+    try{ backupsListCache = await fetchBackupsList(); }
+    catch(e){ showToast(`加载备份列表失败：${e && e.message ? e.message : '请检查网络或权限'}`, 8000); console.error('fetch backups error:', e); }
+    backupsListLoading = false;
+    if(document.getElementById('backupsListWrap')) renderSettings();
+  });
+  container.querySelectorAll('[data-restore-backup-id]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!requireAdmin()) return;
+      const id = btn.dataset.restoreBackupId;
+      const label = btn.dataset.restoreBackupLabel || id;
+      if(!confirm(`⚠️ 恢复到「${label}」？这会让 units/items/families/memories 完全变回那份备份当时的样子，包括删除之后新建的条目（恢复前会自动先给当前数据做一次安全备份）。确定吗？`)) return;
+      btn.disabled = true;
+      btn.textContent = '恢复中...';
+      try{
+        await restoreFromBackup(id, label);
+        showToast('恢复完成，正在刷新页面...', 4000);
+        setTimeout(()=> location.reload(), 800);
+      }catch(e){
+        showToast(`恢复失败：${e && e.message ? e.message : '请检查网络或权限'}`, 10000);
+        console.error('restore backup error:', e);
+        btn.disabled = false;
+        btn.textContent = '⏪ 恢复这份';
+      }
+    });
   });
   const untickLimitedReturnBtn = document.getElementById('untickLimitedReturnBtn');
   if(untickLimitedReturnBtn) untickLimitedReturnBtn.addEventListener('click', async ()=>{
@@ -5785,8 +5944,22 @@ function renderSettings(){
       renderSettings();
     });
   });
+  Array.from(container.querySelectorAll('details.settings-block')).forEach((d,i)=>{
+    if(prevSettingsBlockOpenStates[i] !== undefined) d.open = prevSettingsBlockOpenStates[i];
+  });
   wireCollapsibleBlocks(container, '.settings-block', 'settings');
   wireBackButton(container);
+  if(backupsListCache === null && !backupsListLoading && db){
+    backupsListLoading = true;
+    fetchBackupsList().then(list=>{
+      backupsListCache = list;
+      backupsListLoading = false;
+      if(currentView.type==='settings') renderSettings();
+    }).catch(e=>{
+      backupsListLoading = false;
+      console.error('fetch backups error:', e);
+    });
+  }
 }
 
 function render(){
