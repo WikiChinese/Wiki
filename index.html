@@ -560,7 +560,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
-function rarityLabel(id){ const r = state.rarities.find(r=>r.id===id); return r ? r.name : ''; }
 
 let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
@@ -2157,12 +2156,6 @@ function renderInlineMarkToken(name, val){
   return `<span class="mark-chip mark-chip-inline"${styleAttr}${titleAttr}>${icon}${name}${val?(' '+val):''}</span>`;
 }
 
-function matchesSearch(hayParts){
-  if(!searchQuery) return true;
-  const q = searchQuery.toLowerCase();
-  return hayParts.join(' ').toLowerCase().includes(q);
-}
-
 function renderSidebar(){
   const nav = document.getElementById('catNav');
   let html = '';
@@ -2412,11 +2405,6 @@ function closeMobileSidebar(){
   if(window.innerWidth<=720) document.getElementById('sidebar').classList.remove('open');
 }
 
-function rarityDotColor(rarityId){
-  const r = state.rarities.find(x=>x.id===rarityId);
-  return (r && r.color) || 'var(--text-faint)';
-}
-
 function coloredChipStyle(color){
   const raw = color || '#8a8a8a';
   return `background:${raw};color:#ffffff;`;
@@ -2502,20 +2490,6 @@ function rarityOptionsHtml(selected){
   return ['<option value="">无</option>'].concat(
     state.rarities.map(r=>`<option value="${r.id}" ${selected===r.id?'selected':''}>${escapeHtml(r.name)}</option>`)
   ).join('');
-}
-
-function unitOptionsHtml(selected){
-  return ['<option value="">不限制（任意单位可用）</option>'].concat(
-    state.units.map(u=>`<option value="${u.id}" ${selected===u.id?'selected':''}>${escapeHtml(u.name)}</option>`)
-  ).join('');
-}
-
-function unitOrElementOptionsHtml(selected){
-  const unitOpts = state.units.map(u=>`<option value="unit:${u.id}" ${selected==='unit:'+u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('');
-  const elementOpts = state.elements.map(e=>`<option value="element:${e.id}" ${selected==='element:'+e.id?'selected':''}>${escapeHtml(e.name)}</option>`).join('');
-  return `<option value="">不限制</option>` +
-    (state.units.length ? `<optgroup label="单位">${unitOpts}</optgroup>` : '') +
-    (state.elements.length ? `<optgroup label="元素">${elementOpts}</optgroup>` : '');
 }
 
 function obtainMethodPickerHtml(selectedArr, fieldName){
@@ -3018,7 +2992,11 @@ function wireEnemyMechanicsForm(container){
     el.addEventListener('click', async ()=>{
       const action = el.dataset.emAction;
       const idx = parseInt(el.dataset.index);
-      if(action==='removeEnemyMechanic') state.enemyMechanics.splice(idx,1);
+      if(action==='removeEnemyMechanic'){
+        const m = state.enemyMechanics[idx];
+        if(!confirm(`确定删除这个敌方机制${m && m.name ? `「${m.name}」` : ''}吗？`)) return;
+        state.enemyMechanics.splice(idx,1);
+      }
       await saveData(true);
       renderEnemyMechanics();
     });
@@ -3046,7 +3024,11 @@ function wireEnemyMechanicsForm(container){
     el.addEventListener('click', async ()=>{
       const action = el.dataset.emCatAction;
       const idx = parseInt(el.dataset.index);
-      if(action==='removeEnemyMechanicCategory') state.enemyMechanicCategories.splice(idx,1);
+      if(action==='removeEnemyMechanicCategory'){
+        const c = state.enemyMechanicCategories[idx];
+        if(!confirm(`确定删除这个敌方机制分类${c && c.name ? `「${c.name}」` : ''}吗？`)) return;
+        state.enemyMechanicCategories.splice(idx,1);
+      }
       await saveData(true);
       renderEnemyMechanics();
     });
@@ -3862,11 +3844,6 @@ function enemyMechanicToggleHtml(mech, isActive){
 function groupToggleHtml(group, isActive){
   const icon = group.image ? `<img src="${group.image}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(group.color, isActive)}" data-action="selectGroup" data-group-id="${group.id}">${icon}${escapeHtml(group.name)}</button>`;
-}
-
-function elementToggleHtml(element, isActive){
-  const icon = element.image ? `<img src="${element.image}">` : '';
-  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(element.color, isActive)}" data-action="selectElement" data-element-id="${element.id}">${icon}${escapeHtml(element.name)}</button>`;
 }
 
 function memoryCardPreviewHtml(memoryId){
@@ -5759,18 +5736,29 @@ function renderSettings(){
     el.addEventListener('click', async ()=>{
       const action = el.dataset.settingsAction;
       const idx = parseInt(el.dataset.index);
-      if(action==='removeMark') state.marks.splice(idx,1);
+      // These delete shared config that units/items may reference elsewhere, and used to fire
+      // instantly on click with a silent save — one misclick, gone, no way back. Now confirmed first.
+      const removeMap = {
+        removeMark: {arr: state.marks, label:'状态标记'},
+        removeMarkCategory: {arr: state.markCategories, label:'状态标记分类'},
+        removeItemCategory: {arr: state.itemCategories, label:'物品分类'},
+        removeObtainMethod: {arr: state.obtainMethods, label:'获取方式'},
+        removeAttackType: {arr: state.attackTypes, label:'攻击类型'},
+        removeGroup: {arr: state.groups, label:'分组'},
+        removeElement: {arr: state.elements, label:'元素'},
+        removeSeries: {arr: state.series, label:'系列'},
+        removeTrait: {arr: state.traits, label:'特性'},
+        removeRarity: {arr: state.rarities, label:'稀有度'}
+      };
+      if(removeMap[action]){
+        const {arr, label} = removeMap[action];
+        const item = arr[idx];
+        const name = item && item.name ? `「${item.name}」` : '';
+        if(!confirm(`确定删除这个${label}${name}吗？如果有单位/物品正在引用它，这些引用不会自动清掉，只是会指向一个已经不存在的项。`)) return;
+        arr.splice(idx,1);
+      }
       else if(action==='moveMarkUp') moveArrayItem(state.marks, idx, -1);
       else if(action==='moveMarkDown') moveArrayItem(state.marks, idx, 1);
-      else if(action==='removeMarkCategory') state.markCategories.splice(idx,1);
-      else if(action==='removeItemCategory') state.itemCategories.splice(idx,1);
-      else if(action==='removeObtainMethod') state.obtainMethods.splice(idx,1);
-      else if(action==='removeAttackType') state.attackTypes.splice(idx,1);
-      else if(action==='removeGroup') state.groups.splice(idx,1);
-      else if(action==='removeElement') state.elements.splice(idx,1);
-      else if(action==='removeSeries') state.series.splice(idx,1);
-      else if(action==='removeTrait') state.traits.splice(idx,1);
-      else if(action==='removeRarity') state.rarities.splice(idx,1);
       else if(action==='moveRarityUp'){
         if(idx>0){ const tmp=state.rarities[idx-1]; state.rarities[idx-1]=state.rarities[idx]; state.rarities[idx]=tmp; }
       }
