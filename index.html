@@ -4099,7 +4099,9 @@ function renderUnit(){
         ${(()=>{
           const remaining = state.units.filter(u=>u.id!==unit.id && !draftUnit.relatedUnits.some(r=>r.unitId===u.id));
           const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称（中文/英文均可）...">` : '';
-          return remaining.length ? `<details class="entity-picker">
+          const key = 'related-units-'+unit.id;
+          const isOpen = openPickerKeys.has(key);
+          return remaining.length ? `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
             <summary class="btn btn-gold">+ 关联单位</summary>
             <div class="entity-picker-list">
               ${searchHtml}
@@ -5677,7 +5679,7 @@ function renderSettings(){
 
     ${dbSizeReportHtml()}
 
-    <details class="settings-block" open>
+    <details class="settings-block">
       <summary class="section-label" style="margin-top:0;">备份与恢复</summary>
       <div class="hint" style="margin-bottom:14px;">
         网站现在每天（每个管理员会话）会自动把当时 Firestore 里的真实数据存一份快照到 <code>backups</code> 集合里，互不影响正常数据。<br>
