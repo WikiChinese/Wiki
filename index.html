@@ -1210,7 +1210,7 @@ function closeLoginModal(){
 }
 
 function traitDetailInnerHtml(t){
-  const iconHtml = t.image ? `<img class="trait-detail-icon" src="${t.image}">` : `<div class="trait-detail-icon" style="${coloredChipStyle(t.color)}"></div>`;
+  const iconHtml = t.image ? `<img class="trait-detail-icon" src="${escapeHtml(String(t.image))}">` : `<div class="trait-detail-icon" style="${coloredChipStyle(t.color)}"></div>`;
   const pctLine = (label, pct)=>{
     const p = parseFloat(pct);
     if(isNaN(p) || !p) return null;
@@ -1246,7 +1246,7 @@ function traitDetailInnerHtml(t){
 function stageLevelListEditRowHtml(lv, i){
   return `<div class="sub-card" data-level-row-index="${i}">
     <div class="sub-card-head">
-      ${lv.image ? `<img class="mark-icon-preview" src="${lv.image}">` : `<div class="mark-icon-placeholder"></div>`}
+      ${lv.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(lv.image))}">` : `<div class="mark-icon-placeholder"></div>`}
       <label class="file-label" style="margin:0;">缩略图<input type="file" accept="image/*" data-image-bind="levels.${i}.image" style="display:none;"></label>
       <input class="edit-input" style="flex:1;min-width:160px;" data-bind="levels.${i}.name" value="${escapeHtml(lv.name)}" placeholder="关卡名称">
       <button class="btn btn-danger" data-action="removeStageLevel" data-index="${i}">删除</button>
@@ -1277,7 +1277,7 @@ function renderStagePage(){
         <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStage.name)}" placeholder="关卡分类名称">
       </div>
       <div class="image-upload-box" style="margin-bottom:18px;">
-        ${draftStage.image ? `<img class="image-preview zoomable" src="${draftStage.image}">` : `<div class="image-placeholder">无图片</div>`}
+        ${draftStage.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftStage.image))}">` : `<div class="image-placeholder">无图片</div>`}
         <div class="upload-controls">
           <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
           ${draftStage.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
@@ -1334,7 +1334,7 @@ function renderStagePage(){
     const descText = hints.length ? hints.join(' · ') : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
     return `
     <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id+'__'+lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
-      ${lv.image ? `<img class="skill-image" src="${lv.image}">` : ''}
+      ${lv.image ? `<img class="skill-image" src="${escapeHtml(String(lv.image))}">` : ''}
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
         <div class="floor-card-desc">${descText}</div>
@@ -1345,7 +1345,7 @@ function renderStagePage(){
   const stageMechanicsHtml = (stage.mechanics&&stage.mechanics.length) ? stage.mechanics.map(mid=>{
     const m = state.enemyMechanics.find(x=>x.id===mid);
     if(!m) return '';
-    const icon = m.image ? `<img src="${m.image}">` : '';
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
 
@@ -1354,7 +1354,7 @@ function renderStagePage(){
       <div class="crumb">关卡</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
-    ${stage.image ? `<img class="unit-image zoomable" src="${stage.image}">` : ''}
+    ${stage.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(stage.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
     ${stageMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${stageMechanicsHtml}</div>` : ''}
     <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
@@ -1468,7 +1468,7 @@ function renderStageLevelPage(){
         <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStageLevel.name)}" placeholder="关卡名称">
       </div>
       <div class="image-upload-box" style="margin-bottom:18px;">
-        ${draftStageLevel.image ? `<img class="image-preview zoomable" src="${draftStageLevel.image}">` : `<div class="image-placeholder">无图片</div>`}
+        ${draftStageLevel.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftStageLevel.image))}">` : `<div class="image-placeholder">无图片</div>`}
         <div class="upload-controls">
           <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
           ${draftStageLevel.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
@@ -1549,7 +1549,7 @@ function renderStageLevelPage(){
     }
     return `<a href="${viewToHash({type:it.refType, id:linkedEntity.id})}" class="shop-item-card" data-view="${it.refType}" data-id="${linkedEntity.id}">
       <div class="shop-item-icon-wrap">
-        ${linkedEntity.image ? `<img class="shop-item-icon" src="${linkedEntity.image}">` : `<div class="shop-item-icon-placeholder"></div>`}
+        ${linkedEntity.image ? `<img class="shop-item-icon" src="${escapeHtml(String(linkedEntity.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}
         <span class="shop-item-type-tag" style="${typeTagStyle}">${escapeHtml(typeTagLabel)}</span>
       </div>
       <div class="shop-item-body">
@@ -1563,7 +1563,7 @@ function renderStageLevelPage(){
   const levelMechanicsHtml = (level.mechanics&&level.mechanics.length) ? level.mechanics.map(mid=>{
     const m = state.enemyMechanics.find(x=>x.id===mid);
     if(!m) return '';
-    const icon = m.image ? `<img src="${m.image}">` : '';
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
 
@@ -1572,7 +1572,7 @@ function renderStageLevelPage(){
       <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(level.name)}</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
-    ${level.image ? `<img class="unit-image zoomable" src="${level.image}">` : ''}
+    ${level.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(level.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(level.name)}</h1>
     ${levelMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${levelMechanicsHtml}</div>` : ''}
     <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
@@ -1624,7 +1624,7 @@ function renderUpgradePage(){
         <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgrade.name)}" placeholder="升级分类名称">
       </div>
       <div class="image-upload-box" style="margin-bottom:18px;">
-        ${draftUpgrade.image ? `<img class="image-preview zoomable" src="${draftUpgrade.image}">` : `<div class="image-placeholder">无图片</div>`}
+        ${draftUpgrade.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUpgrade.image))}">` : `<div class="image-placeholder">无图片</div>`}
         <div class="upload-controls">
           <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
           ${draftUpgrade.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
@@ -1666,7 +1666,7 @@ function renderUpgradePage(){
 
   const levelsHtml = upgrade.levels.length ? upgrade.levels.map(lv=>`
     <div class="floor-card" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
-      ${lv.image ? `<img class="skill-image zoomable" src="${lv.image}">` : ''}
+      ${lv.image ? `<img class="skill-image zoomable" src="${escapeHtml(String(lv.image))}">` : ''}
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
         <div class="floor-card-desc">${lv.description ? renderMarkdownLite(lv.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
@@ -1678,7 +1678,7 @@ function renderUpgradePage(){
       <div class="crumb">升级</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
-    ${upgrade.image ? `<img class="unit-image zoomable" src="${upgrade.image}">` : ''}
+    ${upgrade.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(upgrade.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(upgrade.name)}</h1>
     <div class="content-body">${renderMarkdownLite(upgrade.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">升级列表</div>
@@ -2176,7 +2176,7 @@ function inline(s){
 }
 function renderInlineMarkToken(name, val){
   const m = state.marks.find(x=>x.name===name) || state.elements.find(x=>x.name===name) || state.groups.find(x=>x.name===name) || state.enemyMechanics.find(x=>x.name===name);
-  const icon = (m && m.image) ? `<img src="${m.image}">` : (m ? '' : `<span class="mark-dot" style="background:var(--gold)"></span>`);
+  const icon = (m && m.image) ? `<img src="${escapeHtml(String(m.image))}">` : (m ? '' : `<span class="mark-dot" style="background:var(--gold)"></span>`);
   const styleAttr = m ? ` style="${coloredChipStyle(m.color)}"` : '';
   const titleAttr = (m && m.description) ? ` title="${escapeHtml(m.description)}"` : '';
   return `<span class="mark-chip mark-chip-inline"${styleAttr}${titleAttr}>${icon}${name}${val?(' '+val):''}</span>`;
@@ -2514,7 +2514,7 @@ function handleImageUpload(inputEl, onDone){
 
 function rarityOptionsHtml(selected){
   return ['<option value="">无</option>'].concat(
-    state.rarities.map(r=>`<option value="${r.id}" ${selected===r.id?'selected':''}>${escapeHtml(r.name)}</option>`)
+    state.rarities.map(r=>`<option value="${escapeHtml(String(r.id))}" ${selected===r.id?'selected':''}>${escapeHtml(r.name)}</option>`)
   ).join('');
 }
 
@@ -2523,7 +2523,7 @@ function obtainMethodPickerHtml(selectedArr, fieldName){
   const selectedHtml = selected.length ? selected.map(id=>{
     const t = state.obtainMethods.find(x=>x.id===id);
     if(!t) return '';
-    const icon = t.image ? `<img src="${t.image}">` : '';
+    const icon = t.image ? `<img src="${escapeHtml(String(t.image))}">` : '';
     return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(t.color,true)}" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="${id}">${icon}${escapeHtml(t.name)} ✕</button>`;
   }).join('') : `<div class="empty-hint" style="padding-left:0;">尚未选择获取方式</div>`;
   const remaining = state.obtainMethods.filter(t=>!selected.includes(t.id));
@@ -2532,7 +2532,7 @@ function obtainMethodPickerHtml(selectedArr, fieldName){
   const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
     <summary class="btn btn-gold">+ 选择获取方式</summary>
     <div class="entity-picker-list">
-      ${remaining.map(t=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="${t.id}">${t.image?`<img src="${t.image}">`:''}${escapeHtml(t.name)}</button>`).join('')}
+      ${remaining.map(t=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="${t.id}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</button>`).join('')}
     </div>
   </details>` : (state.obtainMethods.length===0 ? '<div class="hint">还没有可选的获取方式，请先去「设置 → 获取方式」新增，比如 Raids、Story Stage。</div>' : '');
   return `<div class="mark-row-list">${selectedHtml}</div>${pickerHtml}`;
@@ -2542,7 +2542,7 @@ function exclusiveTargetPickerHtml(selectedArr, fieldName){
   const selected = Array.isArray(selectedArr) ? selectedArr : (selectedArr ? [selectedArr] : []);
   const resolved = resolveExclusiveTargets(selected);
   const selectedHtml = resolved.length ? resolved.map(r=>{
-    const icon = r.entity.image ? `<img src="${r.entity.image}">` : '';
+    const icon = r.entity.image ? `<img src="${escapeHtml(String(r.entity.image))}">` : '';
     return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(r.kind==='element' ? (r.entity.color||'#c9a24b') : '#4a8fd1', true)}" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="${r.val}">${icon}${escapeHtml(r.entity.name)} ✕</button>`;
   }).join('') : `<div class="empty-hint" style="padding-left:0;">不限制（未选择）</div>`;
 
@@ -2556,8 +2556,8 @@ function exclusiveTargetPickerHtml(selectedArr, fieldName){
     <div class="entity-picker-list">
       ${searchHtml}
       <div class="entity-picker-items">
-        ${remainingUnits.map(u=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="unit:${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${u.image}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}
-        ${remainingElements.map(e=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="element:${e.id}" data-search="${escapeHtml((e.name||'').toLowerCase())}">${e.image?`<img src="${e.image}">`:''}${escapeHtml(e.name)}</button>`).join('')}
+        ${remainingUnits.map(u=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="unit:${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${escapeHtml(String(u.image))}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}
+        ${remainingElements.map(e=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="element:${e.id}" data-search="${escapeHtml((e.name||'').toLowerCase())}">${e.image?`<img src="${escapeHtml(String(e.image))}">`:''}${escapeHtml(e.name)}</button>`).join('')}
       </div>
       <div class="entity-picker-noresult" style="display:none;">没有匹配的单位/元素</div>
     </div>
@@ -2578,7 +2578,7 @@ function resolveExclusiveTargets(targets){
 
 function seriesOptionsHtml(selected){
   return ['<option value="">无</option>'].concat(
-    state.series.map(s=>`<option value="${s.id}" ${selected===s.id?'selected':''}>${escapeHtml(s.name)}</option>`)
+    state.series.map(s=>`<option value="${escapeHtml(String(s.id))}" ${selected===s.id?'selected':''}>${escapeHtml(s.name)}</option>`)
   ).join('');
 }
 
@@ -2587,7 +2587,7 @@ function logEntityPickerHtml(label, allEntities, selectedIds, action, idAttr, he
   const selectedHtml = selectedIds.length ? selectedIds.map(id=>{
     const e = allEntities.find(x=>x.id===id);
     if(!e) return '';
-    const icon = e.image ? `<img src="${e.image}">` : '';
+    const icon = e.image ? `<img src="${escapeHtml(String(e.image))}">` : '';
     return `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#8a713a',true)}" data-action="${action}" data-${idAttr}="${e.id}">${icon}${escapeHtml(e.name)}${rarityTag(e)} ✕</button>`;
   }).join('') : `<div class="empty-hint" style="padding-left:0;">尚未选择${label}</div>`;
   const remaining = allEntities.filter(e=>!selectedIds.includes(e.id));
@@ -2598,7 +2598,7 @@ function logEntityPickerHtml(label, allEntities, selectedIds, action, idAttr, he
     <summary class="btn btn-gold">+ 选择${label}</summary>
     <div class="entity-picker-list">
       ${searchHtml}
-      <div class="entity-picker-items">${remaining.map(e=>`<button type="button" class="entity-picker-item" data-action="${action}" data-${idAttr}="${e.id}" data-search="${escapeHtml(((e.name||'')+' '+(e.englishName||'')).toLowerCase())}">${e.image?`<img src="${e.image}">`:''}${escapeHtml(e.name)}${e.englishName?` <span class="entity-picker-en">${escapeHtml(e.englishName)}</span>`:''}${rarityTag(e)}</button>`).join('')}</div>
+      <div class="entity-picker-items">${remaining.map(e=>`<button type="button" class="entity-picker-item" data-action="${action}" data-${idAttr}="${e.id}" data-search="${escapeHtml(((e.name||'')+' '+(e.englishName||'')).toLowerCase())}">${e.image?`<img src="${escapeHtml(String(e.image))}">`:''}${escapeHtml(e.name)}${e.englishName?` <span class="entity-picker-en">${escapeHtml(e.englishName)}</span>`:''}${rarityTag(e)}</button>`).join('')}</div>
       <div class="entity-picker-noresult" style="display:none;">没有匹配的${label}</div>
     </div>
   </details>` : '';
@@ -2616,7 +2616,7 @@ function logEntityChipsHtml(allEntities, selectedIds, viewType, label){
     <div class="mark-row-list">${selectedIds.map(id=>{
       const e = allEntities.find(x=>x.id===id);
       if(!e) return '';
-      const icon = e.image ? `<img src="${e.image}">` : '';
+      const icon = e.image ? `<img src="${escapeHtml(String(e.image))}">` : '';
       const limitedTag = e.isLimitedReturn ? `<span title="限定复刻">🔄</span>` : '';
       return `<a href="${viewToHash({type:viewType, id:e.id})}" class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle('#8a713a')}cursor:pointer;">${icon}${limitedTag}${escapeHtml(e.name)}</a>`;
     }).join('')}</div>
@@ -2642,7 +2642,7 @@ function renderHome(){
         <div class="edit-field">
           <span class="edit-label">图片</span>
           <div class="image-upload-box">
-            ${draftLogEntry.image ? `<img class="image-preview zoomable" src="${draftLogEntry.image}">` : `<div class="image-placeholder">无图片</div>`}
+            ${draftLogEntry.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftLogEntry.image))}">` : `<div class="image-placeholder">无图片</div>`}
             <div class="upload-controls">
               <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
               ${draftLogEntry.image ? `<button class="btn btn-danger" data-image-remove="image" style="width:fit-content;">移除图片</button>` : ''}
@@ -2694,7 +2694,7 @@ function renderHome(){
             </div>
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
           </div>
-          ${l.image ? `<img class="log-image zoomable" src="${l.image}">` : ''}
+          ${l.image ? `<img class="log-image zoomable" src="${escapeHtml(String(l.image))}">` : ''}
           <div class="log-content">${renderMarkdownLite(l.content)}</div>
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
@@ -2790,7 +2790,7 @@ function renderStatusEffects(){
   const container = document.getElementById('mainInner');
   const markCardHtml = m => `
     <div class="status-effect-card">
-      ${m.image ? `<img class="status-effect-icon zoomable" src="${m.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
+      ${m.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
         <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
@@ -2836,7 +2836,7 @@ function renderAttackTypes(){
   const container = document.getElementById('mainInner');
   const cardsHtml = state.attackTypes.length ? state.attackTypes.map(t=>`
     <div class="status-effect-card">
-      ${t.image ? `<img class="status-effect-icon zoomable" src="${t.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
+      ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(t.name)}</div>
         <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
@@ -2865,14 +2865,14 @@ function enemyMechanicCategoryEditRowHtml(cat, i){
   const formulaVal = isGradient ? escapeHtml(cat.color) : '';
   return `<div class="mark-edit-row">
     <input class="edit-input" style="flex:2;min-width:160px;" data-em-cat-bind="${i}.name" value="${escapeHtml(cat.name)}" placeholder="分类名称，如：护盾类、召唤类">
-    <input type="color" data-em-cat-bind="${i}.color" value="${colorPickerVal}">
-    <input class="edit-input" style="flex:1;min-width:140px;" data-em-cat-color-formula="${i}" value="${formulaVal}" placeholder="自定义颜色公式（可选）">
+    <input type="color" data-em-cat-bind="${i}.color" value="${escapeHtml(String(colorPickerVal))}">
+    <input class="edit-input" style="flex:1;min-width:140px;" data-em-cat-color-formula="${i}" value="${escapeHtml(String(formulaVal))}" placeholder="自定义颜色公式（可选）">
     <button class="btn btn-danger" data-em-cat-action="removeEnemyMechanicCategory" data-index="${i}">删除</button>
   </div>`;
 }
 
 function enemyMechanicEditRowHtml(m, i){
-  const iconHtml = m.image ? `<img class="mark-icon-preview zoomable" src="${m.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = m.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(m.color||'');
   const colorPickerVal = isGradient ? '#b8544a' : (m.color||'#b8544a');
   const formulaVal = isGradient ? escapeHtml(m.color) : '';
@@ -2887,10 +2887,10 @@ function enemyMechanicEditRowHtml(m, i){
       <label style="font-size:12px;color:var(--text-faint);flex-shrink:0;">分类</label>
       <select class="edit-select" style="flex:1;min-width:160px;" data-em-bind="${i}.categoryId">
         <option value="">未分类</option>
-        ${state.enemyMechanicCategories.map(c=>`<option value="${c.id}" ${m.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+        ${state.enemyMechanicCategories.map(c=>`<option value="${escapeHtml(String(c.id))}" ${m.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
       </select>
-      <input type="color" data-em-bind="${i}.color" value="${colorPickerVal}">
-      <input class="edit-input" style="flex:1;min-width:160px;" data-em-color-formula="${i}" value="${formulaVal}" placeholder="自定义颜色公式，例如渐变色 linear-gradient(...)">
+      <input type="color" data-em-bind="${i}.color" value="${escapeHtml(String(colorPickerVal))}">
+      <input class="edit-input" style="flex:1;min-width:160px;" data-em-color-formula="${i}" value="${escapeHtml(String(formulaVal))}" placeholder="自定义颜色公式，例如渐变色 linear-gradient(...)">
     </div>
     <div class="edit-field" style="margin-top:10px;">
       <span class="edit-label">机制说明（会显示在「敌方机制」页面里）</span>
@@ -2943,7 +2943,7 @@ function renderEnemyMechanics(){
 
   const mechCardHtml = m => `
     <div class="status-effect-card">
-      ${m.image ? `<img class="status-effect-icon zoomable" src="${m.image}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
+      ${m.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
         <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
@@ -3078,7 +3078,7 @@ function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit, labelWord)
     </div>
     </div>
     <div class="image-upload-box" style="margin:10px 0;">
-      ${card.image ? `<img class="image-preview small zoomable" src="${card.image}">` : `<div class="image-placeholder small">无图片</div>`}
+      ${card.image ? `<img class="image-preview small zoomable" src="${escapeHtml(String(card.image))}">` : `<div class="image-placeholder small">无图片</div>`}
       <div class="upload-controls">
         <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="${kind}.${i}.image" style="display:none;"></label>
         ${card.image ? `<button class="btn" data-image-remove="${kind}.${i}.image">移除图片</button>` : ''}
@@ -3088,14 +3088,14 @@ function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit, labelWord)
       <span class="edit-label">稀有度</span>
       <select class="edit-select" data-bind="${kind}.${i}.rarity">
         <option value="">未分级</option>
-        ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${r.id}" ${card.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
+        ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${escapeHtml(String(r.id))}" ${card.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
       </select>
     </div>
     ${linkToUnit ? `<div class="edit-field">
       <span class="edit-label">对应单位（在这个单位的详情页会显示这张角色卡）</span>
       <select class="edit-select" data-bind="${kind}.${i}.unitId">
         <option value="">不关联任何单位</option>
-        ${state.units.map(u=>`<option value="${u.id}" ${card.unitId===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}
+        ${state.units.map(u=>`<option value="${escapeHtml(String(u.id))}" ${card.unitId===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}
       </select>
     </div>` : ''}
     <div class="edit-field">
@@ -3107,7 +3107,7 @@ function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit, labelWord)
 
 function odysseyFloorViewHtml(floor){
   return `<div class="floor-card">
-    ${floor.image ? `<img class="skill-image zoomable" src="${floor.image}">` : ''}
+    ${floor.image ? `<img class="skill-image zoomable" src="${escapeHtml(String(floor.image))}">` : ''}
     <div class="floor-card-body">
       <div class="floor-card-name">${inline(floor.name)}</div>
       <div class="floor-card-desc">${floor.description ? renderMarkdownLite(floor.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
@@ -3121,7 +3121,7 @@ function odysseyCardViewHtml(card, hideUnitTag){
   return `<div class="odyssey-card">
     <div class="odyssey-card-name">${escapeHtml(card.name)}</div>
     <div class="odyssey-card-img-wrap">
-      ${card.image ? `<img class="odyssey-card-img zoomable" src="${card.image}">` : `<div class="odyssey-card-img placeholder">无图片</div>`}
+      ${card.image ? `<img class="odyssey-card-img zoomable" src="${escapeHtml(String(card.image))}">` : `<div class="odyssey-card-img placeholder">无图片</div>`}
     </div>
     ${rarityObj ? `<span class="odyssey-card-rarity-badge" style="background:${rarityObj.color};">${rarityObj.name}</span>` : ''}
     <div class="odyssey-card-body">
@@ -3134,7 +3134,7 @@ function odysseyCardViewHtml(card, hideUnitTag){
 function odysseyCardInlineEditHtml(card){
   return `<div class="sub-card">
     <div class="image-upload-box" style="margin-bottom:10px;">
-      ${card.image ? `<img class="image-preview small zoomable" src="${card.image}">` : `<div class="image-placeholder small">无图片</div>`}
+      ${card.image ? `<img class="image-preview small zoomable" src="${escapeHtml(String(card.image))}">` : `<div class="image-placeholder small">无图片</div>`}
       <div class="upload-controls">
         <label class="file-label">选择图片<input type="file" accept="image/*" data-oc-image-bind="image" style="display:none;"></label>
         ${card.image ? `<button class="btn" data-oc-image-clear="1">移除图片</button>` : ''}
@@ -3148,7 +3148,7 @@ function odysseyCardInlineEditHtml(card){
       <span class="edit-label">稀有度</span>
       <select class="edit-select" data-oc-bind="rarity">
         <option value="">未分级</option>
-        ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${r.id}" ${card.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
+        ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${escapeHtml(String(r.id))}" ${card.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
       </select>
     </div>
     <div class="edit-field">
@@ -3277,7 +3277,7 @@ function renderOdyssey(){
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
       <div class="gallery-card-img-wrap">
-        ${u.image ? `<img class="gallery-card-img" src="${u.image}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
       <div class="gallery-card-name">${escapeHtml(u.name)}</div>
@@ -3469,8 +3469,8 @@ function skinCardHtml(skin, i){
 function skillMediaSlotHtml(url, i, mi){
   const mediaHtml = url
     ? (isVideoUrl(url)
-        ? `<video class="image-preview small zoomable" src="${url}" autoplay loop muted playsinline></video>`
-        : `<img class="image-preview small zoomable" src="${url}">`)
+        ? `<video class="image-preview small zoomable" src="${escapeHtml(String(url))}" autoplay loop muted playsinline></video>`
+        : `<img class="image-preview small zoomable" src="${escapeHtml(String(url))}">`)
     : `<div class="image-placeholder small">无图片</div>`;
   return `<div class="skill-edit-image">
     ${mediaHtml}
@@ -3485,8 +3485,8 @@ function skillMediaSlotHtml(url, i, mi){
 function attackMediaSlotHtml(url, ai, mi){
   const mediaHtml = url
     ? (isVideoUrl(url)
-        ? `<video class="image-preview small zoomable" src="${url}" autoplay loop muted playsinline></video>`
-        : `<img class="image-preview small zoomable" src="${url}">`)
+        ? `<video class="image-preview small zoomable" src="${escapeHtml(String(url))}" autoplay loop muted playsinline></video>`
+        : `<img class="image-preview small zoomable" src="${escapeHtml(String(url))}">`)
     : `<div class="image-placeholder small">无图片</div>`;
   return `<div class="skill-edit-image">
     ${mediaHtml}
@@ -3501,8 +3501,8 @@ function attackMediaSlotHtml(url, ai, mi){
 function skinMediaSlotHtml(url, i, mi){
   const mediaHtml = url
     ? (isVideoUrl(url)
-        ? `<video class="image-preview small zoomable" src="${url}" autoplay loop muted playsinline></video>`
-        : `<img class="image-preview small zoomable" src="${url}">`)
+        ? `<video class="image-preview small zoomable" src="${escapeHtml(String(url))}" autoplay loop muted playsinline></video>`
+        : `<img class="image-preview small zoomable" src="${escapeHtml(String(url))}">`)
     : `<div class="image-placeholder small">无图片</div>`;
   return `<div class="skill-edit-image">
     ${mediaHtml}
@@ -3539,7 +3539,7 @@ function skillCardHtml(skill, i){
             <span class="edit-label">效果类型</span>
             <select class="edit-select" data-bind="skills.${i}.targetType">
               <option value="">未分类</option>
-              ${SKILL_TARGET_TYPES.map(t=>`<option value="${t.id}" ${skill.targetType===t.id?'selected':''}>${t.name}</option>`).join('')}
+              ${SKILL_TARGET_TYPES.map(t=>`<option value="${escapeHtml(String(t.id))}" ${skill.targetType===t.id?'selected':''}>${t.name}</option>`).join('')}
             </select>
           </div>
         </div>
@@ -3554,8 +3554,8 @@ function skillCardHtml(skill, i){
 function otherFormCardHtml(form, i){
   const mediaHtml = form.image
     ? (isVideoUrl(form.image)
-        ? `<video class="image-preview small zoomable" src="${form.image}" autoplay loop muted playsinline></video>`
-        : `<img class="image-preview small zoomable" src="${form.image}">`)
+        ? `<video class="image-preview small zoomable" src="${escapeHtml(String(form.image))}" autoplay loop muted playsinline></video>`
+        : `<img class="image-preview small zoomable" src="${escapeHtml(String(form.image))}">`)
     : `<div class="image-placeholder small">无图片</div>`;
   const passives = Array.isArray(form.passives) ? form.passives : [];
   return `<div class="sub-card">
@@ -3637,7 +3637,7 @@ function attackCardHtml(attack, ai){
         <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">攻击类型</label>
         <select class="edit-select" data-bind="attacks.${ai}.attackTypeId">
           <option value="">无</option>
-          ${state.attackTypes.map(t=>`<option value="${t.id}" ${attack.attackTypeId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+          ${state.attackTypes.map(t=>`<option value="${escapeHtml(String(t.id))}" ${attack.attackTypeId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
         </select>
         ${state.attackTypes.length===0 ? `<div class="hint">还没有可选的攻击类型，先去左侧「攻击类型」→「设置」新增，比如 AOE、CONE、半圆。</div>` : ''}
       </div>
@@ -3858,24 +3858,24 @@ function handleDraftAction(ds, draft, el){
 }
 
 function markToggleHtml(mark, isActive){
-  const icon = mark.image ? `<img src="${mark.image}">` : '';
+  const icon = mark.image ? `<img src="${escapeHtml(String(mark.image))}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mark.color, isActive)}" data-action="toggleMark" data-mark-id="${mark.id}" title="${escapeHtml(mark.description||mark.name)}">${icon}${escapeHtml(mark.name)}</button>`;
 }
 
 function enemyMechanicToggleHtml(mech, isActive){
-  const icon = mech.image ? `<img src="${mech.image}">` : '';
+  const icon = mech.image ? `<img src="${escapeHtml(String(mech.image))}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
 }
 
 function groupToggleHtml(group, isActive){
-  const icon = group.image ? `<img src="${group.image}">` : '';
+  const icon = group.image ? `<img src="${escapeHtml(String(group.image))}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(group.color, isActive)}" data-action="selectGroup" data-group-id="${group.id}">${icon}${escapeHtml(group.name)}</button>`;
 }
 
 function memoryCardPreviewHtml(memoryId){
   const m = state.memories.find(x=>x.id===memoryId);
   if(!m) return '';
-  const icon = m.image ? (isVideoUrl(m.image) ? `<video class="image-preview small" style="width:56px;height:56px;" src="${m.image}" autoplay loop muted playsinline></video>` : `<img class="image-preview small" style="width:56px;height:56px;" src="${m.image}">`) : '';
+  const icon = m.image ? (isVideoUrl(m.image) ? `<video class="image-preview small" style="width:56px;height:56px;" src="${escapeHtml(String(m.image))}" autoplay loop muted playsinline></video>` : `<img class="image-preview small" style="width:56px;height:56px;" src="${escapeHtml(String(m.image))}">`) : '';
   const desc = (m.passives||[]).map(p=>`<strong>${escapeHtml(p.name)}：</strong>${escapeHtml(p.description||'')}`).join('<br>');
   return `<div class="sub-card" style="display:flex;gap:12px;align-items:flex-start;">
     ${icon}
@@ -3890,7 +3890,7 @@ function memoryCardPreviewHtml(memoryId){
 function familyCardPreviewHtml(familyId){
   const f = state.families.find(x=>x.id===familyId);
   if(!f) return '';
-  const icon = f.image ? (isVideoUrl(f.image) ? `<video class="image-preview small" style="width:56px;height:56px;" src="${f.image}" autoplay loop muted playsinline></video>` : `<img class="image-preview small" style="width:56px;height:56px;" src="${f.image}">`) : '';
+  const icon = f.image ? (isVideoUrl(f.image) ? `<video class="image-preview small" style="width:56px;height:56px;" src="${escapeHtml(String(f.image))}" autoplay loop muted playsinline></video>` : `<img class="image-preview small" style="width:56px;height:56px;" src="${escapeHtml(String(f.image))}">`) : '';
   const desc = (f.passives||[]).map(p=>`<strong>${escapeHtml(p.name)}：</strong>${escapeHtml(p.description||'')}`).join('<br>');
   return `<div class="sub-card" style="display:flex;gap:12px;align-items:flex-start;">
     ${icon}
@@ -3903,25 +3903,25 @@ function familyCardPreviewHtml(familyId){
 }
 
 function familyToggleHtml(family, isActive){
-  const icon = family.image ? `<img src="${family.image}">` : '';
+  const icon = family.image ? `<img src="${escapeHtml(String(family.image))}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle('#4a8fd1', isActive)}" data-action="toggleMemoryFamily" data-family-id="${family.id}">${icon}${escapeHtml(family.name)}</button>`;
 }
 
 function markInsertButtonsHtml(fieldPath){
   const markBtns = state.marks.map(m=>{
-    const icon = m.image ? `<img src="${m.image}">` : `<span class="mark-dot" style="background:${m.color||'var(--gold)'}"></span>`;
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : `<span class="mark-dot" style="background:${m.color||'var(--gold)'}"></span>`;
     return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(m.name)}">${icon}${escapeHtml(m.name)}</button>`;
   }).join('');
   const elementBtns = state.elements.map(el2=>{
-    const icon = el2.image ? `<img src="${el2.image}">` : `<span class="mark-dot" style="background:${el2.color||'var(--gold)'}"></span>`;
+    const icon = el2.image ? `<img src="${escapeHtml(String(el2.image))}">` : `<span class="mark-dot" style="background:${el2.color||'var(--gold)'}"></span>`;
     return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(el2.name)}">${icon}${escapeHtml(el2.name)}</button>`;
   }).join('');
   const groupBtns = state.groups.map(g=>{
-    const icon = g.image ? `<img src="${g.image}">` : `<span class="mark-dot" style="background:${g.color||'var(--gold)'}"></span>`;
+    const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : `<span class="mark-dot" style="background:${g.color||'var(--gold)'}"></span>`;
     return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(g.name)}">${icon}${escapeHtml(g.name)}</button>`;
   }).join('');
   const mechanicBtns = state.enemyMechanics.map(mc=>{
-    const icon = mc.image ? `<img src="${mc.image}">` : `<span class="mark-dot" style="background:${mc.color||'var(--gold)'}"></span>`;
+    const icon = mc.image ? `<img src="${escapeHtml(String(mc.image))}">` : `<span class="mark-dot" style="background:${mc.color||'var(--gold)'}"></span>`;
     return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(mc.name)}">${icon}${escapeHtml(mc.name)}</button>`;
   }).join('');
   const dotRow = (label, key, dotColor, emoji, btns) => `<details class="insert-dot-picker" data-picker-key="${key}"${openPickerKeys.has(key)?' open':''}>
@@ -3967,7 +3967,7 @@ function renderUnit(){
       <div class="edit-field">
         <span class="edit-label">1. 图片</span>
         <div class="image-upload-box">
-          ${draftUnit.image ? `<img class="image-preview zoomable" src="${draftUnit.image}">` : `<div class="image-placeholder">无图片</div>`}
+          ${draftUnit.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUnit.image))}">` : `<div class="image-placeholder">无图片</div>`}
           <div class="upload-controls">
             <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
             ${draftUnit.image ? `<button class="btn btn-danger" data-image-remove="image" style="width:fit-content;">移除图片</button>` : ''}
@@ -3975,7 +3975,7 @@ function renderUnit(){
         </div>
         <div class="hint" style="margin:12px 0 6px;">闪光图片（可选，例如闪光/异色版本）</div>
         <div class="image-upload-box">
-          ${draftUnit.shinyImage ? `<img class="image-preview zoomable" src="${draftUnit.shinyImage}">` : `<div class="image-placeholder">无图片</div>`}
+          ${draftUnit.shinyImage ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUnit.shinyImage))}">` : `<div class="image-placeholder">无图片</div>`}
           <div class="upload-controls">
             <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="shinyImage" style="display:none;"></label>
             ${draftUnit.shinyImage ? `<button class="btn btn-danger" data-image-remove="shinyImage" style="width:fit-content;">移除图片</button>` : ''}
@@ -3984,7 +3984,7 @@ function renderUnit(){
         <div class="hint" style="margin:12px 0 6px;">进化后图片（可选，用于「进化」板块的进化前/进化后对比）</div>
         <input class="edit-input" data-bind="evolvedName" value="${escapeHtml(draftUnit.evolvedName||'')}" placeholder="进化后名称（可选，不填就沿用原名）" style="margin-bottom:8px;">
         <div class="image-upload-box">
-          ${draftUnit.evolvedImage ? (isVideoUrl(draftUnit.evolvedImage) ? `<video class="image-preview zoomable" src="${draftUnit.evolvedImage}" autoplay loop muted playsinline></video>` : `<img class="image-preview zoomable" src="${draftUnit.evolvedImage}">`) : `<div class="image-placeholder">无图片</div>`}
+          ${draftUnit.evolvedImage ? (isVideoUrl(draftUnit.evolvedImage) ? `<video class="image-preview zoomable" src="${escapeHtml(String(draftUnit.evolvedImage))}" autoplay loop muted playsinline></video>` : `<img class="image-preview zoomable" src="${escapeHtml(String(draftUnit.evolvedImage))}">`) : `<div class="image-placeholder">无图片</div>`}
           <div class="upload-controls">
             <label class="file-label">选择图片/视频<input type="file" accept="image/*,video/*" data-image-bind="evolvedImage" style="display:none;"></label>
             ${draftUnit.evolvedImage ? `<button class="btn btn-danger" data-image-remove="evolvedImage" style="width:fit-content;">移除图片</button>` : ''}
@@ -4007,14 +4007,14 @@ function renderUnit(){
           ${draftUnit.elements.length ? draftUnit.elements.map(eid=>{
             const e2 = state.elements.find(x=>x.id===eid);
             if(!e2) return '';
-            const icon = e2.image ? `<img src="${e2.image}">` : '';
+            const icon = e2.image ? `<img src="${escapeHtml(String(e2.image))}">` : '';
             return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(e2.color,true)}" data-action="selectElement" data-element-id="${e2.id}">${icon}${escapeHtml(e2.name)} ✕</button>`;
           }).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择元素</div>'}
         </div>
         ${state.elements.filter(e2=>!draftUnit.elements.includes(e2.id)).length ? `<details class="entity-picker">
           <summary class="btn btn-gold">+ 选择元素</summary>
           <div class="entity-picker-list">
-            ${state.elements.filter(e2=>!draftUnit.elements.includes(e2.id)).map(e2=>`<button type="button" class="entity-picker-item" data-action="selectElement" data-element-id="${e2.id}">${e2.image?`<img src="${e2.image}">`:''}${escapeHtml(e2.name)}</button>`).join('')}
+            ${state.elements.filter(e2=>!draftUnit.elements.includes(e2.id)).map(e2=>`<button type="button" class="entity-picker-item" data-action="selectElement" data-element-id="${e2.id}">${e2.image?`<img src="${escapeHtml(String(e2.image))}">`:''}${escapeHtml(e2.name)}</button>`).join('')}
           </div>
         </details>` : ''}
         ${state.elements.length===0 ? '<div class="hint">还没有可用的元素，请先到左侧「设置」页面新增，比如火、水、风。</div>' : ''}
@@ -4065,7 +4065,7 @@ function renderUnit(){
         ${state.memories.length ? `<details class="entity-picker">
           <summary class="btn btn-gold">+ 选择记忆</summary>
           <div class="entity-picker-list">
-            ${state.memories.filter(m=>!draftUnit.linkedMemories.includes(m.id)).map(m=>`<button type="button" class="entity-picker-item" data-action="addUnitMemory" data-memory-id="${m.id}">${m.image?`<img src="${m.image}">`:''}${escapeHtml(m.name)}</button>`).join('') || '<div class="empty-hint">没有更多记忆可选了</div>'}
+            ${state.memories.filter(m=>!draftUnit.linkedMemories.includes(m.id)).map(m=>`<button type="button" class="entity-picker-item" data-action="addUnitMemory" data-memory-id="${m.id}">${m.image?`<img src="${escapeHtml(String(m.image))}">`:''}${escapeHtml(m.name)}</button>`).join('') || '<div class="empty-hint">没有更多记忆可选了</div>'}
           </div>
         </details>` : '<div class="hint">还没有记忆，可以先到左侧「记忆」页面新增。</div>'}
       </div>
@@ -4078,7 +4078,7 @@ function renderUnit(){
         ${state.families.length ? `<details class="entity-picker">
           <summary class="btn btn-gold">+ 选择使魔</summary>
           <div class="entity-picker-list">
-            ${state.families.filter(f=>!draftUnit.linkedFamilies.includes(f.id)).map(f=>`<button type="button" class="entity-picker-item" data-action="addUnitFamily" data-family-id="${f.id}">${f.image?`<img src="${f.image}">`:''}${escapeHtml(f.name)}</button>`).join('') || '<div class="empty-hint">没有更多使魔可选了</div>'}
+            ${state.families.filter(f=>!draftUnit.linkedFamilies.includes(f.id)).map(f=>`<button type="button" class="entity-picker-item" data-action="addUnitFamily" data-family-id="${f.id}">${f.image?`<img src="${escapeHtml(String(f.image))}">`:''}${escapeHtml(f.name)}</button>`).join('') || '<div class="empty-hint">没有更多使魔可选了</div>'}
           </div>
         </details>` : '<div class="hint">还没有使魔，可以先到左侧「使魔」页面新增。</div>'}
       </div>
@@ -4089,7 +4089,7 @@ function renderUnit(){
           const ru = state.units.find(u=>u.id===r.unitId);
           return `<div class="sub-card" style="padding:10px 14px;">
             <div class="sub-card-head">
-              ${ru && ru.image ? `<img class="mark-icon-preview" src="${ru.image}">` : `<div class="mark-icon-placeholder"></div>`}
+              ${ru && ru.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(ru.image))}">` : `<div class="mark-icon-placeholder"></div>`}
               <span style="flex:1;font-weight:600;">${ru ? escapeHtml(ru.name) : '（单位已被删除）'}</span>
               <button class="btn btn-danger" data-action="removeRelatedUnit" data-index="${i}">删除</button>
             </div>
@@ -4103,7 +4103,7 @@ function renderUnit(){
             <summary class="btn btn-gold">+ 关联单位</summary>
             <div class="entity-picker-list">
               ${searchHtml}
-              <div class="entity-picker-items">${remaining.map(u=>`<button type="button" class="entity-picker-item" data-action="addRelatedUnit" data-unit-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${u.image}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}</div>
+              <div class="entity-picker-items">${remaining.map(u=>`<button type="button" class="entity-picker-item" data-action="addRelatedUnit" data-unit-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${escapeHtml(String(u.image))}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}</div>
               <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
             </div>
           </details>` : '';
@@ -4127,7 +4127,7 @@ function renderUnit(){
             <label>特性</label>
             <select class="edit-select" data-bind="trait">
               <option value="">无</option>
-              ${state.traits.map(t=>`<option value="${t.id}" ${draftUnit.trait===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+              ${state.traits.map(t=>`<option value="${escapeHtml(String(t.id))}" ${draftUnit.trait===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
             </select>
           </div>
           <div class="attack-overview-cell">
@@ -4151,14 +4151,14 @@ function renderUnit(){
           ${draftUnit.marks.length ? draftUnit.marks.map(mid=>{
             const m2 = state.marks.find(x=>x.id===mid);
             if(!m2) return '';
-            const icon = m2.image ? `<img src="${m2.image}">` : '';
+            const icon = m2.image ? `<img src="${escapeHtml(String(m2.image))}">` : '';
             return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(m2.color,true)}" data-action="toggleMark" data-mark-id="${m2.id}">${icon}${escapeHtml(m2.name)} ✕</button>`;
           }).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择状态标记</div>'}
         </div>
         ${state.marks.filter(m2=>!draftUnit.marks.includes(m2.id)).length ? `<details class="entity-picker">
           <summary class="btn btn-gold">+ 选择状态标记</summary>
           <div class="entity-picker-list">
-            ${state.marks.filter(m2=>!draftUnit.marks.includes(m2.id)).map(m2=>`<button type="button" class="entity-picker-item" data-action="toggleMark" data-mark-id="${m2.id}">${m2.image?`<img src="${m2.image}">`:''}${escapeHtml(m2.name)}</button>`).join('')}
+            ${state.marks.filter(m2=>!draftUnit.marks.includes(m2.id)).map(m2=>`<button type="button" class="entity-picker-item" data-action="toggleMark" data-mark-id="${m2.id}">${m2.image?`<img src="${escapeHtml(String(m2.image))}">`:''}${escapeHtml(m2.name)}</button>`).join('')}
           </div>
         </details>` : ''}
         <div class="mark-quickadd">
@@ -4258,17 +4258,17 @@ function renderUnit(){
   const tagsHtml = (unit.tags||[]).map(t=>`<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${escapeHtml(t)}</span>`).join('');
   const unitGroups = (unit.groups||[]).map(gid=>state.groups.find(g=>g.id===gid)).filter(Boolean);
   const groupObj = unitGroups[0] || null;
-  const groupChipHtml = unitGroups.map(g=>{ const icon = g.image ? `<img src="${g.image}">` : ''; return `<span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>`; }).join('');
+  const groupChipHtml = unitGroups.map(g=>{ const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : ''; return `<span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>`; }).join('');
   const elementChipHtml = (unit.elements && unit.elements.length) ? unit.elements.map(eid=>{
     const eObj = state.elements.find(e=>e.id===eid);
     if(!eObj) return '';
-    const icon = eObj.image ? `<img src="${eObj.image}">` : '';
+    const icon = eObj.image ? `<img src="${escapeHtml(String(eObj.image))}">` : '';
     return `<span class="mark-chip" style="${coloredChipStyle(eObj.color)}">${icon}${escapeHtml(eObj.name)}</span>`;
   }).join('') : '';
   const marksHtml = (unit.marks&&unit.marks.length) ? unit.marks.map(mid=>{
     const m = state.marks.find(x=>x.id===mid);
     if(!m) return '';
-    const icon = m.image ? `<img src="${m.image}">` : '';
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
   const skillsHtml = (unit.skills&&unit.skills.length) ? (()=>{
@@ -4276,12 +4276,12 @@ function renderUnit(){
       const t = SKILL_TARGET_TYPES.find(x=>x.id===s.targetType);
       return `<button type="button" class="skill-tab ${i===0?'active':''}" data-skill-tab="${i}">
         <span class="skill-tab-name">${escapeHtml(s.name)}</span>
-        ${t ? `<span class="skill-tab-dot" style="background:${t.color};" title="${t.name}"></span>` : ''}
+        ${t ? `<span class="skill-tab-dot" style="background:${t.color};" title="${escapeHtml(String(t.name))}"></span>` : ''}
       </button>`;
     }).join('');
     const panelsHtml = unit.skills.map((s,i)=>{
       const mediaList = Array.isArray(s.media) ? s.media : [];
-      const mediaHtml = mediaList.map(url=> url ? (isVideoUrl(url) ? `<video class="skill-image zoomable" src="${url}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${url}">`) : '').join('');
+      const mediaHtml = mediaList.map(url=> url ? (isVideoUrl(url) ? `<video class="skill-image zoomable" src="${escapeHtml(String(url))}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${escapeHtml(String(url))}">`) : '').join('');
       return `<div class="skill-tab-panel ${i===0?'active':''}" data-skill-panel="${i}">
         <div class="skill-menu-header">
           <span class="skill-menu-name">${escapeHtml(s.name)}</span>
@@ -4300,7 +4300,7 @@ function renderUnit(){
   })() : '<p style="color:var(--text-faint);">暂无内容</p>';
 
   const otherFormsHtml = (unit.otherForms&&unit.otherForms.length) ? unit.otherForms.map(f=>{
-    const media = f.image?(isVideoUrl(f.image)?`<video class="skill-image zoomable" src="${f.image}" autoplay loop muted playsinline></video>`:`<img class="skill-image zoomable" src="${f.image}">`):'';
+    const media = f.image?(isVideoUrl(f.image)?`<video class="skill-image zoomable" src="${escapeHtml(String(f.image))}" autoplay loop muted playsinline></video>`:`<img class="skill-image zoomable" src="${escapeHtml(String(f.image))}">`):'';
     const passives = Array.isArray(f.passives) ? f.passives : [];
     const passivesInner = passives.length ? passives.map(p=>`
       <div style="margin-bottom:14px;">
@@ -4326,7 +4326,7 @@ function renderUnit(){
   const linkedMemoriesHtml = (unit.linkedMemories && unit.linkedMemories.length) ? unit.linkedMemories.map(mid=>{
     const m = state.memories.find(x=>x.id===mid);
     if(!m) return '';
-    const media = m.image ? (isVideoUrl(m.image) ? `<video class="skill-image zoomable" src="${m.image}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${m.image}">`) : '';
+    const media = m.image ? (isVideoUrl(m.image) ? `<video class="skill-image zoomable" src="${escapeHtml(String(m.image))}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${escapeHtml(String(m.image))}">`) : '';
     const passives = Array.isArray(m.passives) ? m.passives : [];
     const passivesInner = passives.length ? passives.map(p=>{
       const scopeTag = `<span class="badge ${p.scope==='personal'?'badge-legendary':'badge-common'}" style="${p.scope==='personal'?'':'background:var(--card);color:var(--text-faint);'}margin-left:8px;">${p.scope==='personal'?'专属':'通用'}</span>`;
@@ -4347,7 +4347,7 @@ function renderUnit(){
   const linkedFamiliesHtml = (unit.linkedFamilies && unit.linkedFamilies.length) ? unit.linkedFamilies.map(fid=>{
     const f = state.families.find(x=>x.id===fid);
     if(!f) return '';
-    const media2 = f.image ? (isVideoUrl(f.image) ? `<video class="skill-image zoomable" src="${f.image}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${f.image}">`) : '';
+    const media2 = f.image ? (isVideoUrl(f.image) ? `<video class="skill-image zoomable" src="${escapeHtml(String(f.image))}" autoplay loop muted playsinline></video>` : `<img class="skill-image zoomable" src="${escapeHtml(String(f.image))}">`) : '';
     const fpassives = Array.isArray(f.passives) ? f.passives : [];
     const fpassivesInner = fpassives.length ? fpassives.map(p=>{
       const scopeTag = `<span class="badge ${p.scope==='personal'?'badge-legendary':'badge-common'}" style="${p.scope==='personal'?'':'background:var(--card);color:var(--text-faint);'}margin-left:8px;">${p.scope==='personal'?'专属':'通用'}</span>`;
@@ -4371,10 +4371,10 @@ function renderUnit(){
     const mediaList = Array.isArray(s.media) ? s.media.filter(Boolean) : (s.image ? [s.image] : []);
     const mainMedia = mediaList[0] || '';
     const extraMedia = mediaList.slice(1);
-    const extraMediaHtml = extraMedia.length ? `<div class="skin-card-media-strip">${extraMedia.map(url=>isVideoUrl(url)?`<video class="skin-card-media-thumb zoomable" src="${url}" autoplay loop muted playsinline></video>`:`<img class="skin-card-media-thumb zoomable" src="${url}">`).join('')}</div>` : '';
+    const extraMediaHtml = extraMedia.length ? `<div class="skin-card-media-strip">${extraMedia.map(url=>isVideoUrl(url)?`<video class="skin-card-media-thumb zoomable" src="${escapeHtml(String(url))}" autoplay loop muted playsinline></video>`:`<img class="skin-card-media-thumb zoomable" src="${escapeHtml(String(url))}">`).join('')}</div>` : '';
     return `<div class="skin-card">
       <div class="skin-card-image-wrap">
-        ${mainMedia?(isVideoUrl(mainMedia)?`<video class="skin-card-image zoomable" src="${mainMedia}" autoplay loop muted playsinline></video>`:`<img class="skin-card-image zoomable" src="${mainMedia}">`):`<div class="image-placeholder" style="width:100%;height:100%;">无图片</div>`}
+        ${mainMedia?(isVideoUrl(mainMedia)?`<video class="skin-card-image zoomable" src="${escapeHtml(String(mainMedia))}" autoplay loop muted playsinline></video>`:`<img class="skin-card-image zoomable" src="${escapeHtml(String(mainMedia))}">`):`<div class="image-placeholder" style="width:100%;height:100%;">无图片</div>`}
         ${s.rarity ? `<span class="skin-card-rarity-tag">${rarityBadge(s.rarity)}</span>` : ''}
       </div>
       <div class="skin-card-body">
@@ -4409,15 +4409,15 @@ function renderUnit(){
     const mediaList = Array.isArray(a.media) ? a.media.filter(Boolean) : (a.image ? [a.image] : []);
     const mainMedia = mediaList[0] || '';
     const extraMedia = mediaList.slice(1);
-    const extraMediaHtml = extraMedia.length ? `<div class="attack-media-strip">${extraMedia.map(url=>isVideoUrl(url)?`<video class="attack-media-thumb zoomable" src="${url}" autoplay loop muted playsinline></video>`:`<img class="attack-media-thumb zoomable" src="${url}">`).join('')}</div>` : '';
+    const extraMediaHtml = extraMedia.length ? `<div class="attack-media-strip">${extraMedia.map(url=>isVideoUrl(url)?`<video class="attack-media-thumb zoomable" src="${escapeHtml(String(url))}" autoplay loop muted playsinline></video>`:`<img class="attack-media-thumb zoomable" src="${escapeHtml(String(url))}">`).join('')}</div>` : '';
     return `
     <div class="attack-view" style="${(attackTypeObj && attackTypeObj.color && !/gradient/.test(attackTypeObj.color)) ? `--atk-accent:${attackTypeObj.color};` : ''}">
       <div class="attack-view-head">
         <div class="attack-emblem"><span class="attack-emblem-num">${cnNum(ai+1)}</span><span class="attack-emblem-tag">技</span></div>
-        ${mainMedia?(isVideoUrl(mainMedia)?`<video class="attack-thumb zoomable" src="${mainMedia}" autoplay loop muted playsinline></video>`:`<img class="attack-thumb zoomable" src="${mainMedia}">`):''}
+        ${mainMedia?(isVideoUrl(mainMedia)?`<video class="attack-thumb zoomable" src="${escapeHtml(String(mainMedia))}" autoplay loop muted playsinline></video>`:`<img class="attack-thumb zoomable" src="${escapeHtml(String(mainMedia))}">`):''}
         <div class="attack-view-titles">
           <h3 class="skill-name">${escapeHtml(a.name)}</h3>
-          ${attackTypeObj ? `<span class="attack-type-chip" style="${coloredChipStyle(attackTypeObj.color)}">${attackTypeObj.image?`<img src="${attackTypeObj.image}">`:''}${escapeHtml(attackTypeObj.name)}</span>` : (attackTypeLegacyLabel ? `<span class="attack-type-chip" style="background:var(--card-hover);color:var(--text-faint);">${escapeHtml(attackTypeLegacyLabel)}</span>` : '')}
+          ${attackTypeObj ? `<span class="attack-type-chip" style="${coloredChipStyle(attackTypeObj.color)}">${attackTypeObj.image?`<img src="${escapeHtml(String(attackTypeObj.image))}">`:''}${escapeHtml(attackTypeObj.name)}</span>` : (attackTypeLegacyLabel ? `<span class="attack-type-chip" style="background:var(--card-hover);color:var(--text-faint);">${escapeHtml(attackTypeLegacyLabel)}</span>` : '')}
         </div>
       </div>
       ${extraMediaHtml}
@@ -4435,9 +4435,9 @@ function renderUnit(){
         <div class="attack-trait-picker">
           <select class="edit-select trait-preview-select" data-unit-trait-preview="${unit.id}">
             <option value="">无特性</option>
-            ${state.traits.map(t=>`<option value="${t.id}" ${unitPreviewTraitId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+            ${state.traits.map(t=>`<option value="${escapeHtml(String(t.id))}" ${unitPreviewTraitId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
           </select>
-          ${unitTraitObj ? `<button type="button" class="mark-chip trait-detail-btn" data-trait-id="${unitTraitObj.id}" style="${coloredChipStyle(unitTraitObj.color)}">${unitTraitObj.image?`<img src="${unitTraitObj.image}">`:''}详情</button>` : ''}
+          ${unitTraitObj ? `<button type="button" class="mark-chip trait-detail-btn" data-trait-id="${unitTraitObj.id}" style="${coloredChipStyle(unitTraitObj.color)}">${unitTraitObj.image?`<img src="${escapeHtml(String(unitTraitObj.image))}">`:''}详情</button>` : ''}
           ${unitPreviewTraitId !== (unit.trait||'') ? `<button type="button" class="btn" id="resetTraitPreviewBtn" data-unit-id="${unit.id}" title="重置回默认特性" style="padding:6px 10px;font-size:12px;">↺ 重置为默认</button>` : ''}
         </div>
         ${unitPreviewTraitId !== (unit.trait||'') ? `<div class="hint" style="margin-top:6px;">当前只是预览效果，不是这个单位真正的默认特性${unit.trait ? '（默认是「'+escapeHtml((state.traits.find(t=>t.id===unit.trait)||{}).name||'')+'」）' : '（默认是"无特性"）'}。</div>` : ''}
@@ -4450,7 +4450,7 @@ function renderUnit(){
   const obtainMethodsChipsHtml = (unit.obtainMethods&&unit.obtainMethods.length) ? unit.obtainMethods.map(id=>{
     const t = state.obtainMethods.find(x=>x.id===id);
     if(!t) return '';
-    return `<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${t.image}">`:''}${escapeHtml(t.name)}</span>`;
+    return `<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</span>`;
   }).join('') : (unit.obtainWay ? `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">获取：${escapeHtml(unit.obtainWay)}</span>` : '');
 
   const statPlateHtml = '';
@@ -4458,33 +4458,33 @@ function renderUnit(){
   const displayImage = (showingShinyImage && unit.shinyImage) ? unit.shinyImage : unit.image;
   const mainImageHtml = displayImage ? `
     <div class="unit-image-wrap">
-      <img class="unit-image zoomable" src="${displayImage}">
+      <img class="unit-image zoomable" src="${escapeHtml(String(displayImage))}">
       ${unit.shinyImage ? `<button type="button" class="shiny-toggle-btn ${showingShinyImage?'active':''}" id="shinyToggleBtn">✨ ${showingShinyImage?'普通':'闪光'}</button>` : ''}
     </div>` : '';
 
   const evolutionItems = state.items.filter(it=>it.evolvesUnitId===unit.id);
   const evolutionItemsHtml = evolutionItems.length ? `<div class="shop-item-grid">${evolutionItems.map(it=>`
     <a href="${viewToHash({type:'item', id:it.id})}" class="shop-item-card" data-view="item" data-id="${it.id}">
-      <div class="shop-item-icon-wrap">${it.image ? `<img class="shop-item-icon" src="${it.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-icon-wrap">${it.image ? `<img class="shop-item-icon" src="${escapeHtml(String(it.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(it.name)}</div>${it.evolveQuantity ? `<div class="shop-item-qty">${escapeHtml(it.evolveQuantity)}</div>` : ''}${it.questline ? `<div class="shop-item-qty">📜 有任务线</div>` : ''}</div>
     </a>`).join('')}</div>` : '';
   const relatedUnitsHtml = (unit.relatedUnits&&unit.relatedUnits.length) ? `<div class="shop-item-grid">${unit.relatedUnits.map(r=>{
     const ru = state.units.find(u=>u.id===r.unitId);
     if(!ru) return '';
     return `<a href="${viewToHash({type:'unit', id:ru.id})}" class="shop-item-card" data-view="unit" data-id="${ru.id}">
-      <div class="shop-item-icon-wrap">${ru.image ? `<img class="shop-item-icon" src="${ru.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-icon-wrap">${ru.image ? `<img class="shop-item-icon" src="${escapeHtml(String(ru.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(ru.name)}</div>${r.note ? `<div class="shop-item-qty">${escapeHtml(r.note)}</div>` : ''}</div>
     </a>`;
   }).join('')}</div>` : '';
   const hasEvolution = !!unit.evolvedImage || evolutionItems.length>0;
   const evolutionCompareHtml = unit.evolvedImage ? `<div class="evo-compare">
     <div class="evo-compare-side">
-      ${unit.image ? (isVideoUrl(unit.image) ? `<video class="evo-compare-img zoomable" src="${unit.image}" autoplay loop muted playsinline></video>` : `<img class="evo-compare-img zoomable" src="${unit.image}">`) : `<div class="image-placeholder">无图片</div>`}
+      ${unit.image ? (isVideoUrl(unit.image) ? `<video class="evo-compare-img zoomable" src="${escapeHtml(String(unit.image))}" autoplay loop muted playsinline></video>` : `<img class="evo-compare-img zoomable" src="${escapeHtml(String(unit.image))}">`) : `<div class="image-placeholder">无图片</div>`}
       <div class="evo-compare-label">进化前 · ${escapeHtml(unit.name)}</div>
     </div>
     <div class="evo-compare-arrow">→</div>
     <div class="evo-compare-side">
-      ${isVideoUrl(unit.evolvedImage) ? `<video class="evo-compare-img zoomable" src="${unit.evolvedImage}" autoplay loop muted playsinline></video>` : `<img class="evo-compare-img zoomable" src="${unit.evolvedImage}">`}
+      ${isVideoUrl(unit.evolvedImage) ? `<video class="evo-compare-img zoomable" src="${escapeHtml(String(unit.evolvedImage))}" autoplay loop muted playsinline></video>` : `<img class="evo-compare-img zoomable" src="${escapeHtml(String(unit.evolvedImage))}">`}
       <div class="evo-compare-label">进化后 · ${escapeHtml(unit.evolvedName || unit.name)}</div>
     </div>
   </div>` : '';
@@ -4532,7 +4532,7 @@ function renderUnit(){
         <input class="edit-input" id="newCharCardName" value="${escapeHtml(newCharacterCardDraft?.name||'')}" placeholder="角色卡名称">
       </div>
       <div class="image-upload-box" style="margin:10px 0;">
-        ${newCharacterCardDraft?.image ? `<img class="image-preview small zoomable" src="${newCharacterCardDraft.image}">` : `<div class="image-placeholder small">无图片</div>`}
+        ${newCharacterCardDraft?.image ? `<img class="image-preview small zoomable" src="${escapeHtml(String(newCharacterCardDraft.image))}">` : `<div class="image-placeholder small">无图片</div>`}
         <div class="upload-controls">
           <label class="file-label">选择图片<input type="file" accept="image/*" id="newCharCardImageInput" style="display:none;"></label>
           ${newCharacterCardDraft?.image ? `<button class="btn" id="newCharCardImageRemove">移除图片</button>` : ''}
@@ -4542,7 +4542,7 @@ function renderUnit(){
         <span class="edit-label">稀有度</span>
         <select class="edit-select" id="newCharCardRarity">
           <option value="">未分级</option>
-          ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${r.id}" ${newCharacterCardDraft?.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
+          ${ODYSSEY_CARD_RARITIES.map(r=>`<option value="${escapeHtml(String(r.id))}" ${newCharacterCardDraft?.rarity===r.id?'selected':''}>${r.name}</option>`).join('')}
         </select>
       </div>
       <div class="edit-field">
@@ -4690,7 +4690,7 @@ function renderItem(){
       <div class="edit-field">
         <span class="edit-label">1. 图片</span>
         <div class="image-upload-box">
-          ${item.image ? `<img class="image-preview zoomable" id="imgPreview" src="${item.image}">` : `<div class="image-placeholder" id="imgPreview">无图片</div>`}
+          ${item.image ? `<img class="image-preview zoomable" id="imgPreview" src="${escapeHtml(String(item.image))}">` : `<div class="image-placeholder" id="imgPreview">无图片</div>`}
           <div class="upload-controls">
             <label class="file-label">选择图片<input type="file" accept="image/*" id="imageInput" style="display:none;"></label>
             ${item.image ? `<button class="btn btn-danger" id="removeImgBtn" style="width:fit-content;">移除图片</button>` : ''}
@@ -4705,7 +4705,7 @@ function renderItem(){
         <span class="edit-label">分类</span>
         <select class="edit-select" id="editItemCategory">
           <option value="">未分类</option>
-          ${state.itemCategories.map(c=>`<option value="${c.id}" ${item.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+          ${state.itemCategories.map(c=>`<option value="${escapeHtml(String(c.id))}" ${item.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
         </select>
       </div>
       <div class="edit-field">
@@ -4721,14 +4721,14 @@ function renderItem(){
         <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
         ${(()=>{
           const selUnit = itemEditEvolvesUnitId ? state.units.find(u=>u.id===itemEditEvolvesUnitId) : null;
-          const selectedHtml = selUnit ? `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-evo-clear="1">${selUnit.image?`<img src="${selUnit.image}">`:''}${escapeHtml(selUnit.name)} ✕</button>` : `<div class="empty-hint" style="padding-left:0;">不用于进化任何单位</div>`;
+          const selectedHtml = selUnit ? `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-evo-clear="1">${selUnit.image?`<img src="${escapeHtml(String(selUnit.image))}">`:''}${escapeHtml(selUnit.name)} ✕</button>` : `<div class="empty-hint" style="padding-left:0;">不用于进化任何单位</div>`;
           const remaining = state.units.filter(u=>u.id!==itemEditEvolvesUnitId);
           const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称（中文/英文均可）...">` : '';
           const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="item-evo-unit">
             <summary class="btn btn-gold">+ 选择单位</summary>
             <div class="entity-picker-list">
               ${searchHtml}
-              <div class="entity-picker-items">${remaining.map(u=>`<button type="button" class="entity-picker-item" data-item-evo-select="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${u.image}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}</div>
+              <div class="entity-picker-items">${remaining.map(u=>`<button type="button" class="entity-picker-item" data-item-evo-select="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${escapeHtml(String(u.image))}">`:''}${escapeHtml(u.name)}${u.englishName?` <span class="entity-picker-en">${escapeHtml(u.englishName)}</span>`:''}</button>`).join('')}</div>
               <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
             </div>
           </details>` : '';
@@ -4809,7 +4809,7 @@ function renderItem(){
       <div class="crumb">物品</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : '<span class="view-only-note" style="margin:0;padding:6px 12px;">仅查看</span>'}</div>
     </div>
-    ${item.image ? `<img class="unit-image zoomable" src="${item.image}">` : ''}
+    ${item.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(item.image))}">` : ''}
     <div class="page-header">
       <h1 class="page-title">${escapeHtml(item.name)}</h1>
       ${item.englishName ? `<div class="unit-english-name">${escapeHtml(item.englishName)}</div>` : ''}
@@ -4818,7 +4818,7 @@ function renderItem(){
     <div class="content-body">${renderMarkdownLite(item.description) || '<p style="color:var(--text-faint);">暂无内容</p>'}</div>
     ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderMarkdownLite(item.questline)}</div>` : ''}
     ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
-      <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${evolvesUnit.image}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${escapeHtml(item.evolveQuantity)}</div>` : ''}</div>
     </a>` : ''}
   `;
@@ -4876,7 +4876,7 @@ function renderGallery(type){
     const searchText = escapeHtml(((entity.name||'')+' '+(entity.englishName||'')).toLowerCase());
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${isAdmin ? ' draggable="true"' : ''}>
       <div class="gallery-card-img-wrap">
-        ${entity.image ? `<img class="gallery-card-img" src="${entity.image}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
       <div class="gallery-card-name">${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
@@ -4897,7 +4897,7 @@ function renderGallery(type){
     cardsHtml = groups.map(g=>{
       const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
       const isOpen = openRaritySections.has(key);
-      const peekHtml = g.items.slice(0,6).filter(e=>e.image).map(e=>`<img src="${e.image}">`).join('');
+      const peekHtml = g.items.slice(0,6).filter(e=>e.image).map(e=>`<img src="${escapeHtml(String(e.image))}">`).join('');
       return `
       <details class="rarity-section" data-rarity-key="${key}"${isOpen?' open':''}>
         <summary class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}${peekHtml ? `<span class="rarity-section-peek">${peekHtml}</span>` : ''}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
@@ -4926,7 +4926,7 @@ function renderGallery(type){
       if(recent.length){
         recentHtml = `<div class="section-label" style="margin-top:0;">最近更新</div>
         <div class="gallery-recent-strip">${recent.map(e=>`<a href="${viewToHash({type:cfg.viewType, id:e.id})}" class="gallery-recent-card" data-view="${cfg.viewType}" data-id="${e.id}">
-          ${e.image ? `<img class="gallery-recent-img" src="${e.image}">` : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
+          ${e.image ? `<img class="gallery-recent-img" src="${escapeHtml(String(e.image))}">` : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
           <div class="gallery-recent-name">${escapeHtml(e.name)}</div>
         </a>`).join('')}</div>`;
       }
@@ -5130,7 +5130,7 @@ function renderSimpleEntity(type){
       <div class="edit-field">
         <span class="edit-label">图片</span>
         <div class="image-upload-box">
-          ${draftSimple.image ? `<img class="image-preview zoomable" src="${draftSimple.image}">` : `<div class="image-placeholder">无图片</div>`}
+          ${draftSimple.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftSimple.image))}">` : `<div class="image-placeholder">无图片</div>`}
           <div class="upload-controls">
             <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
             ${draftSimple.image ? `<button class="btn btn-danger" data-image-remove="image" style="width:fit-content;">移除图片</button>` : ''}
@@ -5238,7 +5238,7 @@ function renderSimpleEntity(type){
   const marksHtml = (entity.marks&&entity.marks.length) ? entity.marks.map(mid=>{
     const m = state.marks.find(x=>x.id===mid);
     if(!m) return '';
-    const icon = m.image ? `<img src="${m.image}">` : '';
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
 
@@ -5263,7 +5263,7 @@ function renderSimpleEntity(type){
   const linkedFamiliesHtml = (type==='memory' && entity.linkedFamilies && entity.linkedFamilies.length) ? `<div class="mark-row-list">${entity.linkedFamilies.map(fid=>{
     const f = state.families.find(x=>x.id===fid);
     if(!f) return '';
-    const icon = f.image ? `<img src="${f.image}">` : '';
+    const icon = f.image ? `<img src="${escapeHtml(String(f.image))}">` : '';
     return `<a href="${viewToHash({type:'family', id:f.id})}" class="mark-chip" data-view="family" data-id="${f.id}" style="${coloredChipStyle('#4a8fd1')}cursor:pointer;">${icon}${escapeHtml(f.name)}</a>`;
   }).join('')}</div>` : '';
 
@@ -5272,13 +5272,13 @@ function renderSimpleEntity(type){
       <div class="crumb">${cfg.label}</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : '<span class="view-only-note" style="margin:0;padding:6px 12px;">仅查看</span>'}</div>
     </div>
-    ${entity.image ? `<img class="unit-image zoomable" src="${entity.image}">` : ''}
+    ${entity.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(entity.image))}">` : ''}
     <div class="page-header">
       <h1 class="page-title">${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
       <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
-        return t ? `<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${t.image}">`:''}${escapeHtml(t.name)}</span>` : '';
+        return t ? `<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</span>` : '';
       }).join('') : (entity.obtainWay?`<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">获取：${escapeHtml(entity.obtainWay)}</span>`:'')}${marksHtml}</div>
     </div>
     <div class="section-label">被动</div>
@@ -5306,21 +5306,21 @@ function colorFormulaInputHtml(pathPrefix, i, colorVal){
 }
 
 function obtainMethodEditRowHtml(m, i){
-  const iconHtml = m.image ? `<img class="mark-icon-preview zoomable" src="${m.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = m.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(m.color||'');
   const colorPickerVal = isGradient ? '#4a8fd1' : (m.color||'#4a8fd1');
   return `<div class="mark-edit-row">
     ${iconHtml}
     <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="obtainMethods.${i}.image" style="display:none;"></label>
     <input class="edit-input" data-settings-bind="obtainMethods.${i}.name" value="${escapeHtml(m.name)}" placeholder="获取方式名称，如：Raids">
-    <input type="color" data-settings-bind="obtainMethods.${i}.color" value="${colorPickerVal}">
+    <input type="color" data-settings-bind="obtainMethods.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('obtainMethods', i, m.color)}
     <button class="btn btn-danger" data-settings-action="removeObtainMethod" data-index="${i}">删除</button>
   </div>`;
 }
 
 function attackTypeEditRowHtml(t, i){
-  const iconHtml = t.image ? `<img class="mark-icon-preview zoomable" src="${t.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = t.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(t.color||'');
   const colorPickerVal = isGradient ? '#4a8fd1' : (t.color||'#4a8fd1');
   return `<div class="sub-card">
@@ -5328,7 +5328,7 @@ function attackTypeEditRowHtml(t, i){
       ${iconHtml}
       <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="attackTypes.${i}.image" style="display:none;"></label>
       <input class="edit-input" data-settings-bind="attackTypes.${i}.name" value="${escapeHtml(t.name)}" placeholder="攻击类型名称，如：AOE / CONE / 半圆">
-      <input type="color" data-settings-bind="attackTypes.${i}.color" value="${colorPickerVal}">
+      <input type="color" data-settings-bind="attackTypes.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
       ${colorFormulaInputHtml('attackTypes', i, t.color)}
       <button class="btn btn-danger" data-settings-action="removeAttackType" data-index="${i}">删除</button>
     </div>
@@ -5344,7 +5344,7 @@ function markCategoryEditRowHtml(cat, i){
   const colorPickerVal = isGradient ? '#c9a24b' : (cat.color||'#c9a24b');
   return `<div class="mark-edit-row">
     <input class="edit-input" data-settings-bind="markCategories.${i}.name" value="${escapeHtml(cat.name)}" placeholder="分类名称，如：控制 (CC)">
-    <input type="color" data-settings-bind="markCategories.${i}.color" value="${colorPickerVal}">
+    <input type="color" data-settings-bind="markCategories.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('markCategories', i, cat.color)}
     <button class="btn btn-danger" data-settings-action="removeMarkCategory" data-index="${i}">删除</button>
   </div>`;
@@ -5355,14 +5355,14 @@ function itemCategoryEditRowHtml(cat, i){
   const colorPickerVal = isGradient ? '#4a8fd1' : (cat.color||'#4a8fd1');
   return `<div class="mark-edit-row">
     <input class="edit-input" data-settings-bind="itemCategories.${i}.name" value="${escapeHtml(cat.name)}" placeholder="分类名称，如：表情 (Emote)">
-    <input type="color" data-settings-bind="itemCategories.${i}.color" value="${colorPickerVal}">
+    <input type="color" data-settings-bind="itemCategories.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('itemCategories', i, cat.color)}
     <button class="btn btn-danger" data-settings-action="removeItemCategory" data-index="${i}">删除</button>
   </div>`;
 }
 
 function markEditRowHtml(mark, i, total){
-  const iconHtml = mark.image ? `<img class="mark-icon-preview zoomable" src="${mark.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = mark.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(mark.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(mark.color||'');
   const colorPickerVal = isGradient ? '#c9a24b' : (mark.color||'#c9a24b');
   return `<div class="sub-card">
@@ -5380,9 +5380,9 @@ function markEditRowHtml(mark, i, total){
       <label style="font-size:12px;color:var(--text-faint);flex-shrink:0;">分类</label>
       <select class="edit-select" style="flex:1;min-width:160px;" data-settings-bind="marks.${i}.categoryId">
         <option value="">未分类</option>
-        ${state.markCategories.map(c=>`<option value="${c.id}" ${mark.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+        ${state.markCategories.map(c=>`<option value="${escapeHtml(String(c.id))}" ${mark.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
       </select>
-      <input type="color" data-settings-bind="marks.${i}.color" value="${colorPickerVal}">
+      <input type="color" data-settings-bind="marks.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
       ${colorFormulaInputHtml('marks', i, mark.color)}
     </div>
     <div class="edit-field" style="margin-top:10px;">
@@ -5393,49 +5393,49 @@ function markEditRowHtml(mark, i, total){
 }
 
 function groupEditRowHtml(group, i){
-  const iconHtml = group.image ? `<img class="mark-icon-preview zoomable" src="${group.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = group.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(group.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(group.color||'');
   const colorPickerVal = isGradient ? '#4a8b7c' : (group.color||'#4a8b7c');
   return `<div class="mark-edit-row">
     ${iconHtml}
     <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="groups.${i}.image" style="display:none;"></label>
     <input class="edit-input" data-settings-bind="groups.${i}.name" value="${escapeHtml(group.name)}" placeholder="分组名称，如：忍者">
-    <input type="color" data-settings-bind="groups.${i}.color" value="${colorPickerVal}">
+    <input type="color" data-settings-bind="groups.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('groups', i, group.color)}
     <button class="btn btn-danger" data-settings-action="removeGroup" data-index="${i}">删除</button>
   </div>`;
 }
 
 function elementEditRowHtml(element, i){
-  const iconHtml = element.image ? `<img class="mark-icon-preview zoomable" src="${element.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = element.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(element.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(element.color||'');
   const colorPickerVal = isGradient ? '#4a8fd1' : (element.color||'#4a8fd1');
   return `<div class="mark-edit-row">
     ${iconHtml}
     <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="elements.${i}.image" style="display:none;"></label>
     <input class="edit-input" data-settings-bind="elements.${i}.name" value="${escapeHtml(element.name)}" placeholder="元素名称，如：火">
-    <input type="color" data-settings-bind="elements.${i}.color" value="${colorPickerVal}">
+    <input type="color" data-settings-bind="elements.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('elements', i, element.color)}
     <button class="btn btn-danger" data-settings-action="removeElement" data-index="${i}">删除</button>
   </div>`;
 }
 
 function seriesEditRowHtml(series, i){
-  const iconHtml = series.image ? `<img class="mark-icon-preview zoomable" src="${series.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = series.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(series.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(series.color||'');
   const colorPickerVal = isGradient ? '#c9a24b' : (series.color||'#c9a24b');
   return `<div class="mark-edit-row">
     ${iconHtml}
     <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="series.${i}.image" style="display:none;"></label>
     <input class="edit-input" data-settings-bind="series.${i}.name" value="${escapeHtml(series.name)}" placeholder="系列名称，如：夏日、周年庆">
-    <input type="color" data-settings-bind="series.${i}.color" value="${colorPickerVal}">
+    <input type="color" data-settings-bind="series.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('series', i, series.color)}
     <button class="btn btn-danger" data-settings-action="removeSeries" data-index="${i}">删除</button>
   </div>`;
 }
 
 function traitEditRowHtml(trait, i){
-  const iconHtml = trait.image ? `<img class="mark-icon-preview zoomable" src="${trait.image}">` : `<div class="mark-icon-placeholder"></div>`;
+  const iconHtml = trait.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(trait.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(trait.color||'');
   const colorPickerVal = isGradient ? '#c9a24b' : (trait.color||'#c9a24b');
   return `<div class="sub-card">
@@ -5446,7 +5446,7 @@ function traitEditRowHtml(trait, i){
     <div class="mark-edit-row" style="margin:10px 0;">
       ${iconHtml}
       <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="traits.${i}.image" style="display:none;"></label>
-      <input type="color" data-settings-bind="traits.${i}.color" value="${colorPickerVal}">
+      <input type="color" data-settings-bind="traits.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
       ${colorFormulaInputHtml('traits', i, trait.color)}
     </div>
     <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
@@ -5615,7 +5615,7 @@ function renderSettings(){
       <div class="mark-row-list">${state.markCategories.map(c=>`<span class="mark-chip" style="${coloredChipStyle(c.color)}">${escapeHtml(c.name)}</span>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无分类</div>'}</div>
       <div class="section-label">状态标记</div>
       <div class="mark-row-list">${state.marks.map(m=>{
-        const icon = m.image ? `<img src="${m.image}">` : '';
+        const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
         return `<span class="mark-chip" style="${coloredChipStyle(m.color)}">${icon}${escapeHtml(m.name)}</span>`;
       }).join('') || '<div class="empty-hint" style="padding-left:0;">暂无标记</div>'}</div>
       <div class="section-label">分组</div>
@@ -5627,7 +5627,7 @@ function renderSettings(){
       <div class="section-label">稀有度</div>
       <div class="mark-row-list">${state.rarities.map(r=>rarityBadge(r.id)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无稀有度</div>'}</div>
       <div class="section-label">特性</div>
-      <div class="mark-row-list">${state.traits.map(t=>`<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${t.image}">`:''}${escapeHtml(t.name)}</span>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无特性</div>'}</div>
+      <div class="mark-row-list">${state.traits.map(t=>`<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</span>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无特性</div>'}</div>
     `;
     return;
   }
@@ -5637,7 +5637,7 @@ function renderSettings(){
     <div id="limitedReturnUnitsList">${limitedReturnUnits.map(u=>`
       <label class="limited-return-row">
         <input type="checkbox" class="limited-return-checkbox" data-unit-id="${u.id}">
-        ${u.image ? `<img src="${u.image}">` : `<div class="mark-icon-placeholder"></div>`}
+        ${u.image ? `<img src="${escapeHtml(String(u.image))}">` : `<div class="mark-icon-placeholder"></div>`}
         <span>${escapeHtml(u.name)}</span>
       </label>`).join('')}</div>
     <button class="btn btn-danger" id="untickLimitedReturnBtn" style="margin-top:10px;">取消勾选的限定复刻标记</button>
@@ -5663,7 +5663,7 @@ function renderSettings(){
       </div>
       <span class="badge" style="min-width:56px;text-align:center;${badgeStyle}">${escapeHtml(r.name)}</span>
       <input class="edit-input" data-settings-bind="rarities.${i}.name" value="${escapeHtml(r.name)}" placeholder="稀有度名称" style="max-width:120px;">
-      <input type="color" data-settings-bind="rarities.${i}.color" value="${colorVal}">
+      <input type="color" data-settings-bind="rarities.${i}.color" value="${escapeHtml(String(colorVal))}">
       ${colorFormulaInputHtml('rarities', i, stored)}
       <button class="btn btn-danger" data-settings-action="removeRarity" data-index="${i}">删除</button>
     </div>`;
