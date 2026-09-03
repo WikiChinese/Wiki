@@ -3853,8 +3853,34 @@ function handleDraftAction(ds, draft, el){
     }
     return;
   }
+  // Generic tail for every other action: if this click happened inside a searchable picker
+  // (data-picker-key with a .entity-picker-search box), re-render loses the typed query since the
+  // whole panel's HTML is rebuilt from scratch. Capture it here and re-apply it after render so
+  // picking one result doesn't force you to retype the search to pick the next one.
+  const pickerDetailsForSearch = el ? el.closest('details[data-picker-key]') : null;
+  const pickerKeyForSearch = pickerDetailsForSearch ? pickerDetailsForSearch.dataset.pickerKey : null;
+  const searchInputEl = pickerDetailsForSearch ? pickerDetailsForSearch.querySelector('.entity-picker-search') : null;
+  const searchValue = searchInputEl ? searchInputEl.value : '';
+  const searchSelStart = searchInputEl ? searchInputEl.selectionStart : null;
+  const searchSelEnd = searchInputEl ? searchInputEl.selectionEnd : null;
+  const pickerListElForSearch = el ? el.closest('.entity-picker-items') : null;
+  const pickerListScrollTopForSearch = pickerListElForSearch ? pickerListElForSearch.scrollTop : 0;
+
   renderMain();
   if(mainEl) mainEl.scrollTop = preservedScrollTop;
+
+  if(pickerKeyForSearch && searchValue){
+    const newPickerDetails = document.querySelector(`details[data-picker-key="${CSS.escape(pickerKeyForSearch)}"]`);
+    const newSearchInput = newPickerDetails ? newPickerDetails.querySelector('.entity-picker-search') : null;
+    if(newSearchInput){
+      newSearchInput.value = searchValue;
+      newSearchInput.dispatchEvent(new Event('input', {bubbles:true}));
+      newSearchInput.focus();
+      if(searchSelStart !== null) newSearchInput.setSelectionRange(searchSelStart, searchSelEnd);
+      const newPickerList = newPickerDetails.querySelector('.entity-picker-items');
+      if(newPickerList) newPickerList.scrollTop = pickerListScrollTopForSearch;
+    }
+  }
 }
 
 function markToggleHtml(mark, isActive){
