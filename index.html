@@ -1909,14 +1909,19 @@ async function loadData(){
   render();
   maybeAutoBackupToday();
 
-  // Live sync: reflect other people's edits without a manual refresh
+  // Live sync: reflect other people's edits without a manual refresh.
+  // Important: this only overwrites a given key's LOCAL value if the local copy hasn't itself
+  // diverged from the last known-saved value. Without this per-key check, an earlier save (e.g. an
+  // auto-save for just one settings field) echoing back from the server would blanket-replace every
+  // key in this collection — silently reverting any OTHER field you were still mid-edit on but
+  // hadn't saved yet. That was the cause of edits quietly disappearing before you even hit "保存".
   db.collection('meta').onSnapshot((snap)=>{
     if(snap.metadata.hasPendingWrites) return; // our own write echoing back
-    if(pendingLocalSave) return; // don't let a stale remote snapshot clobber an edit we're about to save
     applyingRemoteUpdate = true;
     snap.docs.forEach(d=>{
       if(META_KEYS.includes(d.id) && d.data().json){
-        state[d.id] = JSON.parse(d.data().json);
+        const localJson = JSON.stringify(state[d.id]);
+        if(localJson === lastSavedJson.meta[d.id]) state[d.id] = JSON.parse(d.data().json);
         lastSavedJson.meta[d.id] = d.data().json;
       }
     });
@@ -1927,13 +1932,21 @@ async function loadData(){
   ENTITY_COLLECTIONS.forEach(name=>{
     db.collection(name).onSnapshot((snap)=>{
       if(snap.metadata.hasPendingWrites) return;
-      if(pendingLocalSave) return;
       applyingRemoteUpdate = true;
       const docs = snap.docs.slice().sort((a,b)=>(a.data().order||0)-(b.data().order||0));
-      state[name] = docs.map(d=> d.data().json ? JSON.parse(d.data().json) : null).filter(Boolean);
-      knownIds[name] = new Set(snap.docs.map(d=>d.id));
       const cache = {};
       docs.forEach(d=>{ if(d.data().json) cache[d.id] = {json: d.data().json, order: d.data().order||0}; });
+      // Same per-item protection as the meta listener above: don't clobber an entity that's still
+      // locally dirty (not yet reflected in lastSavedJson) with the server's older version of it.
+      const localById = {}; (state[name]||[]).forEach(e=>{ if(e && e.id) localById[e.id] = e; });
+      state[name] = docs.map(d=>{
+        if(!d.data().json) return null;
+        const prevCache = lastSavedJson[name] ? lastSavedJson[name][d.id] : undefined;
+        const localEntity = localById[d.id];
+        const isLocallyDirty = localEntity && (!prevCache || prevCache.json !== JSON.stringify(localEntity));
+        return isLocallyDirty ? localEntity : JSON.parse(d.data().json);
+      }).filter(Boolean);
+      knownIds[name] = new Set(snap.docs.map(d=>d.id));
       lastSavedJson[name] = cache;
       migrateState();
       render();
@@ -1945,9 +1958,22 @@ async function loadData(){
 let pendingLocalSave = false;
 let saveTimer = null;
 let settingsSyncTimer = null;
+let saveQueueTail = Promise.resolve();
 const LIMIT_BYTES = 1048487; // Firestore's per-document hard limit is ~1MiB (1,048,576 bytes), minus a little overhead
 
+// Public entry point — chains calls so overlapping triggers (e.g. a settings field's debounced
+// auto-save firing right as you click "保存") run strictly one after another instead of racing as
+// two concurrent diff+commit passes. That race was both doubling save time and, combined with the
+// live-sync listener, could let an earlier partial save's server echo revert fields you were still
+// editing. Each call in the chain re-diffs against the freshest cache, so nothing gets missed.
 function saveData(silent){
+  const run = ()=> runSaveData(silent);
+  const next = saveQueueTail.then(run, run);
+  saveQueueTail = next;
+  return next;
+}
+
+function runSaveData(silent){
   return new Promise((resolve)=>{
     clearTimeout(saveTimer);
     pendingLocalSave = true;
@@ -2089,7 +2115,7 @@ async function maybeAutoBackupToday(){
 
 async function fetchBackupsList(){
   if(!db) return [];
-  const snap = await db.collection('backups').orderBy('createdAt','desc').limit(30).get();
+  const snap = await db.collection('backups').orderBy('createdAt','desc').limit(100).get();
   return snap.docs.map(d=>({id:d.id, ...d.data()}));
 }
 
@@ -5504,22 +5530,78 @@ function dbSizeReportHtml(){
   </details>`;
 }
 
+const BACKUPS_PER_PAGE = 10;
+let backupsListPage = 0;
+let backupsListDetailsOpen = true;
+
 function backupsListHtml(){
-  if(backupsListLoading) return '<div class="empty-hint" style="padding-left:0;">加载备份列表中...</div>';
-  if(backupsListCache === null) return '<div class="empty-hint" style="padding-left:0;">点击上面"刷新备份列表"查看已有备份。</div>';
-  if(!backupsListCache.length) return '<div class="empty-hint" style="padding-left:0;">还没有任何备份记录。</div>';
-  return `<div class="mark-row-list" style="flex-direction:column;align-items:stretch;gap:6px;">${backupsListCache.map(b=>{
-    const date = b.createdAt ? new Date(b.createdAt).toLocaleString() : '（未知时间）';
-    const c = b.counts||{};
-    const countStr = `单位${c.units||0} 物品${c.items||0} 使魔${c.families||0} 记忆${c.memories||0}`;
-    return `<div class="sub-card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:200px;">
-        <div style="font-weight:600;">${escapeHtml(b.label||b.id)}</div>
-        <div class="hint" style="margin:2px 0 0;">${date} ・ ${countStr}</div>
-      </div>
-      <button class="btn btn-danger" data-restore-backup-id="${b.id}" data-restore-backup-label="${escapeHtml(b.label||b.id)}">⏪ 恢复这份</button>
-    </div>`;
-  }).join('')}</div>`;
+  const bodyHtml = (()=>{
+    if(backupsListLoading) return '<div class="empty-hint" style="padding-left:0;">加载备份列表中...</div>';
+    if(backupsListCache === null) return '<div class="empty-hint" style="padding-left:0;">点击上面"刷新备份列表"查看已有备份。</div>';
+    if(!backupsListCache.length) return '<div class="empty-hint" style="padding-left:0;">还没有任何备份记录。</div>';
+    const totalPages = Math.max(1, Math.ceil(backupsListCache.length / BACKUPS_PER_PAGE));
+    const page = Math.min(Math.max(backupsListPage, 0), totalPages - 1);
+    backupsListPage = page;
+    const pageItems = backupsListCache.slice(page * BACKUPS_PER_PAGE, page * BACKUPS_PER_PAGE + BACKUPS_PER_PAGE);
+    const listHtml = `<div class="mark-row-list" style="flex-direction:column;align-items:stretch;gap:6px;">${pageItems.map(b=>{
+      const date = b.createdAt ? new Date(b.createdAt).toLocaleString() : '（未知时间）';
+      const c = b.counts||{};
+      const countStr = `单位${c.units||0} 物品${c.items||0} 使魔${c.families||0} 记忆${c.memories||0}`;
+      return `<div class="sub-card" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:200px;">
+          <div style="font-weight:600;">${escapeHtml(b.label||b.id)}</div>
+          <div class="hint" style="margin:2px 0 0;">${date} ・ ${countStr}</div>
+        </div>
+        <button class="btn btn-danger" data-restore-backup-id="${b.id}" data-restore-backup-label="${escapeHtml(b.label||b.id)}">⏪ 恢复这份</button>
+      </div>`;
+    }).join('')}</div>`;
+    const pagerHtml = totalPages > 1 ? `<div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
+      <button class="btn" id="backupsPrevPageBtn" ${page<=0?'disabled':''}>‹ 上一页</button>
+      <span class="hint" style="margin:0;">第 ${page+1} / ${totalPages} 页（共 ${backupsListCache.length} 条）</span>
+      <button class="btn" id="backupsNextPageBtn" ${page>=totalPages-1?'disabled':''}>下一页 ›</button>
+    </div>` : '';
+    return listHtml + pagerHtml;
+  })();
+  return `<details class="backups-list-block" style="margin-top:0;padding:0;border:none;" ${backupsListDetailsOpen?'open':''} id="backupsListDetails">
+    <summary class="section-label" style="margin-top:0;">历史备份记录${backupsListCache && backupsListCache.length ? `（共 ${backupsListCache.length} 条）` : ''}</summary>
+    <div style="margin-top:10px;">${bodyHtml}</div>
+  </details>`;
+}
+
+function wireBackupsListWrap(container){
+  const wrap = document.getElementById('backupsListWrap');
+  if(!wrap) return;
+  const details = document.getElementById('backupsListDetails');
+  if(details) details.addEventListener('toggle', ()=>{ backupsListDetailsOpen = details.open; });
+  const prevBtn = document.getElementById('backupsPrevPageBtn');
+  if(prevBtn) prevBtn.addEventListener('click', ()=>{ backupsListPage--; wrap.innerHTML = backupsListHtml(); wireBackupsListWrap(container); wireRestoreBackupButtons(container); });
+  const nextBtn = document.getElementById('backupsNextPageBtn');
+  if(nextBtn) nextBtn.addEventListener('click', ()=>{ backupsListPage++; wrap.innerHTML = backupsListHtml(); wireBackupsListWrap(container); wireRestoreBackupButtons(container); });
+}
+
+function wireRestoreBackupButtons(container){
+  container.querySelectorAll('[data-restore-backup-id]').forEach(btn=>{
+    if(btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', async ()=>{
+      if(!requireAdmin()) return;
+      const id = btn.dataset.restoreBackupId;
+      const label = btn.dataset.restoreBackupLabel || id;
+      if(!confirm(`⚠️ 恢复到「${label}」？这会让 units/items/families/memories 完全变回那份备份当时的样子，包括删除之后新建的条目（恢复前会自动先给当前数据做一次安全备份）。确定吗？`)) return;
+      btn.disabled = true;
+      btn.textContent = '恢复中...';
+      try{
+        await restoreFromBackup(id, label);
+        showToast('恢复完成，正在刷新页面...', 4000);
+        setTimeout(()=> location.reload(), 800);
+      }catch(e){
+        showToast(`恢复失败：${e && e.message ? e.message : '请检查网络或权限'}`, 10000);
+        console.error('restore backup error:', e);
+        btn.disabled = false;
+        btn.textContent = '⏪ 恢复这份';
+      }
+    });
+  });
 }
 
 function renderSettings(){
@@ -5604,15 +5686,6 @@ function renderSettings(){
       <button class="btn" id="createBackupNowBtn">📸 立即创建一份备份</button>
       <button class="btn" id="refreshBackupsBtn" style="margin-left:8px;">🔄 刷新备份列表</button>
       <div id="backupsListWrap" style="margin-top:14px;">${backupsListHtml()}</div>
-    </details>
-
-    <details class="settings-block">
-      <summary class="section-label" style="margin-top:0;">从迁移前的极旧数据恢复（极端后备）</summary>
-      <div class="hint" style="margin-bottom:14px;">
-        这是改用现在这套"每类数据各自存一份文档"的存储方式<b>之前</b>遗留下来的一份旧快照（<code>wiki/data</code>），从那次迁移之后就再也没被更新过，基本可以认为是"很久以前"的数据。<br>
-        <b>⚠️ 这不是无害的重新同步——点下去会用这份很旧的数据覆盖并删除现在 Firestore 里比它新的所有内容。</b>只有在上面的"备份与恢复"完全没有可用记录时，才把这个当最后手段。同样，点击前会自动先给当前数据做一次安全备份。
-      </div>
-      <button class="btn" id="recoverFromLegacyBtn">🔄 从旧版数据强制恢复</button>
     </details>
 
     <details class="settings-block">
@@ -5809,32 +5882,6 @@ function renderSettings(){
     settingsSaveBtn.disabled = false;
     settingsSaveBtn.textContent = original;
   });
-  const recoverBtn = document.getElementById('recoverFromLegacyBtn');
-  if(recoverBtn) recoverBtn.addEventListener('click', async ()=>{
-    if(!requireAdmin()) return;
-    if(!confirm('⚠️ 这会用很久以前迁移前的旧数据，覆盖并删除现在 Firestore 里比它新的所有单位/物品/使魔/记忆数据。真的确定吗？（点击前会自动先给当前数据做一次安全备份）')) return;
-    if(!confirm('再确认一次：这是不可逆的强制覆盖操作（虽然会先自动备份），确定继续？')) return;
-    recoverBtn.disabled = true;
-    recoverBtn.textContent = '恢复中...';
-    try{
-      const legacySnap = await docRef.get();
-      if(!legacySnap.exists || !legacySnap.data().json){
-        showToast('没有找到旧版备份数据（wiki/data 这份文档是空的或不存在）。', 8000);
-      } else {
-        await snapshotCollectionsToBackup('pre-legacy-recover-'+Date.now(), '恢复前自动安全备份（恢复到迁移前极旧数据之前）');
-        state = JSON.parse(legacySnap.data().json);
-        migrateState();
-        await saveData(false);
-        showToast('已从旧版数据恢复并重新保存！（恢复前的数据已自动备份，可在上方"备份与恢复"里找回）', 8000);
-        render();
-      }
-    }catch(e){
-      showToast(`恢复失败：${e && e.message ? e.message : '请检查网络或权限'}`, 10000);
-      console.error('recover error:', e);
-    }
-    recoverBtn.disabled = false;
-    recoverBtn.textContent = '🔄 从旧版数据强制恢复';
-  });
   const createBackupNowBtn = document.getElementById('createBackupNowBtn');
   if(createBackupNowBtn) createBackupNowBtn.addEventListener('click', async ()=>{
     if(!requireAdmin()) return;
@@ -5844,6 +5891,7 @@ function renderSettings(){
       await snapshotCollectionsToBackup('manual-'+Date.now(), '手动备份');
       showToast('已创建备份', 4000);
       backupsListCache = await fetchBackupsList();
+      backupsListPage = 0;
       renderSettings();
     }catch(e){
       showToast(`创建备份失败：${e && e.message ? e.message : '请检查网络或权限'}`, 8000);
@@ -5857,31 +5905,13 @@ function renderSettings(){
     backupsListLoading = true;
     const wrap = document.getElementById('backupsListWrap');
     if(wrap) wrap.innerHTML = backupsListHtml();
-    try{ backupsListCache = await fetchBackupsList(); }
+    try{ backupsListCache = await fetchBackupsList(); backupsListPage = 0; }
     catch(e){ showToast(`加载备份列表失败：${e && e.message ? e.message : '请检查网络或权限'}`, 8000); console.error('fetch backups error:', e); }
     backupsListLoading = false;
     if(document.getElementById('backupsListWrap')) renderSettings();
   });
-  container.querySelectorAll('[data-restore-backup-id]').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      if(!requireAdmin()) return;
-      const id = btn.dataset.restoreBackupId;
-      const label = btn.dataset.restoreBackupLabel || id;
-      if(!confirm(`⚠️ 恢复到「${label}」？这会让 units/items/families/memories 完全变回那份备份当时的样子，包括删除之后新建的条目（恢复前会自动先给当前数据做一次安全备份）。确定吗？`)) return;
-      btn.disabled = true;
-      btn.textContent = '恢复中...';
-      try{
-        await restoreFromBackup(id, label);
-        showToast('恢复完成，正在刷新页面...', 4000);
-        setTimeout(()=> location.reload(), 800);
-      }catch(e){
-        showToast(`恢复失败：${e && e.message ? e.message : '请检查网络或权限'}`, 10000);
-        console.error('restore backup error:', e);
-        btn.disabled = false;
-        btn.textContent = '⏪ 恢复这份';
-      }
-    });
-  });
+  wireBackupsListWrap(container);
+  wireRestoreBackupButtons(container);
   const untickLimitedReturnBtn = document.getElementById('untickLimitedReturnBtn');
   if(untickLimitedReturnBtn) untickLimitedReturnBtn.addEventListener('click', async ()=>{
     const checked = Array.from(document.querySelectorAll('.limited-return-checkbox:checked')).map(el=>el.dataset.unitId);
