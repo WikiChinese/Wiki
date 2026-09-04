@@ -415,7 +415,8 @@
   .insert-dot-picker summary::-webkit-details-marker{display:none;}
   .insert-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid var(--bg);transition:transform .12s;}
   .insert-dot:hover{transform:scale(1.1);}
-  .insert-dot-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:20;width:220px;max-height:260px;overflow-y:auto;margin-top:0 !important;}
+  .insert-dot-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:20;width:220px;max-height:300px;overflow:visible;margin-top:0 !important;}
+  .insert-dot-panel .entity-picker-items{max-height:220px;}
   .entity-picker-search{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;outline:none;font-family:inherit;}
   .entity-picker-search:focus{border-color:var(--gold-dim);}
   .entity-picker-search::placeholder{color:var(--text-faint);}
@@ -3936,23 +3937,29 @@ function familyToggleHtml(family, isActive){
 function markInsertButtonsHtml(fieldPath){
   const markBtns = state.marks.map(m=>{
     const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : `<span class="mark-dot" style="background:${m.color||'var(--gold)'}"></span>`;
-    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(m.name)}">${icon}${escapeHtml(m.name)}</button>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(m.name)}" data-search="${escapeHtml((m.name||'').toLowerCase())}">${icon}${escapeHtml(m.name)}</button>`;
   }).join('');
   const elementBtns = state.elements.map(el2=>{
     const icon = el2.image ? `<img src="${escapeHtml(String(el2.image))}">` : `<span class="mark-dot" style="background:${el2.color||'var(--gold)'}"></span>`;
-    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(el2.name)}">${icon}${escapeHtml(el2.name)}</button>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(el2.name)}" data-search="${escapeHtml((el2.name||'').toLowerCase())}">${icon}${escapeHtml(el2.name)}</button>`;
   }).join('');
   const groupBtns = state.groups.map(g=>{
     const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : `<span class="mark-dot" style="background:${g.color||'var(--gold)'}"></span>`;
-    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(g.name)}">${icon}${escapeHtml(g.name)}</button>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(g.name)}" data-search="${escapeHtml((g.name||'').toLowerCase())}">${icon}${escapeHtml(g.name)}</button>`;
   }).join('');
   const mechanicBtns = state.enemyMechanics.map(mc=>{
     const icon = mc.image ? `<img src="${escapeHtml(String(mc.image))}">` : `<span class="mark-dot" style="background:${mc.color||'var(--gold)'}"></span>`;
-    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(mc.name)}">${icon}${escapeHtml(mc.name)}</button>`;
+    return `<button type="button" class="entity-picker-item" data-action="insertMarkToken" data-field="${fieldPath}" data-mark-name="${escapeHtml(mc.name)}" data-search="${escapeHtml((mc.name||'').toLowerCase())}">${icon}${escapeHtml(mc.name)}</button>`;
   }).join('');
+  // Each of the 4 groups (marks/elements/groups/mechanics) gets its OWN search box scoped to just
+  // that group's items — not a single search mixing all 4 together.
   const dotRow = (label, key, dotColor, emoji, btns) => `<details class="insert-dot-picker" data-picker-key="${key}"${openPickerKeys.has(key)?' open':''}>
     <summary class="insert-dot" style="background:${dotColor};" title="插入${label}">${emoji}</summary>
-    <div class="entity-picker-list insert-dot-panel">${btns}</div>
+    <div class="entity-picker-list insert-dot-panel">
+      <input type="text" class="entity-picker-search" placeholder="搜索${label}...">
+      <div class="entity-picker-items">${btns}</div>
+      <div class="entity-picker-noresult" style="display:none;">没有匹配的${label}</div>
+    </div>
   </details>`;
   let html = '<div class="insert-dot-row">';
   let any = false;
