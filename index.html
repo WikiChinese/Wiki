@@ -409,13 +409,16 @@
   .entity-picker summary{list-style:none;cursor:pointer;display:inline-flex;}
   .entity-picker summary::-webkit-details-marker{display:none;}
   .entity-picker-list{display:flex;flex-direction:column;gap:10px;margin-top:10px;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;}
-  .insert-dot-row{display:flex;gap:10px;margin-top:8px;}
+  .insert-dot-row{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;margin-top:8px;}
   .insert-dot-picker{position:relative;}
   .insert-dot-picker summary{list-style:none;}
   .insert-dot-picker summary::-webkit-details-marker{display:none;}
   .insert-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid var(--bg);transition:transform .12s;}
   .insert-dot:hover{transform:scale(1.1);}
-  .insert-dot-panel{position:absolute;top:calc(100% + 8px);left:0;z-index:20;width:220px;max-height:300px;overflow:visible;margin-top:0 !important;}
+  /* Normal document flow, not position:absolute — so when two of the 4 dot pickers are open at
+     the same time they sit side by side and grow the row's height, instead of stacking on top of
+     and hiding each other like floating overlays would. */
+  .insert-dot-panel{width:220px;max-height:300px;overflow:visible;margin-top:8px !important;}
   .insert-dot-panel .entity-picker-items{max-height:220px;}
   .entity-picker-search{width:100%;background:var(--panel);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-size:13px;outline:none;font-family:inherit;}
   .entity-picker-search:focus{border-color:var(--gold-dim);}
