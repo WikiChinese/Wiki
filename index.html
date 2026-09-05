@@ -3674,6 +3674,14 @@ function wireDraftForm(container, draft){
   });
   container.querySelectorAll('[data-action]').forEach(el=>{
     el.addEventListener('click', ()=> handleDraftAction(el.dataset, draft, el));
+    // For the mark/element/group/mechanic insert buttons specifically: clicking a button normally
+    // steals focus from whatever textarea you had selected text in, which visually cancels the
+    // selection highlight before the click handler even runs. Blocking the mousedown's default
+    // focus-shift keeps the textarea focused (and your selection visibly highlighted) the whole
+    // time you're browsing the picker, right up until you actually click an item.
+    if(el.dataset.action === 'insertMarkToken'){
+      el.addEventListener('mousedown', (e)=> e.preventDefault());
+    }
   });
 }
 
