@@ -1898,6 +1898,18 @@ async function loadData(){
     console.error('loadData error:', e);
   }
   migrateState();
+  // Baseline the "last known saved" cache to match state AFTER migration, not before. Without this,
+  // any entity/meta key that migrateState() just added a default field to (very common for older
+  // records) would look "locally dirty" compared to the raw JSON Firestore actually has — forever,
+  // in this tab — and this tab's very next unrelated save would push its own copy back over
+  // Firestore, silently undoing whatever anyone else had saved to that entity since.
+  META_KEYS.forEach(k=>{ lastSavedJson.meta[k] = JSON.stringify(state[k]); });
+  ENTITY_COLLECTIONS.forEach(name=>{
+    lastSavedJson[name] = {};
+    (state[name]||[]).forEach((entity, idx)=>{
+      if(entity && entity.id) lastSavedJson[name][entity.id] = {json: JSON.stringify(entity), order: idx};
+    });
+  });
   if(auth && auth.currentUser) isAdmin = computeIsAdmin(auth.currentUser);
   currentView = hashToView();
   if(!location.hash) setHash(currentView);
@@ -1922,14 +1934,25 @@ async function loadData(){
   db.collection('meta').onSnapshot((snap)=>{
     if(snap.metadata.hasPendingWrites) return; // our own write echoing back
     applyingRemoteUpdate = true;
+    const appliedKeys = [];
     snap.docs.forEach(d=>{
       if(META_KEYS.includes(d.id) && d.data().json){
         const localJson = JSON.stringify(state[d.id]);
-        if(localJson === lastSavedJson.meta[d.id]) state[d.id] = JSON.parse(d.data().json);
+        if(localJson === lastSavedJson.meta[d.id]){
+          state[d.id] = JSON.parse(d.data().json);
+          appliedKeys.push(d.id);
+        }
         lastSavedJson.meta[d.id] = d.data().json;
       }
     });
     migrateState();
+    // migrateState() can mutate the keys we just accepted from the server (e.g. filling in a
+    // default field an older record was missing). If we left the cache holding the raw pre-migration
+    // JSON, that key would look permanently "locally dirty" from then on — even in a tab that never
+    // touched it — and the next unrelated save from THIS tab (e.g. creating a new unit) would push
+    // this tab's now-stale copy back over whatever anyone else had since saved. Resync the cache to
+    // the post-migration value so that doesn't happen.
+    appliedKeys.forEach(k=>{ lastSavedJson.meta[k] = JSON.stringify(state[k]); });
     render();
     applyingRemoteUpdate = false;
   });
@@ -1943,16 +1966,28 @@ async function loadData(){
       // Same per-item protection as the meta listener above: don't clobber an entity that's still
       // locally dirty (not yet reflected in lastSavedJson) with the server's older version of it.
       const localById = {}; (state[name]||[]).forEach(e=>{ if(e && e.id) localById[e.id] = e; });
+      const appliedIds = new Set();
       state[name] = docs.map(d=>{
         if(!d.data().json) return null;
         const prevCache = lastSavedJson[name] ? lastSavedJson[name][d.id] : undefined;
         const localEntity = localById[d.id];
         const isLocallyDirty = localEntity && (!prevCache || prevCache.json !== JSON.stringify(localEntity));
-        return isLocallyDirty ? localEntity : JSON.parse(d.data().json);
+        if(isLocallyDirty) return localEntity;
+        appliedIds.add(d.id);
+        return JSON.parse(d.data().json);
       }).filter(Boolean);
       knownIds[name] = new Set(snap.docs.map(d=>d.id));
       lastSavedJson[name] = cache;
       migrateState();
+      // Same reason as the meta listener above: migrateState() may have just mutated the entities we
+      // accepted from the server (adding a missing default field). Resync their cached order+JSON to
+      // the post-migration value here, in the same pass — otherwise, in a tab that's been open a
+      // while and never itself edited this entity, it would look "locally dirty" forever, and this
+      // tab's next unrelated save (e.g. creating a new unit) would silently overwrite it in Firestore
+      // with this tab's stale copy, wiping out whatever someone edited on another tab/device since.
+      state[name].forEach((entity, idx)=>{
+        if(appliedIds.has(entity.id)) lastSavedJson[name][entity.id] = {json: JSON.stringify(entity), order: idx};
+      });
       render();
       applyingRemoteUpdate = false;
     });
