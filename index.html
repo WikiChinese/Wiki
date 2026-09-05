@@ -5293,7 +5293,15 @@ function renderSimpleEntity(type){
     const target = type==='family' ? entity.exclusiveTarget : entity.personalTarget;
     const resolved = resolveExclusiveTargets(target);
     if(resolved.length){
-      restrictChipHtml = resolved.map(r=>`<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">专属被动对象：${escapeHtml(r.entity.name)}</span>`).join('');
+      restrictChipHtml = resolved.map(r=>{
+        const label = `专属被动对象：${escapeHtml(r.entity.name)}`;
+        if(r.kind==='unit'){
+          const rarityObj = r.entity.rarity ? state.rarities.find(x=>x.id===r.entity.rarity) : null;
+          const color = (rarityObj && rarityObj.color) || '#c9a24b';
+          return `<a href="${viewToHash({type:'unit', id:r.entity.id})}" class="badge" data-view="unit" data-id="${r.entity.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">${label}</a>`;
+        }
+        return `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${label}</span>`;
+      }).join('');
     }
   }
   const rarityChipHtml = entity.rarity ? rarityBadge(entity.rarity) : '';
@@ -5340,6 +5348,15 @@ function renderSimpleEntity(type){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'family', id: chip.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null;
+      render();
+    });
+  });
+  container.querySelectorAll('.badge[data-view="unit"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'unit', id: chip.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null;
       render();
     });
