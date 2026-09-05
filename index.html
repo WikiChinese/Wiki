@@ -4119,12 +4119,21 @@ function renderUnit(){
         <div id="linkedFamilyCards">
           ${draftUnit.linkedFamilies.length ? draftUnit.linkedFamilies.map(familyCardPreviewHtml).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择使魔</div>'}
         </div>
-        ${state.families.length ? `<details class="entity-picker">
-          <summary class="btn btn-gold">+ 选择使魔</summary>
-          <div class="entity-picker-list">
-            ${state.families.filter(f=>!draftUnit.linkedFamilies.includes(f.id)).map(f=>`<button type="button" class="entity-picker-item" data-action="addUnitFamily" data-family-id="${f.id}">${f.image?`<img src="${escapeHtml(String(f.image))}">`:''}${escapeHtml(f.name)}</button>`).join('') || '<div class="empty-hint">没有更多使魔可选了</div>'}
-          </div>
-        </details>` : '<div class="hint">还没有使魔，可以先到左侧「使魔」页面新增。</div>'}
+        ${(()=>{
+          const remaining = state.families.filter(f=>!draftUnit.linkedFamilies.includes(f.id));
+          if(!state.families.length) return '<div class="hint">还没有使魔，可以先到左侧「使魔」页面新增。</div>';
+          const key = 'unit-families-'+unit.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索使魔名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择使魔</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(f=>`<button type="button" class="entity-picker-item" data-action="addUnitFamily" data-family-id="${f.id}" data-search="${escapeHtml((f.name||'').toLowerCase())}">${f.image?`<img src="${escapeHtml(String(f.image))}">`:''}${escapeHtml(f.name)}</button>`).join('') || '<div class="empty-hint">没有更多使魔可选了</div>'}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的使魔</div>
+            </div>
+          </details>`;
+        })()}
       </div>
 
       <div class="edit-field">
@@ -5299,6 +5308,11 @@ function renderSimpleEntity(type){
           const rarityObj = r.entity.rarity ? state.rarities.find(x=>x.id===r.entity.rarity) : null;
           const color = (rarityObj && rarityObj.color) || '#c9a24b';
           return `<a href="${viewToHash({type:'unit', id:r.entity.id})}" class="badge" data-view="unit" data-id="${r.entity.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">${label}</a>`;
+        }
+        // Elements have no page of their own to link to, so this stays non-clickable — but it should
+        // still use whatever color was configured for that element in settings, instead of gray.
+        if(r.entity.color){
+          return `<span class="badge" style="background:${r.entity.color};color:#fff;font-weight:700;">${label}</span>`;
         }
         return `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${label}</span>`;
       }).join('');
