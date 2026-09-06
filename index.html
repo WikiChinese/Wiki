@@ -3830,6 +3830,18 @@ function handleDraftAction(ds, draft, el){
     const id = ds.familyId;
     draft.linkedFamilies = (draft.linkedFamilies||[]).filter(x=>x!==id);
   }
+  else if(action==='createAndLinkMemory'){
+    const m = {id:uid(), name:'新记忆', image:'', passives:[], marks:[], rarity:'', personalTarget:[], updatedAt:Date.now()};
+    state.memories.unshift(m);
+    if(!Array.isArray(draft.linkedMemories)) draft.linkedMemories = [];
+    draft.linkedMemories.push(m.id);
+  }
+  else if(action==='createAndLinkFamily'){
+    const f = {id:uid(), name:'新使魔', image:'', passives:[], marks:[], rarity:'', exclusiveTarget:[], updatedAt:Date.now()};
+    state.families.unshift(f);
+    if(!Array.isArray(draft.linkedFamilies)) draft.linkedFamilies = [];
+    draft.linkedFamilies.push(f.id);
+  }
   else if(action==='addRelatedUnit'){
     const id = ds.unitId;
     if(!Array.isArray(draft.relatedUnits)) draft.relatedUnits = [];
@@ -3956,6 +3968,7 @@ function memoryCardPreviewHtml(memoryId){
       <div style="font-weight:600;color:var(--gold);margin-bottom:4px;">${escapeHtml(m.name)}</div>
       <div style="font-size:13px;color:var(--text-dim);line-height:1.6;">${desc || '<span style="color:var(--text-faint);">暂无被动说明</span>'}</div>
     </div>
+    <button class="btn" type="button" data-edit-linked-entity="memory" data-entity-id="${m.id}">编辑</button>
     <button class="btn btn-danger" type="button" data-action="removeUnitMemory" data-memory-id="${m.id}">移除</button>
   </div>`;
 }
@@ -3971,6 +3984,7 @@ function familyCardPreviewHtml(familyId){
       <div style="font-weight:600;color:var(--gold);margin-bottom:4px;">${escapeHtml(f.name)}</div>
       <div style="font-size:13px;color:var(--text-dim);line-height:1.6;">${desc || '<span style="color:var(--text-faint);">暂无被动说明</span>'}</div>
     </div>
+    <button class="btn" type="button" data-edit-linked-entity="family" data-entity-id="${f.id}">编辑</button>
     <button class="btn btn-danger" type="button" data-action="removeUnitFamily" data-family-id="${f.id}">移除</button>
   </div>`;
 }
@@ -4154,6 +4168,7 @@ function renderUnit(){
           return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
             <summary class="btn btn-gold">+ 选择记忆</summary>
             <div class="entity-picker-list">
+              <button type="button" class="btn" data-action="createAndLinkMemory" style="align-self:flex-start;">✨ 新建一个记忆并直接关联</button>
               ${searchHtml}
               <div class="entity-picker-items">${remaining.map(m=>`<button type="button" class="entity-picker-item" data-action="addUnitMemory" data-memory-id="${m.id}" data-search="${escapeHtml((m.name||'').toLowerCase())}">${m.image?`<img src="${escapeHtml(String(m.image))}">`:''}${escapeHtml(m.name)}</button>`).join('') || '<div class="empty-hint">没有更多记忆可选了</div>'}</div>
               <div class="entity-picker-noresult" style="display:none;">没有匹配的记忆</div>
@@ -4176,6 +4191,7 @@ function renderUnit(){
           return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
             <summary class="btn btn-gold">+ 选择使魔</summary>
             <div class="entity-picker-list">
+              <button type="button" class="btn" data-action="createAndLinkFamily" style="align-self:flex-start;">✨ 新建一个使魔并直接关联</button>
               ${searchHtml}
               <div class="entity-picker-items">${remaining.map(f=>`<button type="button" class="entity-picker-item" data-action="addUnitFamily" data-family-id="${f.id}" data-search="${escapeHtml((f.name||'').toLowerCase())}">${f.image?`<img src="${escapeHtml(String(f.image))}">`:''}${escapeHtml(f.name)}</button>`).join('') || '<div class="empty-hint">没有更多使魔可选了</div>'}</div>
               <div class="entity-picker-noresult" style="display:none;">没有匹配的使魔</div>
@@ -4341,6 +4357,23 @@ function renderUnit(){
     document.getElementById('saveBtn').addEventListener('click', doSaveUnit);
     const saveBtnBottom = document.getElementById('saveBtnBottom');
     if(saveBtnBottom) saveBtnBottom.addEventListener('click', doSaveUnit);
+    container.querySelectorAll('[data-edit-linked-entity]').forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        e.preventDefault();
+        // Save your unit progress first — clicking through to edit a linked family/memory would
+        // otherwise silently discard whatever you'd typed on this unit so far, since navigating away
+        // exits unit-edit mode.
+        await doSaveUnit();
+        const type = btn.dataset.editLinkedEntity;
+        const id = btn.dataset.entityId;
+        const entity = (type==='family' ? state.families : state.memories).find(x=>x.id===id);
+        if(!entity) return;
+        goToView({type, id});
+        startSimpleEdit(type, entity);
+        editMode = true;
+        render();
+      });
+    });
     const duplicateUnitBtnEdit = document.getElementById('duplicateUnitBtn');
     if(duplicateUnitBtnEdit) duplicateUnitBtnEdit.addEventListener('click', ()=> duplicateUnit(unit.id));
     const doDeleteUnit = async ()=>{
@@ -5383,6 +5416,19 @@ function renderSimpleEntity(type){
     return `<a href="${viewToHash({type:'family', id:f.id})}" class="mark-chip" data-view="family" data-id="${f.id}" style="${coloredChipStyle('#4a8fd1')}cursor:pointer;">${icon}${escapeHtml(f.name)}</a>`;
   }).join('')}</div>` : '';
 
+  // Reverse lookup: which units currently link to this family/memory. This is computed on the fly
+  // from the units themselves rather than stored redundantly on the family/memory, so it can never
+  // drift out of sync with the actual links.
+  const usingUnits = state.units.filter(u=>{
+    const list = type==='family' ? u.linkedFamilies : u.linkedMemories;
+    return Array.isArray(list) && list.includes(entity.id);
+  });
+  const usedByUnitsHtml = usingUnits.length ? `<div class="mark-row-list">${usingUnits.map(u=>{
+    const rarityObj = u.rarity ? state.rarities.find(x=>x.id===u.rarity) : null;
+    const color = (rarityObj && rarityObj.color) || '#c9a24b';
+    return `<a href="${viewToHash({type:'unit', id:u.id})}" class="badge" data-view="unit" data-id="${u.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">${escapeHtml(u.name)}</a>`;
+  }).join('')}</div>` : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">${cfg.label}</div>
@@ -5400,25 +5446,26 @@ function renderSimpleEntity(type){
     <div class="section-label">被动</div>
     ${passivesHtml}
     ${linkedFamiliesHtml ? `<div class="section-label">使魔</div>${linkedFamiliesHtml}` : ''}
+    ${usedByUnitsHtml ? `<div class="section-label">${type==='family'?'使用此使魔的单位':'使用此记忆的单位'}</div>${usedByUnitsHtml}` : ''}
     ${commentsSectionHtml(entity, type)}
   `;
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; startSimpleEdit(type, entity); render(); });
   wireBackButton(container);
   wireComments(container);
-  container.querySelectorAll('.mark-chip[data-view="family"]').forEach(chip=>{
-    chip.addEventListener('click', (e)=>{
-      if(!isPlainLeftClick(e)) return;
-      e.preventDefault();
-      goToView({type:'family', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null;
-      render();
-    });
-  });
   container.querySelectorAll('.badge[data-view="unit"]').forEach(chip=>{
     chip.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'unit', id: chip.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null;
+      render();
+    });
+  });
+  container.querySelectorAll('.mark-chip[data-view="family"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'family', id: chip.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null;
       render();
     });
