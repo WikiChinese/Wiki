@@ -3942,7 +3942,7 @@ function enemyMechanicToggleHtml(mech, isActive){
 
 function groupToggleHtml(group, isActive){
   const icon = group.image ? `<img src="${escapeHtml(String(group.image))}">` : '';
-  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(group.color, isActive)}" data-action="selectGroup" data-group-id="${group.id}">${icon}${escapeHtml(group.name)}</button>`;
+  return `<button type="button" class="mark-toggle entity-picker-item ${isActive?'active':''}" style="${toggleChipStyle(group.color, isActive)}" data-action="selectGroup" data-group-id="${group.id}" data-search="${escapeHtml((group.name||'').toLowerCase())}">${icon}${escapeHtml(group.name)}</button>`;
 }
 
 function memoryCardPreviewHtml(memoryId){
@@ -4102,8 +4102,12 @@ function renderUnit(){
       <div class="edit-field">
         <details class="settings-block group-field-details" open style="margin-bottom:0;">
           <summary class="edit-label" style="cursor:pointer;list-style:none;display:flex;align-items:center;">分组<span class="group-toggle-arrow" style="margin-left:auto;font-size:11px;color:var(--text-faint);">▸</span></summary>
-          <div class="mark-row-list" style="margin-top:10px;">
-            ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.groups.includes(g.id))).join('') : ''}
+          <div class="entity-picker-list" style="margin-top:10px;">
+            ${state.groups.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索分组名称...">` : ''}
+            <div class="entity-picker-items mark-row-list">
+              ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.groups.includes(g.id))).join('') : ''}
+            </div>
+            <div class="entity-picker-noresult" style="display:none;">没有匹配的分组</div>
           </div>
           ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : '<div class="hint">可以多选，点击选中，再点一次可取消。</div>'}
         </details>
@@ -4141,12 +4145,21 @@ function renderUnit(){
         <div id="linkedMemoryCards">
           ${draftUnit.linkedMemories.length ? draftUnit.linkedMemories.map(memoryCardPreviewHtml).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择记忆</div>'}
         </div>
-        ${state.memories.length ? `<details class="entity-picker">
-          <summary class="btn btn-gold">+ 选择记忆</summary>
-          <div class="entity-picker-list">
-            ${state.memories.filter(m=>!draftUnit.linkedMemories.includes(m.id)).map(m=>`<button type="button" class="entity-picker-item" data-action="addUnitMemory" data-memory-id="${m.id}">${m.image?`<img src="${escapeHtml(String(m.image))}">`:''}${escapeHtml(m.name)}</button>`).join('') || '<div class="empty-hint">没有更多记忆可选了</div>'}
-          </div>
-        </details>` : '<div class="hint">还没有记忆，可以先到左侧「记忆」页面新增。</div>'}
+        ${(()=>{
+          const remaining = state.memories.filter(m=>!draftUnit.linkedMemories.includes(m.id));
+          if(!state.memories.length) return '<div class="hint">还没有记忆，可以先到左侧「记忆」页面新增。</div>';
+          const key = 'unit-memories-'+unit.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索记忆名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择记忆</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(m=>`<button type="button" class="entity-picker-item" data-action="addUnitMemory" data-memory-id="${m.id}" data-search="${escapeHtml((m.name||'').toLowerCase())}">${m.image?`<img src="${escapeHtml(String(m.image))}">`:''}${escapeHtml(m.name)}</button>`).join('') || '<div class="empty-hint">没有更多记忆可选了</div>'}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的记忆</div>
+            </div>
+          </details>`;
+        })()}
       </div>
 
       <div class="edit-field">
