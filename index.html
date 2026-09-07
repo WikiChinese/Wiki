@@ -580,6 +580,7 @@ let openRaritySections = new Set();
 // familiars/memories) are currently toggled on, per gallery type. Kept at module scope so the
 // selection survives re-renders (toggling a rarity section open, etc.) within the same session.
 let galleryActiveFilters = {};
+let galleryFilterPanelOpen = {};
 function galleryFilterConfig(type){
   if(type==='unit') return [
     {key:'elements', label:'元素', options: state.elements},
@@ -5123,7 +5124,7 @@ function renderGallery(type){
   const attrFilterCfg = galleryFilterConfig(type).filter(f=>f.options && f.options.length);
   const attrFilters = getGalleryActiveFilters(type);
   const anyAttrFilterActive = attrFilterCfg.some(f=> attrFilters[f.key].size>0);
-  const attrFilterHtml = (list.length && attrFilterCfg.length) ? `<details class="entity-picker" id="galleryFilterPanel"${anyAttrFilterActive?' open':''} style="margin-bottom:14px;">
+  const attrFilterHtml = (list.length && attrFilterCfg.length) ? `<details class="entity-picker" id="galleryFilterPanel"${galleryFilterPanelOpen[type]?' open':''} style="margin-bottom:14px;">
     <summary class="btn${anyAttrFilterActive?' btn-gold':''}" id="galleryFilterSummary">🔎 筛选<span id="galleryFilterActiveTag">${anyAttrFilterActive?'（已启用）':''}</span></summary>
     <div class="entity-picker-list">
       ${attrFilterCfg.map(f=>`<div>
@@ -5246,6 +5247,9 @@ function renderGallery(type){
       });
     }
   }
+
+  const filterPanelEl = document.getElementById('galleryFilterPanel');
+  if(filterPanelEl) filterPanelEl.addEventListener('toggle', ()=>{ galleryFilterPanelOpen[type] = filterPanelEl.open; });
 
   const searchInput = document.getElementById('gallerySearchInput');
   if(searchInput) searchInput.addEventListener('input', applyGalleryFilters);
