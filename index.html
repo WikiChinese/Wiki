@@ -5127,14 +5127,21 @@ function renderGallery(type){
   const attrFilterHtml = (list.length && attrFilterCfg.length) ? `<details class="entity-picker" id="galleryFilterPanel"${galleryFilterPanelOpen[type]?' open':''} style="margin-bottom:14px;">
     <summary class="btn${anyAttrFilterActive?' btn-gold':''}" id="galleryFilterSummary">🔎 筛选<span id="galleryFilterActiveTag">${anyAttrFilterActive?'（已启用）':''}</span></summary>
     <div class="entity-picker-list">
-      ${attrFilterCfg.map(f=>`<div>
-        <div class="hint" style="margin:0 0 6px;">${f.label}</div>
-        <div class="mark-row-list">${f.options.map(o=>{
-          const active = attrFilters[f.key].has(o.id);
-          const icon = o.image ? `<img src="${escapeHtml(String(o.image))}">` : '';
-          return `<button type="button" class="mark-toggle ${active?'active':''}" style="${toggleChipStyle(o.color, active)}" data-gallery-filter-key="${f.key}" data-gallery-filter-value="${o.id}">${icon}${escapeHtml(o.name)}</button>`;
-        }).join('')}</div>
-      </div>`).join('')}
+      ${attrFilterCfg.map(f=>{
+        const fieldActiveCount = attrFilters[f.key].size;
+        const key = 'gallery-filter-group-'+type+'-'+f.key;
+        const isOpen = openPickerKeys.has(key);
+        return `<details class="insert-dot-picker" data-picker-key="${key}"${isOpen?' open':''} style="position:static;">
+          <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;padding:4px 0;font-size:13px;color:var(--text-dim);">
+            <span class="group-toggle-arrow" style="font-size:11px;color:var(--text-faint);">▸</span>${escapeHtml(f.label)}${fieldActiveCount ? `<span class="badge badge-common" style="background:var(--gold-dim);color:var(--gold);">${fieldActiveCount}</span>` : ''}
+          </summary>
+          <div class="mark-row-list" style="margin-top:8px;">${f.options.map(o=>{
+            const active = attrFilters[f.key].has(o.id);
+            const icon = o.image ? `<img src="${escapeHtml(String(o.image))}">` : '';
+            return `<button type="button" class="mark-toggle ${active?'active':''}" style="${toggleChipStyle(o.color, active)}" data-gallery-filter-key="${f.key}" data-gallery-filter-value="${o.id}">${icon}${escapeHtml(o.name)}</button>`;
+          }).join('')}</div>
+        </details>`;
+      }).join('')}
       <button type="button" class="btn btn-danger" id="galleryClearFiltersBtn" style="align-self:flex-start;${anyAttrFilterActive?'':'display:none;'}">清除筛选</button>
     </div>
   </details>` : '';
@@ -5204,6 +5211,7 @@ function renderGallery(type){
   const addBtn = document.getElementById('galleryAddBtn');
   if(addBtn) addBtn.addEventListener('click', ()=> document.getElementById(cfg.addBtnId).click());
   wireBackButton(container);
+  wirePickerToggles(container);
 
   container.querySelectorAll('details.rarity-section[data-rarity-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
