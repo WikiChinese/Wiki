@@ -402,6 +402,11 @@
   .mark-toggle .mark-dot{width:12px;height:12px;border-radius:50%;margin-left:2px;}
   .mark-toggle.active{opacity:1;border-color:var(--gold);}
   .mark-row-list{display:flex;flex-wrap:wrap;}
+  .questline-list{margin:0 0 20px;padding-left:22px;display:flex;flex-direction:column;gap:12px;}
+  .questline-list li{padding-left:4px;}
+  .questline-list li::marker{color:var(--gold);font-weight:700;}
+  .questline-step-name{font-weight:600;color:var(--text);}
+  .questline-step-desc{font-size:13px;color:var(--text-dim);margin-top:2px;line-height:1.6;}
   .mark-chip-inline{margin:0 2px;vertical-align:middle;}
   .content-body .mark-chip-inline{background:var(--card-hover);}
   .mark-quickadd{display:flex;gap:8px;align-items:center;margin-top:12px;flex-wrap:wrap;padding-top:12px;border-top:1px dashed var(--border);}
@@ -571,6 +576,27 @@ let viewHistory = [];
 let traitPreviewOverrides = {};
 let openPickerKeys = new Set();
 let openRaritySections = new Set();
+// Which extra attribute chips (element/group/marks/obtainMethods for units, marks for
+// familiars/memories) are currently toggled on, per gallery type. Kept at module scope so the
+// selection survives re-renders (toggling a rarity section open, etc.) within the same session.
+let galleryActiveFilters = {};
+function galleryFilterConfig(type){
+  if(type==='unit') return [
+    {key:'elements', label:'元素', options: state.elements},
+    {key:'groups', label:'分组', options: state.groups},
+    {key:'marks', label:'状态标记', options: state.marks},
+    {key:'obtainMethods', label:'获取方式', options: state.obtainMethods},
+  ];
+  if(type==='family' || type==='memory') return [
+    {key:'marks', label:'状态标记', options: state.marks},
+  ];
+  return [];
+}
+function getGalleryActiveFilters(type){
+  if(!galleryActiveFilters[type]) galleryActiveFilters[type] = {};
+  galleryFilterConfig(type).forEach(f=>{ if(!galleryActiveFilters[type][f.key]) galleryActiveFilters[type][f.key] = new Set(); });
+  return galleryActiveFilters[type];
+}
 let closedCollapsibleBlocks = new Set();
 
 function wireCollapsibleBlocks(container, blockSelector, keyPrefix){
@@ -1075,6 +1101,8 @@ function migrateState(){
       a.levels.forEach(l=>{ if(l.cost===undefined) l.cost=''; });
     });
     if(!Array.isArray(u.marks)) u.marks = [];
+    if(!Array.isArray(u.questline)) u.questline = [];
+    u.questline.forEach(q=>{ if(q.name===undefined) q.name=''; if(q.description===undefined) q.description=''; });
     if(!Array.isArray(u.skins)) u.skins = [];
     u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; if(s.referenceUrl===undefined) s.referenceUrl=''; if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : []; });
     if(!Array.isArray(u.passives)) u.passives = u.passive ? [{id:uid(), name:'被动1', description:u.passive}] : [];
@@ -1251,6 +1279,17 @@ function traitDetailInnerHtml(t){
       ${tableHtml}
     </div>
   `;
+}
+
+function questlineStepEditRowHtml(q, i){
+  return `<div class="sub-card" data-questline-row-index="${i}">
+    <div class="sub-card-head">
+      <span class="badge badge-common" style="background:var(--card);color:var(--text-faint);flex-shrink:0;">第 ${i+1} 步</span>
+      <input class="edit-input" style="flex:1;min-width:160px;" data-bind="questline.${i}.name" value="${escapeHtml(q.name)}" placeholder="任务名称">
+      <button class="btn btn-danger" data-action="removeQuestlineStep" data-index="${i}">删除</button>
+    </div>
+    <textarea class="edit-textarea" style="margin-top:8px;min-height:70px;" data-bind="questline.${i}.description" placeholder="任务描述">${escapeHtml(q.description)}</textarea>
+  </div>`;
 }
 
 function stageRewardEditRowHtml(r, i){
@@ -3463,6 +3502,7 @@ function startUnitEdit(unit){
     if(!Array.isArray(a.media)) a.media = a.image ? [a.image] : [];
   });
   if(!Array.isArray(draftUnit.marks)) draftUnit.marks = [];
+  if(!Array.isArray(draftUnit.questline)) draftUnit.questline = [];
   if(!Array.isArray(draftUnit.skins)) draftUnit.skins = [];
   draftUnit.skins.forEach(s=>{
     if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : [];
@@ -3761,6 +3801,11 @@ function handleDraftAction(ds, draft, el){
   const mi = ds.mediaIndex !== undefined ? parseInt(ds.mediaIndex) : null;
   if(action==='addSkill') draft.skills.push({id:uid(), name:'新技能', media:[], description:'', targetType:'', cost:''});
   else if(action==='removeSkill') draft.skills.splice(idx,1);
+  else if(action==='addQuestlineStep'){
+    if(!Array.isArray(draft.questline)) draft.questline = [];
+    draft.questline.push({id:uid(), name:'第 '+(draft.questline.length+1)+' 步', description:''});
+  }
+  else if(action==='removeQuestlineStep') draft.questline.splice(idx,1);
   else if(action==='addCharacterCard') draft.characterCards.push({id:uid(), name:'新角色卡', image:'', description:'', rarity:'', unitId:''});
   else if(action==='removeCharacterCard') draft.characterCards.splice(idx,1);
   else if(action==='addBasicCard') draft.basicCards.push({id:uid(), name:'新基础卡', image:'', description:'', rarity:''});
@@ -4191,6 +4236,13 @@ function renderUnit(){
       </div>
 
       <div class="edit-field">
+        <span class="edit-label">任务线</span>
+        <div class="hint" style="margin-bottom:10px;">获取/解锁这个单位需要完成的一系列任务，按顺序排列，每条一个名称+说明。</div>
+        ${draftUnit.questline.map((q,i)=>questlineStepEditRowHtml(q,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无任务</div>'}
+        <button class="btn btn-gold" data-action="addQuestlineStep">+ 添加任务</button>
+      </div>
+
+      <div class="edit-field">
         <span class="edit-label">记忆</span>
         <div id="linkedMemoryCards">
           ${draftUnit.linkedMemories.length ? draftUnit.linkedMemories.map(memoryCardPreviewHtml).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择记忆</div>'}
@@ -4384,6 +4436,7 @@ function renderUnit(){
       unit.skins = draftUnit.skins || [];
       unit.attacks = draftUnit.attacks;
       unit.marks = draftUnit.marks || [];
+      unit.questline = draftUnit.questline || [];
       unit.updatedAt = Date.now();
       editMode = false;
       draftUnit = null;
@@ -4443,6 +4496,9 @@ function renderUnit(){
     const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
+  const questlineHtml = (unit.questline&&unit.questline.length) ? `<ol class="questline-list">${unit.questline.map(q=>
+    `<li><div class="questline-step-name">${escapeHtml(q.name)}</div>${q.description ? `<div class="questline-step-desc">${escapeHtml(q.description)}</div>` : ''}</li>`
+  ).join('')}</ol>` : '';
   const skillsHtml = (unit.skills&&unit.skills.length) ? (()=>{
     const tabsHtml = unit.skills.map((s,i)=>{
       const t = SKILL_TARGET_TYPES.find(x=>x.id===s.targetType);
@@ -4681,6 +4737,7 @@ function renderUnit(){
     ${passivesHtml}
     <div class="section-label">技能 / 能力</div>
     ${skillsHtml}
+    ${questlineHtml ? `<div class="section-label">任务线</div>${questlineHtml}` : ''}
     ${unit.linkedMemories&&unit.linkedMemories.length ? `<div class="section-label">记忆</div>${linkedMemoriesHtml}` : ''}
     ${unit.linkedFamilies&&unit.linkedFamilies.length ? `<div class="section-label">使魔</div>${linkedFamiliesHtml}` : ''}
     ${unit.relatedUnits&&unit.relatedUnits.length ? `<div class="section-label">关联单位</div>${relatedUnitsHtml}` : ''}
@@ -5046,7 +5103,11 @@ function renderGallery(type){
 
   function cardHtml(entity){
     const searchText = escapeHtml(((entity.name||'')+' '+(entity.englishName||'')).toLowerCase());
-    return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${isAdmin ? ' draggable="true"' : ''}>
+    const filterAttrs = galleryFilterConfig(type).map(f=>{
+      const vals = Array.isArray(entity[f.key]) ? entity[f.key] : (entity[f.key] ? [entity[f.key]] : []);
+      return ` data-filter-${f.key.toLowerCase()}="${vals.join(',')}"`;
+    }).join('');
+    return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
       <div class="gallery-card-img-wrap">
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
@@ -5058,6 +5119,24 @@ function renderGallery(type){
     <button type="button" class="gallery-category-chip active" data-cat-filter="">全部</button>
     ${state.itemCategories.map(c=>`<button type="button" class="gallery-category-chip" data-cat-filter="${c.id}" style="${dimChipStyle(c.color)}">${escapeHtml(c.name)}</button>`).join('')}
   </div>` : '';
+
+  const attrFilterCfg = galleryFilterConfig(type).filter(f=>f.options && f.options.length);
+  const attrFilters = getGalleryActiveFilters(type);
+  const anyAttrFilterActive = attrFilterCfg.some(f=> attrFilters[f.key].size>0);
+  const attrFilterHtml = (list.length && attrFilterCfg.length) ? `<details class="entity-picker" id="galleryFilterPanel"${anyAttrFilterActive?' open':''} style="margin-bottom:14px;">
+    <summary class="btn${anyAttrFilterActive?' btn-gold':''}" id="galleryFilterSummary">🔎 筛选<span id="galleryFilterActiveTag">${anyAttrFilterActive?'（已启用）':''}</span></summary>
+    <div class="entity-picker-list">
+      ${attrFilterCfg.map(f=>`<div>
+        <div class="hint" style="margin:0 0 6px;">${f.label}</div>
+        <div class="mark-row-list">${f.options.map(o=>{
+          const active = attrFilters[f.key].has(o.id);
+          const icon = o.image ? `<img src="${escapeHtml(String(o.image))}">` : '';
+          return `<button type="button" class="mark-toggle ${active?'active':''}" style="${toggleChipStyle(o.color, active)}" data-gallery-filter-key="${f.key}" data-gallery-filter-value="${o.id}">${icon}${escapeHtml(o.name)}</button>`;
+        }).join('')}</div>
+      </div>`).join('')}
+      <button type="button" class="btn btn-danger" id="galleryClearFiltersBtn" style="align-self:flex-start;${anyAttrFilterActive?'':'display:none;'}">清除筛选</button>
+    </div>
+  </details>` : '';
 
   let cardsHtml, statsHtml = '', groups = [], recentHtml = '';
   if(!list.length){
@@ -5114,6 +5193,7 @@ function renderGallery(type){
     </div>
     ${list.length>1 ? `<div class="gallery-search-bar"><span class="gallery-search-icon">🔍</span><input type="text" id="gallerySearchInput" class="gallery-search-input" placeholder="搜索${cfg.label}名称..."></div>` : ''}
     ${categoryFilterHtml}
+    ${attrFilterHtml}
     ${statsHtml}
     ${recentHtml}
     ${isAdmin && list.length>1 ? `<div class="hint" style="margin:-6px 0 14px;">💡 按住卡片拖动，可以调整排列顺序（比如把新的拖到前面）。</div>` : ''}
@@ -5139,7 +5219,15 @@ function renderGallery(type){
       const searchText = card.dataset.search || (card.querySelector('.gallery-card-name')?.textContent||'').toLowerCase();
       const searchOk = !q || searchText.includes(q);
       const catOk = !activeCategoryFilter || card.dataset.itemCategory===activeCategoryFilter;
-      return searchOk && catOk;
+      // Attribute filters: within one field it's OR (fire OR water element matches either), across
+      // different fields it's AND (must match the element filter AND the group filter if both set).
+      const attrOk = attrFilterCfg.every(f=>{
+        const activeSet = attrFilters[f.key];
+        if(!activeSet.size) return true;
+        const cardVals = (card.getAttribute(`data-filter-${f.key.toLowerCase()}`)||'').split(',').filter(Boolean);
+        return cardVals.some(v=> activeSet.has(v));
+      });
+      return searchOk && catOk && attrOk;
     };
     if(sections.length){
       sections.forEach(section=>{
@@ -5150,7 +5238,7 @@ function renderGallery(type){
           if(match) anyVisible = true;
         });
         section.style.display = anyVisible ? '' : 'none';
-        section.open = (q || activeCategoryFilter) ? true : openRaritySections.has(section.dataset.rarityKey);
+        section.open = (q || activeCategoryFilter || anyAttrFilterActive) ? true : openRaritySections.has(section.dataset.rarityKey);
       });
     } else {
       container.querySelectorAll('.gallery-card').forEach(card=>{
@@ -5169,6 +5257,45 @@ function renderGallery(type){
       applyGalleryFilters();
     });
   });
+
+  function updateFilterSummary(){
+    const anyActive = attrFilterCfg.some(f=> attrFilters[f.key].size>0);
+    const summary = document.getElementById('galleryFilterSummary');
+    const tag = document.getElementById('galleryFilterActiveTag');
+    const clearBtn = document.getElementById('galleryClearFiltersBtn');
+    if(summary) summary.classList.toggle('btn-gold', anyActive);
+    if(tag) tag.textContent = anyActive ? '（已启用）' : '';
+    if(clearBtn) clearBtn.style.display = anyActive ? '' : 'none';
+  }
+
+  container.querySelectorAll('[data-gallery-filter-key]').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const key = chip.dataset.galleryFilterKey;
+      const val = chip.dataset.galleryFilterValue;
+      const set = attrFilters[key];
+      if(set.has(val)) set.delete(val); else set.add(val);
+      chip.classList.toggle('active');
+      const active = chip.classList.contains('active');
+      const cfg = attrFilterCfg.find(f=>f.key===key);
+      const opt = cfg ? cfg.options.find(o=>o.id===val) : null;
+      chip.setAttribute('style', toggleChipStyle(opt ? opt.color : null, active));
+      updateFilterSummary();
+      applyGalleryFilters();
+    });
+  });
+  const clearFiltersBtn = document.getElementById('galleryClearFiltersBtn');
+  if(clearFiltersBtn) clearFiltersBtn.addEventListener('click', ()=>{
+    attrFilterCfg.forEach(f=> attrFilters[f.key].clear());
+    container.querySelectorAll('[data-gallery-filter-key]').forEach(chip=>{
+      chip.classList.remove('active');
+      const cfg2 = attrFilterCfg.find(f=>f.key===chip.dataset.galleryFilterKey);
+      const opt = cfg2 ? cfg2.options.find(o=>o.id===chip.dataset.galleryFilterValue) : null;
+      chip.setAttribute('style', toggleChipStyle(opt ? opt.color : null, false));
+    });
+    updateFilterSummary();
+    applyGalleryFilters();
+  });
+  applyGalleryFilters();
 
   container.querySelectorAll('.gallery-stats-chip[data-jump], .gallery-distribution-seg[data-jump]').forEach(chip=>{
     chip.addEventListener('click', ()=>{
