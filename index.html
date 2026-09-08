@@ -305,6 +305,19 @@
   .level-pill-edit{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:9px;}
   .level-pill-edit .edit-input{width:60px;padding:6px 8px;font-size:12px;text-align:center;}
   .level-pill-edit .level-pill-arrow{color:var(--text-faint);font-size:11px;}
+  .income-row-list{display:flex;flex-direction:column;gap:8px;}
+  .income-row-edit{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:9px;}
+  .income-row-edit .level-pill-label-input{width:70px;flex-shrink:0;}
+  .income-row-edit .income-field{display:flex;align-items:center;gap:6px;flex:1;min-width:180px;}
+  .income-row-edit .income-field label{font-size:12px;color:var(--text-faint);white-space:nowrap;flex-shrink:0;}
+  .income-row-edit .income-field input{flex:1;min-width:0;}
+  .income-row-view{position:relative;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px 10px 19px;background:var(--card);border:1px solid var(--border);border-radius:9px;overflow:hidden;}
+  .income-row-view::before{content:'';position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--border-light);}
+  .income-row-view:last-child{border-color:var(--gold-dim);background:rgba(201,162,75,.08);}
+  .income-row-view:last-child::before{background:var(--gold);}
+  .income-row-view .income-row-label{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:700;color:var(--gold);flex-shrink:0;}
+  .income-row-view .income-row-cost{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-dim);white-space:nowrap;}
+  .income-row-view .income-row-provide{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--gold);white-space:nowrap;}
   .attack-cost-bar{margin-top:10px;display:flex;justify-content:space-between;align-items:center;background:rgba(201,162,75,0.08);border:1px solid var(--gold-dim);border-radius:8px;padding:8px 14px;font-size:13px;}
   .attack-cost-bar .label{color:var(--text-faint);font-size:11px;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:8px;}
   .attack-cost-bar .value{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold);font-size:15px;}
@@ -3727,15 +3740,27 @@ function applyTraitPct(baseVal, pct){
 
 function attackCardHtml(attack, ai){
   const isFarm = draftUnit.unitType==='farm';
-  const rows = attack.levels.map((lvl,li)=>`
+  const rows = isFarm ? `<div class="income-row-list">${attack.levels.map((lvl,li)=>`
+    <div class="income-row-edit">
+      <input class="edit-input level-pill-label-input" data-bind="attacks.${ai}.levels.${li}.label" value="${escapeHtml(lvl.label)}" placeholder="等级">
+      <div class="income-field">
+        <label>💰 费用</label>
+        <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.cost" value="${escapeHtml(lvl.cost)}" placeholder="升级费用">
+      </div>
+      <span class="level-pill-arrow">→</span>
+      <div class="income-field">
+        <label>每波收入</label>
+        <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.provide" value="${escapeHtml(lvl.provide||'')}" placeholder="每波收入">
+      </div>
+      <button class="icon-btn" data-action="removeLevel" data-attack-index="${ai}" data-index="${li}">✕</button>
+    </div>`).join('')}</div>` : `
+    <div class="level-track">${attack.levels.map((lvl,li)=>`
     <div class="level-pill-edit">
       <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.label" value="${escapeHtml(lvl.label)}" placeholder="等级">
       <span class="level-pill-arrow">💰</span>
       <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.cost" value="${escapeHtml(lvl.cost)}" placeholder="费用">
-      ${isFarm ? `<span class="level-pill-arrow">→</span>
-      <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.provide" value="${escapeHtml(lvl.provide||'')}" placeholder="每波收入">` : ''}
       <button class="icon-btn" data-action="removeLevel" data-attack-index="${ai}" data-index="${li}">✕</button>
-    </div>`).join('');
+    </div>`).join('')}</div>`;
   return `<div class="sub-card attack-edit-card">
     <div class="sub-card-head">
       <input class="edit-input" data-bind="attacks.${ai}.name" value="${escapeHtml(attack.name)}" placeholder="攻击名称">
@@ -3776,7 +3801,7 @@ function attackCardHtml(attack, ai){
 
     <div class="attack-section-label">${isFarm ? '每波收入明细' : '等级明细'}</div>
     ${isFarm ? `<div class="hint" style="margin:-4px 0 10px;">"费用" = 升到这一级要花多少钱；"每波收入" = 升到这一级之后，每一波能拿到多少钱。</div>` : ''}
-    <div class="level-track">${rows}</div>
+    ${rows}
     <div class="attack-cost-bar" style="margin-top:10px;"><span class="label">总升级花费</span><span class="value">${sumAttackCost(attack).toLocaleString()}</span></div>
     <div style="margin-top:12px;">
       <button class="btn" data-action="addLevel" data-attack-index="${ai}">+ 新增等级</button>
@@ -4698,10 +4723,14 @@ function renderUnit(){
       </div>
       ${extraMediaHtml}
       ${plateHtml ? `<div class="attack-stat-plate">${plateHtml}</div>` : ''}
-      <div class="level-track-view">${a.levels.map(l=> unit.unitType==='farm'
-        ? `<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}${l.provide?` <span style="color:var(--gold);">→ 提供 ${escapeHtml(l.provide)}¥/波</span>`:''}</span></div>`
-        : `<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`
-      ).join('')}</div>
+      ${unit.unitType==='farm'
+        ? `<div class="income-row-list">${a.levels.map(l=>
+            `<div class="income-row-view"><span class="income-row-label">${escapeHtml(l.label)}</span><span class="income-row-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span><span class="level-pill-arrow">→</span><span class="income-row-provide">${l.provide?`每波收入 ${escapeHtml(l.provide)}¥`:'—'}</span></div>`
+          ).join('')}</div>`
+        : `<div class="level-track-view">${a.levels.map(l=>
+            `<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`
+          ).join('')}</div>`
+      }
       <div class="attack-cost-bar"><span class="label"><span class="coin-badge">💰</span>总升级花费</span><span class="value">${sumAttackCost(a).toLocaleString()}</span></div>
     </div>`;
   }).join('') : '<p style="color:var(--text-faint);">暂无内容</p>';
