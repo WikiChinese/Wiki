@@ -2264,6 +2264,19 @@ function showToast(msg, duration){
 function escapeHtml(s){
   return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+// Renders a unit's personalColor as an inline style. Accepts either a plain color (hex/rgb/named)
+// or a full CSS gradient string (e.g. "linear-gradient(90deg, gold, red)") — gradients can't be
+// applied via the `color` property directly, so text needs the background-clip:text trick instead.
+function unitNameColorStyle(value){
+  if(!value) return '';
+  const v = String(value).trim();
+  if(!v) return '';
+  const safe = v.replace(/[<>"']/g, '');
+  if(/gradient/i.test(safe)){
+    return ` style="background:${safe};-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;"`;
+  }
+  return ` style="color:${safe};"`;
+}
 function renderMarkdownLite(text){
   const lines = (text||'').split('\n');
   let html=''; let inList=false;
@@ -3392,7 +3405,7 @@ function renderOdyssey(){
         ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${u.personalColor ? ` style="color:${escapeHtml(String(u.personalColor))};"` : ''}>${escapeHtml(u.name)}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(u.personalColor)}>${escapeHtml(u.name)}</div>
     </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
   container.innerHTML = `
@@ -4145,9 +4158,11 @@ function renderUnit(){
       </div>
       <div class="edit-field">
         <span class="edit-label">单位名字颜色（可选，用在详情页标题和画廊卡片名字上）</span>
+        <div class="hint" style="margin-bottom:8px;">可以填纯色（比如 #ff0000），也可以填一整段 CSS 渐变，比如：<code>linear-gradient(90deg, gold, red)</code></div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <input type="color" data-bind="personalColor" value="${escapeHtml(draftUnit.personalColor || '#c9a24b')}">
-          <button type="button" class="btn" data-action="clearUnitPersonalColor">清除，用回默认颜色</button>
+          <input type="color" id="unitColorPickerHelper" value="${escapeHtml(/^#[0-9a-fA-F]{3,8}$/.test(draftUnit.personalColor||'') ? draftUnit.personalColor : '#c9a24b')}" title="快速选一个纯色">
+          <input class="edit-input" style="flex:1;" id="unitPersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftUnit.personalColor||'')}" placeholder="留空 = 默认颜色，也可以填渐变 CSS">
+          <button type="button" class="btn" data-action="clearUnitPersonalColor">清除</button>
         </div>
       </div>
       <div class="edit-field">
@@ -4467,6 +4482,12 @@ function renderUnit(){
       render();
     };
     document.getElementById('saveBtn').addEventListener('click', doSaveUnit);
+    const unitColorPickerHelper = document.getElementById('unitColorPickerHelper');
+    if(unitColorPickerHelper) unitColorPickerHelper.addEventListener('input', ()=>{
+      draftUnit.personalColor = unitColorPickerHelper.value;
+      const textInput = document.getElementById('unitPersonalColorInput');
+      if(textInput) textInput.value = unitColorPickerHelper.value;
+    });
     const saveBtnBottom = document.getElementById('saveBtnBottom');
     if(saveBtnBottom) saveBtnBottom.addEventListener('click', doSaveUnit);
     container.querySelectorAll('[data-edit-linked-entity]').forEach(btn=>{
@@ -4749,7 +4770,7 @@ function renderUnit(){
       ${mainImageHtml ? `<div class="unit-hero-image">${mainImageHtml}</div>` : ''}
       <div class="unit-hero-info">
         <div class="page-header">
-          <h1 class="page-title"${unit.personalColor ? ` style="color:${escapeHtml(String(unit.personalColor))};"` : ''}>${escapeHtml(unit.name)}</h1>
+          <h1 class="page-title"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
           <div class="meta-row">${rarityBadge(unit.rarity)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
@@ -5135,7 +5156,7 @@ function renderGallery(type){
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${entity.personalColor ? ` style="color:${escapeHtml(String(entity.personalColor))};"` : ''}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
     </a>`;
   }
   const categoryFilterHtml = (type==='item' && list.length && state.itemCategories.length) ? `<div class="gallery-category-filter">
