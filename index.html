@@ -1099,7 +1099,7 @@ function migrateState(){
       if(a.baseSpa===undefined) a.baseSpa = '';
       if(a.unitLv60===undefined) a.unitLv60 = '';
       if(a.trait===undefined) a.trait = '';
-      a.levels.forEach(l=>{ if(l.cost===undefined) l.cost=''; });
+      a.levels.forEach(l=>{ if(l.cost===undefined) l.cost=''; if(l.provide===undefined) l.provide=''; });
     });
     if(!Array.isArray(u.marks)) u.marks = [];
     if(!Array.isArray(u.questline)) u.questline = [];
@@ -3726,11 +3726,14 @@ function applyTraitPct(baseVal, pct){
 }
 
 function attackCardHtml(attack, ai){
+  const isFarm = draftUnit.unitType==='farm';
   const rows = attack.levels.map((lvl,li)=>`
     <div class="level-pill-edit">
       <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.label" value="${escapeHtml(lvl.label)}" placeholder="等级">
       <span class="level-pill-arrow">💰</span>
       <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.cost" value="${escapeHtml(lvl.cost)}" placeholder="费用">
+      ${isFarm ? `<span class="level-pill-arrow">→</span>
+      <input class="edit-input" data-bind="attacks.${ai}.levels.${li}.provide" value="${escapeHtml(lvl.provide||'')}" placeholder="每波收入">` : ''}
       <button class="icon-btn" data-action="removeLevel" data-attack-index="${ai}" data-index="${li}">✕</button>
     </div>`).join('');
   return `<div class="sub-card attack-edit-card">
@@ -3771,7 +3774,8 @@ function attackCardHtml(attack, ai){
       </div>
     </div>
 
-    <div class="attack-section-label">等级明细</div>
+    <div class="attack-section-label">${isFarm ? '每波收入明细' : '等级明细'}</div>
+    ${isFarm ? `<div class="hint" style="margin:-4px 0 10px;">"费用" = 升到这一级要花多少钱；"每波收入" = 升到这一级之后，每一波能拿到多少钱。</div>` : ''}
     <div class="level-track">${rows}</div>
     <div class="attack-cost-bar" style="margin-top:10px;"><span class="label">总升级花费</span><span class="value">${sumAttackCost(attack).toLocaleString()}</span></div>
     <div style="margin-top:12px;">
@@ -3856,14 +3860,14 @@ function handleDraftAction(ds, draft, el){
   else if(action==='removeSkinMedia'){ draft.skins[idx].media.splice(mi,1); }
   else if(action==='addOtherForm') draft.otherForms.push({id:uid(), name:'新形态', image:'', trigger:'', passives:[]});
   else if(action==='removeOtherForm') draft.otherForms.splice(idx,1);
-  else if(action==='addAttack'){ const n=draft.attacks.length+1; draft.attacks.push({id:uid(), name:'攻击'+n, image:'', media:[], damage:'', range:'', levels:[{label:'LV0',spa:'',cost:''}]}); }
+  else if(action==='addAttack'){ const n=draft.attacks.length+1; draft.attacks.push({id:uid(), name: draft.unitType==='farm' ? '收入' : ('攻击'+n), image:'', media:[], damage:'', range:'', levels:[{label:'LV0',spa:'',cost:'',provide:''}]}); }
   else if(action==='removeAttack') draft.attacks.splice(idx,1);
-  else if(action==='addLevel'){ const atk=draft.attacks[ai]; atk.levels.push({label:'LV'+atk.levels.length, spa:'',cost:''}); }
+  else if(action==='addLevel'){ const atk=draft.attacks[ai]; atk.levels.push({label:'LV'+atk.levels.length, spa:'',cost:'',provide:''}); }
   else if(action==='bulkAddLevels'){
     const atk = draft.attacks[ai];
     if(atk.levels.length >= 11){ showToast('已经有LV0-LV10了'); }
     while(atk.levels.length < 11){
-      atk.levels.push({label:'LV'+atk.levels.length, spa:'', cost:''});
+      atk.levels.push({label:'LV'+atk.levels.length, spa:'', cost:'', provide:''});
     }
   }
   else if(action==='removeLevel') draft.attacks[ai].levels.splice(idx,1);
@@ -4694,7 +4698,10 @@ function renderUnit(){
       </div>
       ${extraMediaHtml}
       ${plateHtml ? `<div class="attack-stat-plate">${plateHtml}</div>` : ''}
-      <div class="level-track-view">${a.levels.map(l=>`<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`).join('')}</div>
+      <div class="level-track-view">${a.levels.map(l=> unit.unitType==='farm'
+        ? `<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}${l.provide?` <span style="color:var(--gold);">→ 提供 ${escapeHtml(l.provide)}¥/波</span>`:''}</span></div>`
+        : `<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`
+      ).join('')}</div>
       <div class="attack-cost-bar"><span class="label"><span class="coin-badge">💰</span>总升级花费</span><span class="value">${sumAttackCost(a).toLocaleString()}</span></div>
     </div>`;
   }).join('') : '<p style="color:var(--text-faint);">暂无内容</p>';
