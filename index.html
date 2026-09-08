@@ -1105,6 +1105,7 @@ function migrateState(){
     if(!Array.isArray(u.questline)) u.questline = [];
     u.questline.forEach(q=>{ if(q.name===undefined) q.name=''; if(q.description===undefined) q.description=''; });
     if(u.personalColor===undefined) u.personalColor = '';
+    if(u.unitType===undefined) u.unitType = 'fighting';
     if(!Array.isArray(u.skins)) u.skins = [];
     u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; if(s.referenceUrl===undefined) s.referenceUrl=''; if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : []; });
     if(!Array.isArray(u.passives)) u.passives = u.passive ? [{id:uid(), name:'被动1', description:u.passive}] : [];
@@ -3506,6 +3507,7 @@ function startUnitEdit(unit){
   if(!Array.isArray(draftUnit.marks)) draftUnit.marks = [];
   if(!Array.isArray(draftUnit.questline)) draftUnit.questline = [];
   if(draftUnit.personalColor===undefined) draftUnit.personalColor = '';
+  if(draftUnit.unitType===undefined) draftUnit.unitType = 'fighting';
   if(!Array.isArray(draftUnit.skins)) draftUnit.skins = [];
   draftUnit.skins.forEach(s=>{
     if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : [];
@@ -3732,8 +3734,8 @@ function attackCardHtml(attack, ai){
     <div class="attack-section-label">基础数值</div>
     <div style="display:flex;gap:10px;margin-bottom:10px;">
       <div style="flex:1;">
-        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">伤害</label>
-        <input class="edit-input" data-bind="attacks.${ai}.damage" value="${escapeHtml(attack.damage||'')}" placeholder="伤害（只填一次）">
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">${draftUnit.unitType==='farm' ? '收入' : '伤害'}</label>
+        <input class="edit-input" data-bind="attacks.${ai}.damage" value="${escapeHtml(attack.damage||'')}" placeholder="${draftUnit.unitType==='farm' ? '收入（只填一次）' : '伤害（只填一次）'}">
       </div>
       <div style="flex:1;">
         <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">攻速</label>
@@ -4148,6 +4150,14 @@ function renderUnit(){
           <button type="button" class="btn" data-action="clearUnitPersonalColor">清除，用回默认颜色</button>
         </div>
       </div>
+      <div class="edit-field">
+        <span class="edit-label">单位类型</span>
+        <div class="hint" style="margin-bottom:8px;">农场单位（比如种田/生钱的单位）不参与战斗，数值那里会显示"收入"而不是"伤害"，攻速和范围不受影响。</div>
+        <select class="edit-select" data-bind="unitType">
+          <option value="fighting" ${draftUnit.unitType==='fighting'?'selected':''}>⚔️ 战斗单位</option>
+          <option value="farm" ${draftUnit.unitType==='farm'?'selected':''}>💰 农场单位（Income）</option>
+        </select>
+      </div>
 
       <div class="edit-field">
         <span class="edit-label">1. 图片</span>
@@ -4449,6 +4459,7 @@ function renderUnit(){
       unit.marks = draftUnit.marks || [];
       unit.questline = draftUnit.questline || [];
       unit.personalColor = draftUnit.personalColor || '';
+      unit.unitType = draftUnit.unitType || 'fighting';
       unit.updatedAt = Date.now();
       editMode = false;
       draftUnit = null;
@@ -4642,7 +4653,7 @@ function renderUnit(){
         <div class="attack-stat-value">${escapeHtml(val)}${calc!==null&&calc!==undefined?`<span class="arrow">→</span><span class="boosted">${calc.toLocaleString()}</span>`:''}</div>
       </div>` : '';
     const plateHtml = [
-      statCell('⚔️', '伤害', a.damage, calcDamage),
+      statCell(unit.unitType==='farm' ? '💰' : '⚔️', unit.unitType==='farm' ? '收入' : '伤害', a.damage, calcDamage),
       statCell('⚡', '攻速', a.baseSpa, calcBaseSpa),
       statCell('🎯', '范围', a.range, calcRange)
     ].join('');
@@ -4740,7 +4751,7 @@ function renderUnit(){
         <div class="page-header">
           <h1 class="page-title"${unit.personalColor ? ` style="color:${escapeHtml(String(unit.personalColor))};"` : ''}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
-          <div class="meta-row">${rarityBadge(unit.rarity)}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
+          <div class="meta-row">${rarityBadge(unit.rarity)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
         </div>
       </div>
