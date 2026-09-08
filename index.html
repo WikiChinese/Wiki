@@ -208,6 +208,8 @@
   .stat-value,.attack-stat-value{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;color:var(--text);}
   .stat-value .arrow,.attack-stat-value .arrow{color:var(--text-faint);font-weight:400;margin:0 4px;}
   .stat-value .boosted,.attack-stat-value .boosted{color:var(--gold);}
+  .income-row-cost .arrow,.income-row-provide .arrow{color:var(--text-faint);font-weight:400;margin:0 4px;}
+  .income-row-cost .boosted,.income-row-provide .boosted{color:var(--gold);}
   .content-body{font-size:15px;line-height:1.75;color:#ffffff;}
   .content-body p{margin:0 0 1em;}
   .content-body ul{padding-left:22px;margin:0 0 1em;}
@@ -1041,6 +1043,8 @@ function migrateState(){
     if(t.damagePct===undefined) t.damagePct = '';
     if(t.spaPct===undefined) t.spaPct = '';
     if(t.rangePct===undefined) t.rangePct = '';
+    if(t.incomePct===undefined) t.incomePct = '';
+    if(t.costPct===undefined) t.costPct = '';
   });
   if(!Array.isArray(state.updateLog)) state.updateLog = [];
   state.updateLog.forEach(l=>{
@@ -4693,7 +4697,8 @@ function renderUnit(){
 
   const attacksHtml = (unit.attacks&&unit.attacks.length) ? unit.attacks.map((a,ai)=>{
     const traitObj = unitTraitObj;
-    const calcDamage = traitObj ? applyTraitPct(a.damage, traitObj.damagePct) : null;
+    const isFarmView = unit.unitType==='farm';
+    const calcDamage = traitObj ? applyTraitPct(a.damage, isFarmView ? traitObj.incomePct : traitObj.damagePct) : null;
     const calcBaseSpa = traitObj ? applyTraitPct(a.baseSpa, traitObj.spaPct) : null;
     const calcRange = traitObj ? applyTraitPct(a.range, traitObj.rangePct) : null;
     const attackTypeObj = a.attackTypeId ? state.attackTypes.find(t=>t.id===a.attackTypeId) : null;
@@ -4724,9 +4729,11 @@ function renderUnit(){
       ${extraMediaHtml}
       ${plateHtml ? `<div class="attack-stat-plate">${plateHtml}</div>` : ''}
       ${unit.unitType==='farm'
-        ? `<div class="income-row-list">${a.levels.map(l=>
-            `<div class="income-row-view"><span class="income-row-label">${escapeHtml(l.label)}</span><span class="income-row-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span><span class="level-pill-arrow">→</span><span class="income-row-provide">${l.provide?`每波收入 ${escapeHtml(l.provide)}¥`:'—'}</span></div>`
-          ).join('')}</div>`
+        ? `<div class="income-row-list">${a.levels.map(l=>{
+            const calcCost = traitObj ? applyTraitPct(l.cost, traitObj.costPct) : null;
+            const calcProvide = traitObj ? applyTraitPct(l.provide, traitObj.incomePct) : null;
+            return `<div class="income-row-view"><span class="income-row-label">${escapeHtml(l.label)}</span><span class="income-row-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}${calcCost!==null?`<span class="arrow">→</span><span class="boosted">${calcCost.toLocaleString()}</span>`:''}</span><span class="level-pill-arrow">→</span><span class="income-row-provide">${l.provide?`每波收入 ${escapeHtml(l.provide)}¥`:'—'}${calcProvide!==null?`<span class="arrow">→</span><span class="boosted">${calcProvide.toLocaleString()}¥</span>`:''}</span></div>`;
+          }).join('')}</div>`
         : `<div class="level-track-view">${a.levels.map(l=>
             `<div class="level-pill"><span class="level-pill-label">${escapeHtml(l.label)}</span><span class="level-pill-cost">${l.cost?('💰'+escapeHtml(l.cost)):'—'}</span></div>`
           ).join('')}</div>`
@@ -5904,6 +5911,17 @@ function traitEditRowHtml(trait, i){
       </div>
     </div>
     <div class="hint" style="margin-top:-6px;margin-bottom:10px;">这三个百分比会自动应用到装了这个特性的攻击方式上（伤害/范围只算一次，攻速会按每个等级分别计算），公式是：加成后 = 基础值 ×（1 + 百分比/100）。</div>
+    <div style="display:flex;gap:10px;margin-bottom:2px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">💰 收入加成 %（农场单位专用，会自动算到每波收入上）</label>
+        <input class="edit-input" data-settings-bind="traits.${i}.incomePct" value="${escapeHtml(trait.incomePct||'')}" placeholder="例如：50（表示收入+50%）">
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">💸 放置费用加成 %（农场单位专用，负数=更便宜）</label>
+        <input class="edit-input" data-settings-bind="traits.${i}.costPct" value="${escapeHtml(trait.costPct||'')}" placeholder="例如：-20（表示费用减少20%）">
+      </div>
+    </div>
+    <div class="hint" style="margin-top:-6px;margin-bottom:10px;">这两个百分比只在农场单位（收入类型）身上生效，跟上面伤害/攻速/范围那三个是分开算的，同一个特性可以两边都填。</div>
     <div class="edit-field">
       <span class="edit-label">其他说明（每行一条，仅展示，不参与计算，比如暴击率、放置限制变化）</span>
       <textarea class="edit-input" data-settings-bind="traits.${i}.statLines" rows="3" placeholder="+45% Critical Rate&#10;1 Placement Limit">${escapeHtml(trait.statLines||'')}</textarea>
