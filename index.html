@@ -639,7 +639,7 @@ function wireCollapsibleBlocks(container, blockSelector, keyPrefix){
   });
 }
 function wirePickerToggles(container){
-  container.querySelectorAll('details.entity-picker[data-picker-key], details.insert-dot-picker[data-picker-key]').forEach(d=>{
+  container.querySelectorAll('details[data-picker-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
       if(d.open) openPickerKeys.add(d.dataset.pickerKey);
       else openPickerKeys.delete(d.dataset.pickerKey);
@@ -4254,17 +4254,26 @@ function renderUnit(){
             return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(e2.color,true)}" data-action="selectElement" data-element-id="${e2.id}">${icon}${escapeHtml(e2.name)} ✕</button>`;
           }).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择元素</div>'}
         </div>
-        ${state.elements.filter(e2=>!draftUnit.elements.includes(e2.id)).length ? `<details class="entity-picker">
-          <summary class="btn btn-gold">+ 选择元素</summary>
-          <div class="entity-picker-list">
-            ${state.elements.filter(e2=>!draftUnit.elements.includes(e2.id)).map(e2=>`<button type="button" class="entity-picker-item" data-action="selectElement" data-element-id="${e2.id}">${e2.image?`<img src="${escapeHtml(String(e2.image))}">`:''}${escapeHtml(e2.name)}</button>`).join('')}
-          </div>
-        </details>` : ''}
+        ${(()=>{
+          const remaining = state.elements.filter(e2=>!draftUnit.elements.includes(e2.id));
+          if(!remaining.length) return '';
+          const key = 'unit-elements-'+unit.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索元素名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择元素</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(e2=>`<button type="button" class="entity-picker-item" data-action="selectElement" data-element-id="${e2.id}" data-search="${escapeHtml((e2.name||'').toLowerCase())}">${e2.image?`<img src="${escapeHtml(String(e2.image))}">`:''}${escapeHtml(e2.name)}</button>`).join('')}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的元素</div>
+            </div>
+          </details>`;
+        })()}
         ${state.elements.length===0 ? '<div class="hint">还没有可用的元素，请先到左侧「设置」页面新增，比如火、水、风。</div>' : ''}
       </div>
 
       <div class="edit-field">
-        <details class="settings-block group-field-details" open style="margin-bottom:0;">
+        <details class="settings-block group-field-details" data-picker-key="unit-groups-${unit.id}"${openPickerKeys.has('unit-groups-'+unit.id)?' open':''} style="margin-bottom:0;">
           <summary class="edit-label" style="cursor:pointer;list-style:none;display:flex;align-items:center;">分组<span class="group-toggle-arrow" style="margin-left:auto;font-size:11px;color:var(--text-faint);">▸</span></summary>
           <div class="entity-picker-list" style="margin-top:10px;">
             ${state.groups.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索分组名称...">` : ''}
@@ -4431,12 +4440,21 @@ function renderUnit(){
             return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(m2.color,true)}" data-action="toggleMark" data-mark-id="${m2.id}">${icon}${escapeHtml(m2.name)} ✕</button>`;
           }).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择状态标记</div>'}
         </div>
-        ${state.marks.filter(m2=>!draftUnit.marks.includes(m2.id)).length ? `<details class="entity-picker">
-          <summary class="btn btn-gold">+ 选择状态标记</summary>
-          <div class="entity-picker-list">
-            ${state.marks.filter(m2=>!draftUnit.marks.includes(m2.id)).map(m2=>`<button type="button" class="entity-picker-item" data-action="toggleMark" data-mark-id="${m2.id}">${m2.image?`<img src="${escapeHtml(String(m2.image))}">`:''}${escapeHtml(m2.name)}</button>`).join('')}
-          </div>
-        </details>` : ''}
+        ${(()=>{
+          const remaining = state.marks.filter(m2=>!draftUnit.marks.includes(m2.id));
+          if(!remaining.length) return '';
+          const key = 'unit-marks-'+unit.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索状态标记名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择状态标记</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(m2=>`<button type="button" class="entity-picker-item" data-action="toggleMark" data-mark-id="${m2.id}" data-search="${escapeHtml((m2.name||'').toLowerCase())}">${m2.image?`<img src="${escapeHtml(String(m2.image))}">`:''}${escapeHtml(m2.name)}</button>`).join('')}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的状态标记</div>
+            </div>
+          </details>`;
+        })()}
         <div class="mark-quickadd">
           <input class="edit-input" id="newMarkName" placeholder="新标记名称，例如：中毒">
           <label class="file-label" style="margin:0;">图标（可选）<input type="file" accept="image/*" id="newMarkImageInput" style="display:none;"></label>
