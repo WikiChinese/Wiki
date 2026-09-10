@@ -1274,7 +1274,7 @@ function traitDetailInnerHtml(t){
     if(isNaN(p) || !p) return null;
     return `${p>0?'+':''}${p}% ${label}`;
   };
-  const autoLines = [pctLine('Damage', t.damagePct), pctLine('SPA', t.spaPct), pctLine('Range', t.rangePct), pctLine('Income', t.incomePct), pctLine('Placement Cost', t.costPct)].filter(Boolean);
+  const autoLines = [pctLine('伤害', t.damagePct), pctLine('攻速', t.spaPct), pctLine('范围', t.rangePct), pctLine('收入', t.incomePct), pctLine('放置费用', t.costPct)].filter(Boolean);
   const statLines = autoLines.concat((t.statLines||'').split('\n').map(s=>s.trim()).filter(Boolean));
   const statsHtml = statLines.length ? `<ul class="trait-detail-stats">${statLines.map(s=>`<li>${escapeHtml(s)}</li>`).join('')}</ul>` : '';
   const headers = (t.tableHeaders||'').split('|').map(s=>s.trim()).filter(Boolean);
