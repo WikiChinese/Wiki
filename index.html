@@ -1008,6 +1008,7 @@ function migrateState(){
         if(r.amount===undefined) r.amount = '';
         if(r.image===undefined) r.image = '';
       });
+      if(lv.specialUnitReward===undefined) lv.specialUnitReward = '';
     });
   });
   if(!Array.isArray(state.upgrades)) state.upgrades = [];
@@ -1534,6 +1535,7 @@ function renderStageLevelPage(){
     if(!Array.isArray(draftStageLevel.shop)) draftStageLevel.shop = [];
     if(!Array.isArray(draftStageLevel.mechanics)) draftStageLevel.mechanics = [];
     if(!Array.isArray(draftStageLevel.rewards)) draftStageLevel.rewards = [];
+    if(draftStageLevel.specialUnitReward===undefined) draftStageLevel.specialUnitReward = '';
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑关卡 · ${escapeHtml(stage.name)}</div>
@@ -1574,6 +1576,32 @@ function renderStageLevelPage(){
         <button class="btn btn-gold" data-action="addStageReward">+ 添加奖励</button>
       </div>
       <div class="edit-field">
+        <span class="edit-label">特殊获得单位（可选）</span>
+        <div class="hint" style="margin-bottom:10px;">如果通关这一关能特殊获得某个单位（比如打赢 Boss 直接给单位），在这里选它——选好之后，那个单位自己的页面也会显示"从这一关获得"。</div>
+        ${draftStageLevel.specialUnitReward ? (()=>{
+          const su = state.units.find(x=>x.id===draftStageLevel.specialUnitReward);
+          if(!su) return '';
+          return `<div class="sub-card" style="display:flex;align-items:center;gap:12px;">
+            ${su.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(su.image))}">` : `<div class="mark-icon-placeholder"></div>`}
+            <div style="flex:1;font-weight:600;">${escapeHtml(su.name)}</div>
+            <button class="btn btn-danger" type="button" data-action="clearSpecialUnitReward">移除</button>
+          </div>`;
+        })() : (()=>{
+          const remaining = state.units;
+          const key = 'stagelevel-special-unit-'+level.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择特殊获得单位</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(u2=>`<button type="button" class="entity-picker-item" data-action="setSpecialUnitReward" data-unit-id="${u2.id}" data-search="${escapeHtml(((u2.name||'')+' '+(u2.englishName||'')).toLowerCase())}">${u2.image?`<img src="${escapeHtml(String(u2.image))}">`:''}${escapeHtml(u2.name)}</button>`).join('') || '<div class="empty-hint">还没有单位</div>'}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
+            </div>
+          </details>`;
+        })()}
+      </div>
+      <div class="edit-field">
         <span class="edit-label">商店</span>
         <div class="hint" style="margin-bottom:10px;">这一关商店里能买到的东西，比如限定道具、装备。</div>
         ${draftStageLevel.shop.map((it,i)=>shopItemEditRowHtml(it,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无商品</div>'}
@@ -1598,6 +1626,7 @@ function renderStageLevelPage(){
       level.shop = draftStageLevel.shop || [];
       level.mechanics = draftStageLevel.mechanics || [];
       level.rewards = draftStageLevel.rewards || [];
+      level.specialUnitReward = draftStageLevel.specialUnitReward || '';
       editMode = false; draftStageLevel = null;
       await saveData(false);
       render();
@@ -1660,6 +1689,13 @@ function renderStageLevelPage(){
     return `<span class="mark-chip" style="background:var(--card);border:1px solid var(--gold-dim);color:var(--gold);">${icon}${escapeHtml(r.name)}${r.amount ? ` ×${escapeHtml(r.amount)}` : ''}</span>`;
   }).join('')}</div>` : '';
 
+  const specialUnit = level.specialUnitReward ? state.units.find(u2=>u2.id===level.specialUnitReward) : null;
+  const specialUnitHtml = specialUnit ? (()=>{
+    const rarityObj = specialUnit.rarity ? state.rarities.find(x=>x.id===specialUnit.rarity) : null;
+    const color = (rarityObj && rarityObj.color) || '#c9a24b';
+    return `<div class="mark-row-list" style="margin-bottom:20px;"><a href="${viewToHash({type:'unit', id:specialUnit.id})}" class="badge" data-view="unit" data-id="${specialUnit.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">🎁 ${escapeHtml(specialUnit.name)}</a></div>`;
+  })() : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(level.name)}</div>
@@ -1669,10 +1705,20 @@ function renderStageLevelPage(){
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(level.name)}</h1>
     ${levelMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${levelMechanicsHtml}</div>` : ''}
     ${levelRewardsHtml ? `<div class="section-label">奖励</div>${levelRewardsHtml}` : ''}
+    ${specialUnitHtml ? `<div class="section-label">特殊获得单位</div>${specialUnitHtml}` : ''}
     <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">商店</div>
     ${shopHtml}
   `;
+  container.querySelectorAll('.badge[data-view="unit"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'unit', id: chip.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null;
+      render();
+    });
+  });
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStageLevel=null; render(); });
   wireBackButton(container);
@@ -3871,6 +3917,8 @@ function handleDraftAction(ds, draft, el){
     draft.rewards.push({id:uid(), name:'', amount:'', image:''});
   }
   else if(action==='removeStageReward') draft.rewards.splice(idx,1);
+  else if(action==='setSpecialUnitReward') draft.specialUnitReward = ds.unitId;
+  else if(action==='clearSpecialUnitReward') draft.specialUnitReward = '';
   else if(action==='addShopItem'){ if(!Array.isArray(draft.shop)) draft.shop=[]; draft.shop.push({id:uid(), refType:'', refId:'', quantity:'', price:''}); }
   else if(action==='removeShopItem') draft.shop.splice(idx,1);
   else if(action==='addUpgradeLevel') draft.levels.push({id:uid(), name:'升级 '+(draft.levels.length+1), image:'', description:''});
@@ -4594,6 +4642,15 @@ function renderUnit(){
   const questlineHtml = (unit.questline&&unit.questline.length) ? `<ol class="questline-list">${unit.questline.map(q=>
     `<li><div class="questline-step-name">${escapeHtml(q.name)}</div>${q.description ? `<div class="questline-step-desc">${escapeHtml(q.description)}</div>` : ''}</li>`
   ).join('')}</ol>` : '';
+  // Reverse lookup: which stage levels list this unit as their "special unit reward". Computed on
+  // the fly (not stored on the unit) so it can never drift out of sync with the actual stage data.
+  const specialUnitStageLevels = [];
+  state.stages.forEach(s=>{
+    (s.levels||[]).forEach(lv=>{ if(lv.specialUnitReward===unit.id) specialUnitStageLevels.push({stage:s, level:lv}); });
+  });
+  const specialUnitStageLevelsHtml = specialUnitStageLevels.length ? `<div class="mark-row-list">${specialUnitStageLevels.map(({stage:s,level:lv})=>
+    `<a href="${viewToHash({type:'stageLevel', id: s.id+'__'+lv.id})}" class="mark-chip" data-view="stageLevel" data-id="${s.id}__${lv.id}" style="${coloredChipStyle('#b8544a')}cursor:pointer;">🎁 ${escapeHtml(s.name)} / ${escapeHtml(lv.name)}</a>`
+  ).join('')}</div>` : '';
   const skillsHtml = (unit.skills&&unit.skills.length) ? (()=>{
     const tabsHtml = unit.skills.map((s,i)=>{
       const t = SKILL_TARGET_TYPES.find(x=>x.id===s.targetType);
@@ -4843,6 +4900,7 @@ function renderUnit(){
     <div class="section-label">技能 / 能力</div>
     ${skillsHtml}
     ${questlineHtml ? `<div class="section-label">任务线</div>${questlineHtml}` : ''}
+    ${specialUnitStageLevelsHtml ? `<div class="section-label">特殊获得方式</div>${specialUnitStageLevelsHtml}` : ''}
     ${unit.linkedMemories&&unit.linkedMemories.length ? `<div class="section-label">记忆</div>${linkedMemoriesHtml}` : ''}
     ${unit.linkedFamilies&&unit.linkedFamilies.length ? `<div class="section-label">使魔</div>${linkedFamiliesHtml}` : ''}
     ${unit.relatedUnits&&unit.relatedUnits.length ? `<div class="section-label">关联单位</div>${relatedUnitsHtml}` : ''}
@@ -4901,6 +4959,15 @@ function renderUnit(){
   });
   wireBackButton(container);
   wireComments(container);
+  container.querySelectorAll('.mark-chip[data-view="stageLevel"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'stageLevel', id: chip.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      render();
+    });
+  });
   container.querySelectorAll('.skill-name a[data-view="memory"]').forEach(chip=>{
     chip.addEventListener('click', (e)=>{
       if(!isPlainLeftClick(e)) return;
