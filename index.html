@@ -668,6 +668,7 @@ let draftUnit = null;
 let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
+let draftStageSubStage = null;
 let itemEditEvolvesUnitId = '';
 let addingCharacterCardForUnit = false;
 let activeSkillEditTabIndex = 0;
@@ -988,27 +989,46 @@ function migrateState(){
   if(!Array.isArray(state.stages)) state.stages = [];
   state.stages.forEach(s=>{
     if(s.image===undefined) s.image = '';
-    if(s.description===undefined) s.description = '';
-    if(!Array.isArray(s.mechanics)) s.mechanics = [];
-    if(!Array.isArray(s.levels)) s.levels = [];
-    s.levels.forEach(lv=>{
-      if(lv.image===undefined) lv.image='';
-      if(lv.description===undefined) lv.description='';
-      if(!Array.isArray(lv.shop)) lv.shop=[];
-      lv.shop.forEach(it=>{
-        if(it.refType===undefined){ it.refType = it.itemId ? 'item' : ''; }
-        if(it.refId===undefined){ it.refId = it.itemId || ''; }
-        if(it.price===undefined) it.price='';
-        if(it.quantity===undefined) it.quantity='';
+    // Legacy shape: a category held its levels directly (s.levels). Wrap them into one sub-stage
+    // named after the category, carrying over its old description/mechanics too, so nothing is
+    // lost — the admin can rename/split it into more sub-stages afterward.
+    if(!Array.isArray(s.subStages)){
+      s.subStages = [{
+        id: uid(),
+        name: s.name,
+        image: s.image || '',
+        description: s.description || '',
+        mechanics: Array.isArray(s.mechanics) ? s.mechanics : [],
+        levels: Array.isArray(s.levels) ? s.levels : []
+      }];
+    }
+    delete s.description;
+    delete s.mechanics;
+    delete s.levels;
+    s.subStages.forEach(ss=>{
+      if(ss.image===undefined) ss.image = '';
+      if(ss.description===undefined) ss.description = '';
+      if(!Array.isArray(ss.mechanics)) ss.mechanics = [];
+      if(!Array.isArray(ss.levels)) ss.levels = [];
+      ss.levels.forEach(lv=>{
+        if(lv.image===undefined) lv.image='';
+        if(lv.description===undefined) lv.description='';
+        if(!Array.isArray(lv.shop)) lv.shop=[];
+        lv.shop.forEach(it=>{
+          if(it.refType===undefined){ it.refType = it.itemId ? 'item' : ''; }
+          if(it.refId===undefined){ it.refId = it.itemId || ''; }
+          if(it.price===undefined) it.price='';
+          if(it.quantity===undefined) it.quantity='';
+        });
+        if(!Array.isArray(lv.mechanics)) lv.mechanics=[];
+        if(!Array.isArray(lv.rewards)) lv.rewards=[];
+        lv.rewards.forEach(r=>{
+          if(r.name===undefined) r.name = '';
+          if(r.amount===undefined) r.amount = '';
+          if(r.image===undefined) r.image = '';
+        });
+        if(lv.specialUnitReward===undefined) lv.specialUnitReward = '';
       });
-      if(!Array.isArray(lv.mechanics)) lv.mechanics=[];
-      if(!Array.isArray(lv.rewards)) lv.rewards=[];
-      lv.rewards.forEach(r=>{
-        if(r.name===undefined) r.name = '';
-        if(r.amount===undefined) r.amount = '';
-        if(r.image===undefined) r.image = '';
-      });
-      if(lv.specialUnitReward===undefined) lv.specialUnitReward = '';
     });
   });
   if(!Array.isArray(state.upgrades)) state.upgrades = [];
@@ -1342,7 +1362,7 @@ function renderStagePage(){
 
   if(editMode){
     if(!draftStage) draftStage = JSON.parse(JSON.stringify(stage));
-    if(!Array.isArray(draftStage.mechanics)) draftStage.mechanics = [];
+    if(!Array.isArray(draftStage.subStages)) draftStage.subStages = [];
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑关卡分类</div>
@@ -1354,7 +1374,7 @@ function renderStagePage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">名称</span>
-        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStage.name)}" placeholder="关卡分类名称">
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStage.name)}" placeholder="关卡分类名称，比如 Dungeons">
       </div>
       <div class="image-upload-box" style="margin-bottom:18px;">
         ${draftStage.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftStage.image))}">` : `<div class="image-placeholder">无图片</div>`}
@@ -1364,23 +1384,10 @@ function renderStagePage(){
         </div>
       </div>
       <div class="edit-field">
-        <span class="edit-label">说明</span>
-        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个关卡类型的规则、玩法、掉落、注意事项...">${escapeHtml(draftStage.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
-        ${markInsertButtonsHtml('description')}
-      </div>
-      <div class="edit-field">
-        <span class="edit-label">敌方机制</span>
-        <div class="hint" style="margin-bottom:8px;">整个关卡分类（比如这个地下城）普遍会遇到的敌方机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
-        <div class="mark-row-list">
-          ${state.enemyMechanics.length ? state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStage.mechanics.includes(m.id))).join('') : '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>'}
-        </div>
-      </div>
-      <div class="edit-field">
-        <span class="edit-label">关卡 (每一关)</span>
-        <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除、拖动排序。每一关详细的说明和商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
-        ${draftStage.levels.map((lv,i)=>stageLevelListEditRowHtml(lv,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
-        <button class="btn btn-gold" data-action="addStageLevel">+ 添加关</button>
+        <span class="edit-label">子分类（比如 Dungeons 下面的 Shadows）</span>
+        <div class="hint" style="margin-bottom:10px;">在这里加子分类、改名字、删除、拖动排序。每个子分类自己的说明、敌方机制、关卡列表，保存后点进那个子分类自己的页面里编辑，不用挤在这里。</div>
+        ${draftStage.subStages.map((ss,i)=>stageSubStageListEditRowHtml(ss,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无子分类</div>'}
+        <button class="btn btn-gold" data-action="addStageSubStage">+ 添加子分类</button>
       </div>
     `;
     wireDraftForm(container, draftStage);
@@ -1389,15 +1396,13 @@ function renderStagePage(){
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       stage.name = (draftStage.name||'').trim() || '未命名关卡';
       stage.image = draftStage.image || '';
-      stage.description = draftStage.description || '';
-      stage.mechanics = draftStage.mechanics || [];
-      stage.levels = draftStage.levels || [];
+      stage.subStages = draftStage.subStages || [];
       editMode = false; draftStage = null;
       await saveData(false);
       render();
     });
     document.getElementById('deleteStageBtn').addEventListener('click', async ()=>{
-      if(!confirm(`确定删除「${stage.name}」这个关卡分类？`)) return;
+      if(!confirm(`确定删除「${stage.name}」这个关卡分类？里面所有子分类和关卡都会一起删掉。`)) return;
       state.stages = state.stages.filter(s=>s.id!==stage.id);
       editMode = false; draftStage = null;
       currentView = {type:'home'}; setHash(currentView);
@@ -1407,27 +1412,20 @@ function renderStagePage(){
     return;
   }
 
-  const levelsHtml = stage.levels.length ? stage.levels.map(lv=>{
+  const subStagesHtml = stage.subStages.length ? stage.subStages.map(ss=>{
     const hints = [];
-    if(lv.mechanics && lv.mechanics.length) hints.push(`☠️ ${lv.mechanics.length} 个机制`);
-    if(lv.shop && lv.shop.length) hints.push(`🛒 商店 · ${lv.shop.length} 件商品`);
-    const descText = hints.length ? hints.join(' · ') : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
+    if(ss.levels && ss.levels.length) hints.push(`🗺️ ${ss.levels.length} 关`);
+    if(ss.mechanics && ss.mechanics.length) hints.push(`☠️ ${ss.mechanics.length} 个机制`);
+    const descText = hints.length ? hints.join(' · ') : (ss.description ? '点击查看详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
     return `
-    <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id+'__'+lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
-      ${lv.image ? `<img class="skill-image" src="${escapeHtml(String(lv.image))}">` : ''}
+    <a href="${viewToHash({type:'stageSubStage', id: stage.id+'__'+ss.id})}" class="floor-card" data-view="stageSubStage" data-id="${stage.id}__${ss.id}" data-substage-id="${ss.id}"${isAdmin ? ' draggable="true"' : ''}>
+      ${ss.image ? `<img class="skill-image" src="${escapeHtml(String(ss.image))}">` : ''}
       <div class="floor-card-body">
-        <div class="floor-card-name">${inline(lv.name)}</div>
+        <div class="floor-card-name">${inline(ss.name)}</div>
         <div class="floor-card-desc">${descText}</div>
       </div>
     </a>`;
-  }).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
-
-  const stageMechanicsHtml = (stage.mechanics&&stage.mechanics.length) ? stage.mechanics.map(mid=>{
-    const m = state.enemyMechanics.find(x=>x.id===mid);
-    if(!m) return '';
-    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
-    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
-  }).join('') : '';
+  }).join('') : '<div class="empty-hint" style="padding-left:0;">暂无子分类</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -1436,14 +1434,187 @@ function renderStagePage(){
     </div>
     ${stage.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(stage.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
-    ${stageMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${stageMechanicsHtml}</div>` : ''}
-    <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
-    <div class="section-label">关卡列表</div>
-    ${isAdmin && stage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击关卡进入详情页；按住卡片拖动可以调整关卡顺序。</div>` : ''}
-    <div class="floor-list" id="stageLevelsList">${levelsHtml}</div>
+    <div class="section-label">子分类</div>
+    ${isAdmin && stage.subStages.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击进入子分类详情页；按住卡片拖动可以调整顺序。</div>` : ''}
+    <div class="floor-list" id="stageSubStagesList">${subStagesHtml}</div>
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStage=null; render(); });
+  wireBackButton(container);
+
+  const listEl = document.getElementById('stageSubStagesList');
+  listEl.querySelectorAll('.floor-card[data-substage-id]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'stageSubStage', id: card.dataset.id});
+      editMode = false; draftStage=null; draftStageSubStage=null; draftStageLevel=null;
+      render();
+    });
+  });
+
+  if(isAdmin){
+    let dragSrcId = null;
+    listEl.querySelectorAll('.floor-card[data-substage-id]').forEach(card=>{
+      card.addEventListener('dragstart', (e)=>{
+        dragSrcId = card.dataset.substageId;
+        card.classList.add('dragging');
+        if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', ()=>{
+        card.classList.remove('dragging');
+        listEl.querySelectorAll('.floor-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
+        dragSrcId = null;
+      });
+      card.addEventListener('dragover', (e)=>{
+        if(!dragSrcId || card.dataset.substageId===dragSrcId) return;
+        e.preventDefault();
+        card.classList.add('drag-over');
+      });
+      card.addEventListener('dragleave', ()=>{ card.classList.remove('drag-over'); });
+      card.addEventListener('drop', async (e)=>{
+        e.preventDefault();
+        card.classList.remove('drag-over');
+        const targetId = card.dataset.substageId;
+        if(!dragSrcId || dragSrcId===targetId) return;
+        const srcIdx = stage.subStages.findIndex(x=>x.id===dragSrcId);
+        if(srcIdx<0) return;
+        const [moved] = stage.subStages.splice(srcIdx,1);
+        const tgtIdx = stage.subStages.findIndex(x=>x.id===targetId);
+        stage.subStages.splice(tgtIdx<0 ? stage.subStages.length : tgtIdx, 0, moved);
+        dragSrcId = null;
+        await saveData(true);
+        renderStagePage();
+      });
+    });
+  }
+}
+
+function stageSubStageListEditRowHtml(ss, i){
+  return `<div class="sub-card" data-substage-row-index="${i}">
+    <div class="sub-card-head">
+      ${ss.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(ss.image))}">` : `<div class="mark-icon-placeholder"></div>`}
+      <label class="file-label" style="margin:0;">缩略图<input type="file" accept="image/*" data-image-bind="subStages.${i}.image" style="display:none;"></label>
+      <input class="edit-input" style="flex:1;min-width:160px;" data-bind="subStages.${i}.name" value="${escapeHtml(ss.name)}" placeholder="子分类名称，比如 Shadows">
+      <button class="btn btn-danger" data-action="removeStageSubStage" data-index="${i}">删除</button>
+    </div>
+    <div class="hint" style="margin-top:6px;">这个子分类自己的说明、敌方机制、关卡列表，保存后点进它自己的页面里编辑。</div>
+  </div>`;
+}
+
+function renderStageSubStagePage(){
+  const container = document.getElementById('mainInner');
+  const compositeId = currentView.id || '';
+  const [stageId, subStageId] = compositeId.split('__');
+  const stage = state.stages.find(s=>s.id===stageId);
+  const subStage = stage ? stage.subStages.find(ss=>ss.id===subStageId) : null;
+  if(!stage || !subStage){ container.innerHTML = `<div class="empty-state"><h2>未找到该子分类</h2></div>`; return; }
+
+  if(editMode){
+    if(!draftStageSubStage) draftStageSubStage = JSON.parse(JSON.stringify(subStage));
+    if(!Array.isArray(draftStageSubStage.mechanics)) draftStageSubStage.mechanics = [];
+    if(!Array.isArray(draftStageSubStage.levels)) draftStageSubStage.levels = [];
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <div class="crumb">编辑子分类 · ${escapeHtml(stage.name)}</div>
+        <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteStageSubStageBtn">删除</button>
+          <button class="btn" id="cancelBtn">取消</button>
+          <button class="btn btn-gold" id="saveBtn">保存</button>
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">名称</span>
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftStageSubStage.name)}" placeholder="子分类名称">
+      </div>
+      <div class="image-upload-box" style="margin-bottom:18px;">
+        ${draftStageSubStage.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftStageSubStage.image))}">` : `<div class="image-placeholder">无图片</div>`}
+        <div class="upload-controls">
+          <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
+          ${draftStageSubStage.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个子分类的规则、玩法、掉落、注意事项...">${escapeHtml(draftStageSubStage.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        ${markInsertButtonsHtml('description')}
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">敌方机制</span>
+        <div class="hint" style="margin-bottom:8px;">这个子分类普遍会遇到的敌方机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
+        <div class="mark-row-list">
+          ${state.enemyMechanics.length ? state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStageSubStage.mechanics.includes(m.id))).join('') : '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>'}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">关卡 (每一关)</span>
+        <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除、拖动排序。每一关详细的说明和商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
+        ${draftStageSubStage.levels.map((lv,i)=>stageLevelListEditRowHtml(lv,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
+        <button class="btn btn-gold" data-action="addStageLevel">+ 添加关</button>
+      </div>
+    `;
+    wireDraftForm(container, draftStageSubStage);
+    wirePickerToggles(container);
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStageSubStage=null; render(); });
+    document.getElementById('saveBtn').addEventListener('click', async ()=>{
+      subStage.name = (draftStageSubStage.name||'').trim() || '未命名子分类';
+      subStage.image = draftStageSubStage.image || '';
+      subStage.description = draftStageSubStage.description || '';
+      subStage.mechanics = draftStageSubStage.mechanics || [];
+      subStage.levels = draftStageSubStage.levels || [];
+      editMode = false; draftStageSubStage = null;
+      await saveData(false);
+      render();
+    });
+    document.getElementById('deleteStageSubStageBtn').addEventListener('click', async ()=>{
+      if(!confirm(`确定删除「${subStage.name}」这个子分类？里面所有关卡都会一起删掉。`)) return;
+      stage.subStages = stage.subStages.filter(ss=>ss.id!==subStage.id);
+      editMode = false; draftStageSubStage = null;
+      currentView = {type:'stage', id: stage.id}; setHash(currentView);
+      await saveData(false);
+      render();
+    });
+    return;
+  }
+
+  const levelsHtml = subStage.levels.length ? subStage.levels.map(lv=>{
+    const hints = [];
+    if(lv.mechanics && lv.mechanics.length) hints.push(`☠️ ${lv.mechanics.length} 个机制`);
+    if(lv.shop && lv.shop.length) hints.push(`🛒 商店 · ${lv.shop.length} 件商品`);
+    const descText = hints.length ? hints.join(' · ') : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
+    return `
+    <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+subStage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id}__${subStage.id}__${lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
+      ${lv.image ? `<img class="skill-image" src="${escapeHtml(String(lv.image))}">` : ''}
+      <div class="floor-card-body">
+        <div class="floor-card-name">${inline(lv.name)}</div>
+        <div class="floor-card-desc">${descText}</div>
+      </div>
+    </a>`;
+  }).join('') : '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>';
+
+  const subStageMechanicsHtml = (subStage.mechanics&&subStage.mechanics.length) ? subStage.mechanics.map(mid=>{
+    const m = state.enemyMechanics.find(x=>x.id===mid);
+    if(!m) return '';
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
+    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
+  }).join('') : '';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(subStage.name)}</div>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+    </div>
+    ${subStage.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(subStage.image))}">` : ''}
+    <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(subStage.name)}</h1>
+    ${subStageMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${subStageMechanicsHtml}</div>` : ''}
+    <div class="content-body">${renderMarkdownLite(subStage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="section-label">关卡列表</div>
+    ${isAdmin && subStage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击关卡进入详情页；按住卡片拖动可以调整关卡顺序。</div>` : ''}
+    <div class="floor-list" id="stageLevelsList">${levelsHtml}</div>
+  `;
+  const editBtn = document.getElementById('editBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStageSubStage=null; render(); });
   wireBackButton(container);
 
   const listEl = document.getElementById('stageLevelsList');
@@ -1452,7 +1623,7 @@ function renderStagePage(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'stageLevel', id: card.dataset.id});
-      editMode = false; draftStage=null; draftStageLevel=null;
+      editMode = false; draftStageSubStage=null; draftStageLevel=null;
       render();
     });
   });
@@ -1481,14 +1652,14 @@ function renderStagePage(){
         card.classList.remove('drag-over');
         const targetId = card.dataset.levelId;
         if(!dragSrcId || dragSrcId===targetId) return;
-        const srcIdx = stage.levels.findIndex(x=>x.id===dragSrcId);
+        const srcIdx = subStage.levels.findIndex(x=>x.id===dragSrcId);
         if(srcIdx<0) return;
-        const [moved] = stage.levels.splice(srcIdx,1);
-        const tgtIdx = stage.levels.findIndex(x=>x.id===targetId);
-        stage.levels.splice(tgtIdx<0 ? stage.levels.length : tgtIdx, 0, moved);
+        const [moved] = subStage.levels.splice(srcIdx,1);
+        const tgtIdx = subStage.levels.findIndex(x=>x.id===targetId);
+        subStage.levels.splice(tgtIdx<0 ? subStage.levels.length : tgtIdx, 0, moved);
         dragSrcId = null;
         await saveData(true);
-        renderStagePage();
+        renderStageSubStagePage();
       });
     });
   }
@@ -1525,10 +1696,11 @@ function shopItemEditRowHtml(item, i){
 function renderStageLevelPage(){
   const container = document.getElementById('mainInner');
   const compositeId = currentView.id || '';
-  const [stageId, levelId] = compositeId.split('__');
+  const [stageId, subStageId, levelId] = compositeId.split('__');
   const stage = state.stages.find(s=>s.id===stageId);
-  const level = stage ? stage.levels.find(lv=>lv.id===levelId) : null;
-  if(!stage || !level){ container.innerHTML = `<div class="empty-state"><h2>未找到该关卡</h2></div>`; return; }
+  const subStage = stage ? stage.subStages.find(ss=>ss.id===subStageId) : null;
+  const level = subStage ? subStage.levels.find(lv=>lv.id===levelId) : null;
+  if(!stage || !subStage || !level){ container.innerHTML = `<div class="empty-state"><h2>未找到该关卡</h2></div>`; return; }
 
   if(editMode){
     if(!draftStageLevel) draftStageLevel = JSON.parse(JSON.stringify(level));
@@ -1538,7 +1710,7 @@ function renderStageLevelPage(){
     if(draftStageLevel.specialUnitReward===undefined) draftStageLevel.specialUnitReward = '';
     container.innerHTML = `
       <div class="page-toolbar">
-        <div class="crumb">编辑关卡 · ${escapeHtml(stage.name)}</div>
+        <div class="crumb">编辑关卡 · ${escapeHtml(stage.name)} / ${escapeHtml(subStage.name)}</div>
         <div class="toolbar-actions">
           <button class="btn btn-danger" id="deleteStageLevelBtn">删除</button>
           <button class="btn" id="cancelBtn">取消</button>
@@ -1633,9 +1805,9 @@ function renderStageLevelPage(){
     });
     document.getElementById('deleteStageLevelBtn').addEventListener('click', async ()=>{
       if(!confirm(`确定删除「${level.name}」这一关？`)) return;
-      stage.levels = stage.levels.filter(lv=>lv.id!==level.id);
+      subStage.levels = subStage.levels.filter(lv=>lv.id!==level.id);
       editMode = false; draftStageLevel = null;
-      currentView = {type:'stage', id: stage.id}; setHash(currentView);
+      currentView = {type:'stageSubStage', id: stage.id+'__'+subStage.id}; setHash(currentView);
       await saveData(false);
       render();
     });
@@ -1698,7 +1870,7 @@ function renderStageLevelPage(){
 
   container.innerHTML = `
     <div class="page-toolbar">
-      <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(level.name)}</div>
+      <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / <a href="${viewToHash({type:'stageSubStage', id: stage.id+'__'+subStage.id})}" data-view="stageSubStage" data-id="${stage.id}__${subStage.id}">${escapeHtml(subStage.name)}</a> / ${escapeHtml(level.name)}</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${level.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(level.image))}">` : ''}
@@ -1731,15 +1903,24 @@ function renderStageLevelPage(){
       render();
     });
   });
-  const crumbLink = container.querySelector('.crumb a[data-view="stage"]');
-  if(crumbLink) crumbLink.addEventListener('click', (e)=>{
-    if(!isPlainLeftClick(e)) return;
-    e.preventDefault();
-    goToView({type:'stage', id: stage.id});
-    editMode=false; draftStage=null; draftStageLevel=null;
-    render();
+  container.querySelectorAll('.crumb a[data-view="stage"]').forEach(crumbLink=>{
+    crumbLink.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'stage', id: stage.id});
+      editMode=false; draftStage=null; draftStageSubStage=null; draftStageLevel=null;
+      render();
+    });
   });
-  wireBackButton(container);
+  container.querySelectorAll('.crumb a[data-view="stageSubStage"]').forEach(crumbLink=>{
+    crumbLink.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'stageSubStage', id: crumbLink.dataset.id});
+      editMode=false; draftStageSubStage=null; draftStageLevel=null;
+      render();
+    });
+  });
 }
 
 
@@ -2457,7 +2638,7 @@ function renderSidebar(){
     if(name === null) return;
     const trimmed = name.trim();
     if(!trimmed) return;
-    const newStage = {id:uid(), name:trimmed, image:'', description:'', levels:[]};
+    const newStage = {id:uid(), name:trimmed, image:'', subStages:[]};
     state.stages.push(newStage);
     openPickerKeys.add('sidebar-stages');
     await saveData(true);
@@ -3912,6 +4093,8 @@ function handleDraftAction(ds, draft, el){
   else if(action==='removeFloor') draft.floors.splice(idx,1);
   else if(action==='addStageLevel') draft.levels.push({id:uid(), name:'第 '+(draft.levels.length+1)+' 关', image:'', description:'', shop:[]});
   else if(action==='removeStageLevel') draft.levels.splice(idx,1);
+  else if(action==='addStageSubStage') draft.subStages.push({id:uid(), name:'新子分类', image:'', description:'', mechanics:[], levels:[]});
+  else if(action==='removeStageSubStage') draft.subStages.splice(idx,1);
   else if(action==='addStageReward'){
     if(!Array.isArray(draft.rewards)) draft.rewards = [];
     draft.rewards.push({id:uid(), name:'', amount:'', image:''});
@@ -4646,10 +4829,12 @@ function renderUnit(){
   // the fly (not stored on the unit) so it can never drift out of sync with the actual stage data.
   const specialUnitStageLevels = [];
   state.stages.forEach(s=>{
-    (s.levels||[]).forEach(lv=>{ if(lv.specialUnitReward===unit.id) specialUnitStageLevels.push({stage:s, level:lv}); });
+    (s.subStages||[]).forEach(ss=>{
+      (ss.levels||[]).forEach(lv=>{ if(lv.specialUnitReward===unit.id) specialUnitStageLevels.push({stage:s, subStage:ss, level:lv}); });
+    });
   });
-  const specialUnitStageLevelsHtml = specialUnitStageLevels.length ? `<div class="mark-row-list">${specialUnitStageLevels.map(({stage:s,level:lv})=>
-    `<a href="${viewToHash({type:'stageLevel', id: s.id+'__'+lv.id})}" class="mark-chip" data-view="stageLevel" data-id="${s.id}__${lv.id}" style="${coloredChipStyle('#b8544a')}cursor:pointer;">🎁 ${escapeHtml(s.name)} / ${escapeHtml(lv.name)}</a>`
+  const specialUnitStageLevelsHtml = specialUnitStageLevels.length ? `<div class="mark-row-list">${specialUnitStageLevels.map(({stage:s,subStage:ss,level:lv})=>
+    `<a href="${viewToHash({type:'stageLevel', id: s.id+'__'+ss.id+'__'+lv.id})}" class="mark-chip" data-view="stageLevel" data-id="${s.id}__${ss.id}__${lv.id}" style="${coloredChipStyle('#b8544a')}cursor:pointer;">🎁 ${escapeHtml(s.name)} / ${escapeHtml(ss.name)} / ${escapeHtml(lv.name)}</a>`
   ).join('')}</div>` : '';
   const skillsHtml = (unit.skills&&unit.skills.length) ? (()=>{
     const tabsHtml = unit.skills.map((s,i)=>{
@@ -5244,6 +5429,7 @@ function renderMain(){
   else if(currentView.type==='enemyMechanics') renderEnemyMechanics();
   else if(currentView.type==='traits') renderTraitsPage();
   else if(currentView.type==='stage') renderStagePage();
+  else if(currentView.type==='stageSubStage') renderStageSubStagePage();
   else if(currentView.type==='stageLevel') renderStageLevelPage();
   else if(currentView.type==='upgrade') renderUpgradePage();
   else if(currentView.type==='settings') renderSettings();
