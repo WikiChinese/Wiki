@@ -989,6 +989,7 @@ function migrateState(){
   if(!Array.isArray(state.stages)) state.stages = [];
   state.stages.forEach(s=>{
     if(s.image===undefined) s.image = '';
+    if(s.description===undefined) s.description = '';
     // Legacy shape: a category held its levels directly (s.levels). Wrap them into one sub-stage
     // named after the category, carrying over its old description/mechanics too, so nothing is
     // lost — the admin can rename/split it into more sub-stages afterward.
@@ -1384,6 +1385,12 @@ function renderStagePage(){
         </div>
       </div>
       <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个关卡分类的整体规则、玩法、注意事项...">${escapeHtml(draftStage.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        ${markInsertButtonsHtml('description')}
+      </div>
+      <div class="edit-field">
         <span class="edit-label">子分类（比如 Dungeons 下面的 Shadows）</span>
         <div class="hint" style="margin-bottom:10px;">在这里加子分类、改名字、删除、拖动排序。每个子分类自己的说明、敌方机制、关卡列表，保存后点进那个子分类自己的页面里编辑，不用挤在这里。</div>
         ${draftStage.subStages.map((ss,i)=>stageSubStageListEditRowHtml(ss,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无子分类</div>'}
@@ -1396,6 +1403,7 @@ function renderStagePage(){
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       stage.name = (draftStage.name||'').trim() || '未命名关卡';
       stage.image = draftStage.image || '';
+      stage.description = draftStage.description || '';
       stage.subStages = draftStage.subStages || [];
       editMode = false; draftStage = null;
       await saveData(false);
@@ -1434,6 +1442,7 @@ function renderStagePage(){
     </div>
     ${stage.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(stage.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
+    ${stage.description ? `<div class="content-body">${renderMarkdownLite(stage.description)}</div>` : ''}
     <div class="section-label">子分类</div>
     ${isAdmin && stage.subStages.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击进入子分类详情页；按住卡片拖动可以调整顺序。</div>` : ''}
     <div class="floor-list" id="stageSubStagesList">${subStagesHtml}</div>
