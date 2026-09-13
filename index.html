@@ -1011,6 +1011,20 @@ function migrateState(){
       if(ss.description===undefined) ss.description = '';
       if(!Array.isArray(ss.mechanics)) ss.mechanics = [];
       if(!Array.isArray(ss.levels)) ss.levels = [];
+      if(!Array.isArray(ss.shop)) ss.shop = [];
+      ss.shop.forEach(it=>{
+        if(it.refType===undefined) it.refType = '';
+        if(it.refId===undefined) it.refId = '';
+        if(it.price===undefined) it.price='';
+        if(it.quantity===undefined) it.quantity='';
+      });
+      if(!Array.isArray(ss.rewards)) ss.rewards = [];
+      ss.rewards.forEach(r=>{
+        if(r.name===undefined) r.name = '';
+        if(r.amount===undefined) r.amount = '';
+        if(r.image===undefined) r.image = '';
+      });
+      if(ss.specialUnitReward===undefined) ss.specialUnitReward = '';
       ss.levels.forEach(lv=>{
         if(lv.image===undefined) lv.image='';
         if(lv.description===undefined) lv.description='';
@@ -1523,6 +1537,9 @@ function renderStageSubStagePage(){
     if(!draftStageSubStage) draftStageSubStage = JSON.parse(JSON.stringify(subStage));
     if(!Array.isArray(draftStageSubStage.mechanics)) draftStageSubStage.mechanics = [];
     if(!Array.isArray(draftStageSubStage.levels)) draftStageSubStage.levels = [];
+    if(!Array.isArray(draftStageSubStage.shop)) draftStageSubStage.shop = [];
+    if(!Array.isArray(draftStageSubStage.rewards)) draftStageSubStage.rewards = [];
+    if(draftStageSubStage.specialUnitReward===undefined) draftStageSubStage.specialUnitReward = '';
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑子分类 · ${escapeHtml(stage.name)}</div>
@@ -1557,6 +1574,44 @@ function renderStageSubStagePage(){
         </div>
       </div>
       <div class="edit-field">
+        <span class="edit-label">奖励</span>
+        <div class="hint" style="margin-bottom:10px;">进这个子分类整体能拿到的宝石/道具（跟每一关自己的奖励是分开的），比如"宝石 500"，可以有多条。</div>
+        ${(draftStageSubStage.rewards||[]).map((r,i)=>stageRewardEditRowHtml(r,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无奖励</div>'}
+        <button class="btn btn-gold" data-action="addStageReward">+ 添加奖励</button>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">特殊获得单位（可选）</span>
+        <div class="hint" style="margin-bottom:10px;">如果通关这整个子分类（不是单独某一关）能特殊获得某个单位，在这里选它——选好之后，那个单位自己的页面也会显示"从这里获得"。</div>
+        ${draftStageSubStage.specialUnitReward ? (()=>{
+          const su = state.units.find(x=>x.id===draftStageSubStage.specialUnitReward);
+          if(!su) return '';
+          return `<div class="sub-card" style="display:flex;align-items:center;gap:12px;">
+            ${su.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(su.image))}">` : `<div class="mark-icon-placeholder"></div>`}
+            <div style="flex:1;font-weight:600;">${escapeHtml(su.name)}</div>
+            <button class="btn btn-danger" type="button" data-action="clearSpecialUnitReward">移除</button>
+          </div>`;
+        })() : (()=>{
+          const remaining = state.units;
+          const key = 'stagesubstage-special-unit-'+subStage.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择特殊获得单位</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(u2=>`<button type="button" class="entity-picker-item" data-action="setSpecialUnitReward" data-unit-id="${u2.id}" data-search="${escapeHtml(((u2.name||'')+' '+(u2.englishName||'')).toLowerCase())}">${u2.image?`<img src="${escapeHtml(String(u2.image))}">`:''}${escapeHtml(u2.name)}</button>`).join('') || '<div class="empty-hint">还没有单位</div>'}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
+            </div>
+          </details>`;
+        })()}
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">商店</span>
+        <div class="hint" style="margin-bottom:10px;">这个子分类整体的商店（跟每一关自己的商店是分开的），比如限定道具、装备。</div>
+        ${(draftStageSubStage.shop||[]).map((it,i)=>shopItemEditRowHtml(it,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无商品</div>'}
+        <button class="btn btn-gold" data-action="addShopItem">+ 添加商品</button>
+      </div>
+      <div class="edit-field">
         <span class="edit-label">关卡 (每一关)</span>
         <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除、拖动排序。每一关详细的说明和商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
         ${draftStageSubStage.levels.map((lv,i)=>stageLevelListEditRowHtml(lv,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
@@ -1565,6 +1620,14 @@ function renderStageSubStagePage(){
     `;
     wireDraftForm(container, draftStageSubStage);
     wirePickerToggles(container);
+    container.querySelectorAll('[data-shop-ref]').forEach(el=>{
+      el.addEventListener('change', ()=>{
+        const i = parseInt(el.dataset.shopRef);
+        const [t,id] = el.value.split(':');
+        draftStageSubStage.shop[i].refType = t||'';
+        draftStageSubStage.shop[i].refId = id||'';
+      });
+    });
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStageSubStage=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       subStage.name = (draftStageSubStage.name||'').trim() || '未命名子分类';
@@ -1572,6 +1635,9 @@ function renderStageSubStagePage(){
       subStage.description = draftStageSubStage.description || '';
       subStage.mechanics = draftStageSubStage.mechanics || [];
       subStage.levels = draftStageSubStage.levels || [];
+      subStage.shop = draftStageSubStage.shop || [];
+      subStage.rewards = draftStageSubStage.rewards || [];
+      subStage.specialUnitReward = draftStageSubStage.specialUnitReward || '';
       editMode = false; draftStageSubStage = null;
       await saveData(false);
       render();
@@ -1609,6 +1675,53 @@ function renderStageSubStagePage(){
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
 
+  const subStageRewardsHtml = (subStage.rewards&&subStage.rewards.length) ? `<div class="mark-row-list" style="margin-bottom:20px;">${subStage.rewards.map(r=>{
+    if(!r.name && !r.amount) return '';
+    const icon = r.image ? `<img src="${escapeHtml(String(r.image))}">` : '';
+    return `<span class="mark-chip" style="background:var(--card);border:1px solid var(--gold-dim);color:var(--gold);">${icon}${escapeHtml(r.name)}${r.amount ? ` ×${escapeHtml(r.amount)}` : ''}</span>`;
+  }).join('')}</div>` : '';
+
+  const subStageSpecialUnit = subStage.specialUnitReward ? state.units.find(u2=>u2.id===subStage.specialUnitReward) : null;
+  const subStageSpecialUnitHtml = subStageSpecialUnit ? (()=>{
+    const rarityObj = subStageSpecialUnit.rarity ? state.rarities.find(x=>x.id===subStageSpecialUnit.rarity) : null;
+    const color = (rarityObj && rarityObj.color) || '#c9a24b';
+    return `<div class="mark-row-list" style="margin-bottom:20px;"><a href="${viewToHash({type:'unit', id:subStageSpecialUnit.id})}" class="badge" data-view="unit" data-id="${subStageSpecialUnit.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">🎁 ${escapeHtml(subStageSpecialUnit.name)}</a></div>`;
+  })() : '';
+
+  const REF_COLLECTIONS = {item:state.items, unit:state.units, family:state.families, memory:state.memories};
+  const REF_LABELS = {item:'物品', unit:'单位', family:'使魔', memory:'记忆'};
+  const subStageShopHtml = (subStage.shop&&subStage.shop.length) ? `<div class="shop-item-grid">${subStage.shop.map(it=>{
+    const coll = it.refType ? REF_COLLECTIONS[it.refType] : null;
+    const linkedEntity = coll ? coll.find(x=>x.id===it.refId) : null;
+    if(!linkedEntity){
+      return `<div class="shop-item-card shop-item-card-unlinked">
+        <div class="shop-item-icon-wrap"><div class="shop-item-icon-placeholder"></div></div>
+        <div class="shop-item-body">
+          <div class="shop-item-name" style="color:var(--text-faint);">尚未选择关联内容</div>
+          ${it.quantity ? `<div class="shop-item-qty">${escapeHtml(it.quantity)}</div>` : ''}
+        </div>
+        ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
+      </div>`;
+    }
+    let typeTagLabel = REF_LABELS[it.refType];
+    let typeTagStyle = '';
+    if(it.refType==='item' && linkedEntity.categoryId){
+      const cat = state.itemCategories.find(c=>c.id===linkedEntity.categoryId);
+      if(cat){ typeTagLabel = cat.name; typeTagStyle = `background:${/gradient/.test(cat.color||'')?'rgba(0,0,0,.6)':hexToRgba(cat.color||'#4a8fd1',0.75)};`; }
+    }
+    return `<a href="${viewToHash({type:it.refType, id:linkedEntity.id})}" class="shop-item-card" data-view="${it.refType}" data-id="${linkedEntity.id}">
+      <div class="shop-item-icon-wrap">
+        ${linkedEntity.image ? `<img class="shop-item-icon" src="${escapeHtml(String(linkedEntity.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}
+        <span class="shop-item-type-tag" style="${typeTagStyle}">${escapeHtml(typeTagLabel)}</span>
+      </div>
+      <div class="shop-item-body">
+        <div class="shop-item-name">${escapeHtml(linkedEntity.name)}</div>
+        ${it.quantity ? `<div class="shop-item-qty">${escapeHtml(it.quantity)}</div>` : ''}
+      </div>
+      ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
+    </a>`;
+  }).join('')}</div>` : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb"><a href="${viewToHash({type:'stage', id: stage.id})}" data-view="stage" data-id="${stage.id}">${escapeHtml(stage.name)}</a> / ${escapeHtml(subStage.name)}</div>
@@ -1617,11 +1730,32 @@ function renderStageSubStagePage(){
     ${subStage.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(subStage.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(subStage.name)}</h1>
     ${subStageMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${subStageMechanicsHtml}</div>` : ''}
+    ${subStageRewardsHtml ? `<div class="section-label">奖励</div>${subStageRewardsHtml}` : ''}
+    ${subStageSpecialUnitHtml ? `<div class="section-label">特殊获得单位</div>${subStageSpecialUnitHtml}` : ''}
     <div class="content-body">${renderMarkdownLite(subStage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    ${subStageShopHtml ? `<div class="section-label">商店</div>${subStageShopHtml}` : ''}
     <div class="section-label">关卡列表</div>
     ${isAdmin && subStage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击关卡进入详情页；按住卡片拖动可以调整关卡顺序。</div>` : ''}
     <div class="floor-list" id="stageLevelsList">${levelsHtml}</div>
   `;
+  container.querySelectorAll('.badge[data-view="unit"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'unit', id: chip.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null;
+      render();
+    });
+  });
+  container.querySelectorAll('.shop-item-card[data-view]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type: card.dataset.view, id: card.dataset.id});
+      editMode=false; draftUnit=null; draftSimple=null;
+      render();
+    });
+  });
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStageSubStage=null; render(); });
   wireBackButton(container);
@@ -4325,11 +4459,6 @@ function enemyMechanicToggleHtml(mech, isActive){
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
 }
 
-function groupToggleHtml(group, isActive){
-  const icon = group.image ? `<img src="${escapeHtml(String(group.image))}">` : '';
-  return `<button type="button" class="mark-toggle entity-picker-item ${isActive?'active':''}" style="${toggleChipStyle(group.color, isActive)}" data-action="selectGroup" data-group-id="${group.id}" data-search="${escapeHtml((group.name||'').toLowerCase())}">${icon}${escapeHtml(group.name)}</button>`;
-}
-
 function memoryCardPreviewHtml(memoryId){
   const m = state.memories.find(x=>x.id===memoryId);
   if(!m) return '';
@@ -4513,17 +4642,31 @@ function renderUnit(){
       </div>
 
       <div class="edit-field">
-        <details class="settings-block group-field-details" data-picker-key="unit-groups-${unit.id}"${openPickerKeys.has('unit-groups-'+unit.id)?' open':''} style="margin-bottom:0;">
-          <summary class="edit-label" style="cursor:pointer;list-style:none;display:flex;align-items:center;">分组<span class="group-toggle-arrow" style="margin-left:auto;font-size:11px;color:var(--text-faint);">▸</span></summary>
-          <div class="entity-picker-list" style="margin-top:10px;">
-            ${state.groups.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索分组名称...">` : ''}
-            <div class="entity-picker-items mark-row-list">
-              ${state.groups.length ? state.groups.map(g=> groupToggleHtml(g, draftUnit.groups.includes(g.id))).join('') : ''}
+        <span class="edit-label">分组</span>
+        <div class="mark-row-list">
+          ${draftUnit.groups.length ? draftUnit.groups.map(gid=>{
+            const g = state.groups.find(x=>x.id===gid);
+            if(!g) return '';
+            const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : '';
+            return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(g.color,true)}" data-action="selectGroup" data-group-id="${g.id}">${icon}${escapeHtml(g.name)} ✕</button>`;
+          }).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择分组</div>'}
+        </div>
+        ${(()=>{
+          const remaining = state.groups.filter(g=>!draftUnit.groups.includes(g.id));
+          if(!remaining.length) return '';
+          const key = 'unit-groups-'+unit.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索分组名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择分组</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(g=>`<button type="button" class="entity-picker-item" data-action="selectGroup" data-group-id="${g.id}" data-search="${escapeHtml((g.name||'').toLowerCase())}">${g.image?`<img src="${escapeHtml(String(g.image))}">`:''}${escapeHtml(g.name)}</button>`).join('')}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的分组</div>
             </div>
-            <div class="entity-picker-noresult" style="display:none;">没有匹配的分组</div>
-          </div>
-          ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : '<div class="hint">可以多选，点击选中，再点一次可取消。</div>'}
-        </details>
+          </details>`;
+        })()}
+        ${state.groups.length===0 ? '<div class="hint">还没有可用的分组，请先到左侧「设置」页面新增，比如忍者、骑士、女巫。</div>' : ''}
       </div>
 
       <div class="edit-field">
@@ -4834,17 +4977,22 @@ function renderUnit(){
   const questlineHtml = (unit.questline&&unit.questline.length) ? `<ol class="questline-list">${unit.questline.map(q=>
     `<li><div class="questline-step-name">${escapeHtml(q.name)}</div>${q.description ? `<div class="questline-step-desc">${escapeHtml(q.description)}</div>` : ''}</li>`
   ).join('')}</ol>` : '';
-  // Reverse lookup: which stage levels list this unit as their "special unit reward". Computed on
-  // the fly (not stored on the unit) so it can never drift out of sync with the actual stage data.
+  // Reverse lookup: which stage sub-stages / levels list this unit as their "special unit reward".
+  // Computed on the fly (not stored on the unit) so it can never drift out of sync with the actual
+  // stage data.
   const specialUnitStageLevels = [];
   state.stages.forEach(s=>{
     (s.subStages||[]).forEach(ss=>{
+      if(ss.specialUnitReward===unit.id) specialUnitStageLevels.push({stage:s, subStage:ss, level:null});
       (ss.levels||[]).forEach(lv=>{ if(lv.specialUnitReward===unit.id) specialUnitStageLevels.push({stage:s, subStage:ss, level:lv}); });
     });
   });
-  const specialUnitStageLevelsHtml = specialUnitStageLevels.length ? `<div class="mark-row-list">${specialUnitStageLevels.map(({stage:s,subStage:ss,level:lv})=>
-    `<a href="${viewToHash({type:'stageLevel', id: s.id+'__'+ss.id+'__'+lv.id})}" class="mark-chip" data-view="stageLevel" data-id="${s.id}__${ss.id}__${lv.id}" style="${coloredChipStyle('#b8544a')}cursor:pointer;">🎁 ${escapeHtml(s.name)} / ${escapeHtml(ss.name)} / ${escapeHtml(lv.name)}</a>`
-  ).join('')}</div>` : '';
+  const specialUnitStageLevelsHtml = specialUnitStageLevels.length ? `<div class="mark-row-list">${specialUnitStageLevels.map(({stage:s,subStage:ss,level:lv})=>{
+    if(lv){
+      return `<a href="${viewToHash({type:'stageLevel', id: s.id+'__'+ss.id+'__'+lv.id})}" class="mark-chip" data-view="stageLevel" data-id="${s.id}__${ss.id}__${lv.id}" style="${coloredChipStyle('#b8544a')}cursor:pointer;">🎁 ${escapeHtml(s.name)} / ${escapeHtml(ss.name)} / ${escapeHtml(lv.name)}</a>`;
+    }
+    return `<a href="${viewToHash({type:'stageSubStage', id: s.id+'__'+ss.id})}" class="mark-chip" data-view="stageSubStage" data-id="${s.id}__${ss.id}" style="${coloredChipStyle('#b8544a')}cursor:pointer;">🎁 ${escapeHtml(s.name)} / ${escapeHtml(ss.name)}</a>`;
+  }).join('')}</div>` : '';
   const skillsHtml = (unit.skills&&unit.skills.length) ? (()=>{
     const tabsHtml = unit.skills.map((s,i)=>{
       const t = SKILL_TARGET_TYPES.find(x=>x.id===s.targetType);
@@ -5158,6 +5306,15 @@ function renderUnit(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'stageLevel', id: chip.dataset.id});
+      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      render();
+    });
+  });
+  container.querySelectorAll('.mark-chip[data-view="stageSubStage"]').forEach(chip=>{
+    chip.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'stageSubStage', id: chip.dataset.id});
       editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
       render();
     });
