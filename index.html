@@ -669,7 +669,7 @@ let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
 let draftStageSubStage = null;
-let itemEditEvolvesUnitId = '';
+let draftItem = null;
 let addingCharacterCardForUnit = false;
 let activeSkillEditTabIndex = 0;
 let newCharacterCardDraft = null;
@@ -719,7 +719,7 @@ function goBack(){
   clearUnitTraitPreviewIfLeaving(newView);
   currentView = newView;
   setHash(currentView);
-  editMode=false; draftUnit=null; draftSimple=null; addingLog=false; showingShinyImage=false;
+  editMode=false; draftUnit=null; draftSimple=null; draftItem=null; addingLog=false; showingShinyImage=false;
   render();
   const mainEl = document.querySelector('.main');
   if(mainEl) mainEl.scrollTop = prev ? prev.scrollTop : 0;
@@ -1743,7 +1743,7 @@ function renderStageSubStagePage(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'unit', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null;
       render();
     });
   });
@@ -1752,7 +1752,7 @@ function renderStageSubStagePage(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
-      editMode=false; draftUnit=null; draftSimple=null;
+      editMode=false; draftUnit=null; draftSimple=null; draftItem=null;
       render();
     });
   });
@@ -2030,7 +2030,7 @@ function renderStageLevelPage(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'unit', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null;
       render();
     });
   });
@@ -2042,7 +2042,7 @@ function renderStageLevelPage(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
-      editMode=false; draftUnit=null; draftSimple=null;
+      editMode=false; draftUnit=null; draftSimple=null; draftItem=null;
       render();
     });
   });
@@ -2376,7 +2376,7 @@ async function loadData(){
   window.addEventListener('hashchange', ()=>{
     if(suppressNextHashChange){ suppressNextHashChange = false; return; }
     currentView = hashToView();
-    editMode = false; draftUnit=null; draftSimple=null; draftOdyssey=null; showingShinyImage=false; addingCharacterCardForUnit=false; newCharacterCardDraft=null; editingOdysseyCardId=null;
+    editMode = false; draftUnit=null; draftSimple=null; draftItem=null; draftOdyssey=null; showingShinyImage=false; addingCharacterCardForUnit=false; newCharacterCardDraft=null; editingOdysseyCardId=null;
     render();
     const mainEl = document.querySelector('.main');
     if(mainEl) mainEl.scrollTop = 0;
@@ -2715,7 +2715,7 @@ function renderSidebar(){
         if(!isPlainLeftClick(e)) return;
         e.preventDefault();
         goToView({type: btn.dataset.view, id: btn.dataset.id});
-        editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+        editMode=false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
         render(); closeMobileSidebar();
       });
     });
@@ -2814,7 +2814,7 @@ function renderSidebar(){
       clearUnitTraitPreviewIfLeaving(newView);
       currentView = newView;
       setHash(currentView);
-      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftOdyssey=null; draftStage=null; draftUpgrade=null; render(); closeMobileSidebar();
+      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftItem=null; draftOdyssey=null; draftStage=null; draftUpgrade=null; render(); closeMobileSidebar();
     });
   });
   if(isAdmin){
@@ -2894,7 +2894,7 @@ function renderSidebar(){
       const newView = {type: btn.dataset.view};
       clearUnitTraitPreviewIfLeaving(newView);
       currentView = newView; setHash(currentView);
-      editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false; render(); closeMobileSidebar();
+      editMode=false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false; render(); closeMobileSidebar();
     });
   });
   const addUnitBtn = document.getElementById('addUnitBtn');
@@ -3291,7 +3291,7 @@ function renderHome(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: chip.dataset.view, id: chip.dataset.id});
-      editMode=false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode=false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -3828,7 +3828,7 @@ function renderOdyssey(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -3837,7 +3837,7 @@ function renderOdyssey(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: tag.dataset.view, id: tag.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -5306,7 +5306,7 @@ function renderUnit(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'stageLevel', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -5315,7 +5315,7 @@ function renderUnit(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'stageSubStage', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -5324,7 +5324,7 @@ function renderUnit(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'memory', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -5333,7 +5333,7 @@ function renderUnit(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'family', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -5342,7 +5342,7 @@ function renderUnit(){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -5426,6 +5426,7 @@ function renderItem(){
   const itemCategoryObj = item.categoryId ? state.itemCategories.find(c=>c.id===item.categoryId) : null;
 
   if(editMode){
+    if(!draftItem) draftItem = JSON.parse(JSON.stringify(item));
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑物品</div>
@@ -5436,45 +5437,45 @@ function renderItem(){
         </div>
       </div>
       <div class="edit-field">
-        <input class="edit-input title-input" id="editName" value="${escapeHtml(item.name)}" placeholder="物品名称">
-        <input class="edit-input" style="margin-top:8px;" id="editEnglishName" value="${escapeHtml(item.englishName||'')}" placeholder="英文名（可选，方便搜索）">
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftItem.name)}" placeholder="物品名称">
+        <input class="edit-input" style="margin-top:8px;" data-bind="englishName" value="${escapeHtml(draftItem.englishName||'')}" placeholder="英文名（可选，方便搜索）">
       </div>
       <div class="edit-field">
         <span class="edit-label">1. 图片</span>
         <div class="image-upload-box">
-          ${item.image ? `<img class="image-preview zoomable" id="imgPreview" src="${escapeHtml(String(item.image))}">` : `<div class="image-placeholder" id="imgPreview">无图片</div>`}
+          ${draftItem.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftItem.image))}">` : `<div class="image-placeholder">无图片</div>`}
           <div class="upload-controls">
-            <label class="file-label">选择图片<input type="file" accept="image/*" id="imageInput" style="display:none;"></label>
-            ${item.image ? `<button class="btn btn-danger" id="removeImgBtn" style="width:fit-content;">移除图片</button>` : ''}
+            <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
+            ${draftItem.image ? `<button class="btn btn-danger" data-image-remove="image" style="width:fit-content;">移除图片</button>` : ''}
           </div>
         </div>
       </div>
       <div class="edit-field">
         <span class="edit-label">2. 稀有度</span>
-        <select class="edit-select" id="editRarity">${rarityOptionsHtml(item.rarity)}</select>
+        <select class="edit-select" data-bind="rarity">${rarityOptionsHtml(draftItem.rarity)}</select>
       </div>
       <div class="edit-field">
         <span class="edit-label">分类</span>
-        <select class="edit-select" id="editItemCategory">
+        <select class="edit-select" data-bind="categoryId">
           <option value="">未分类</option>
-          ${state.itemCategories.map(c=>`<option value="${escapeHtml(String(c.id))}" ${item.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
+          ${state.itemCategories.map(c=>`<option value="${escapeHtml(String(c.id))}" ${draftItem.categoryId===c.id?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}
         </select>
       </div>
       <div class="edit-field">
         <span class="edit-label">描述</span>
-        <textarea class="edit-textarea" id="editDesc" placeholder="物品描述...">${escapeHtml(item.description||'')}</textarea>
+        <textarea class="edit-textarea" data-bind="description" placeholder="物品描述...">${escapeHtml(draftItem.description||'')}</textarea>
       </div>
       <div class="edit-field">
         <span class="edit-label">任务线（可选，获得这个物品后需要完成的任务步骤）</span>
-        <textarea class="edit-textarea" id="editQuestline" placeholder="例如：&#10;1. 前往XX地图击败XX敌人&#10;2. 收集X个XX材料&#10;3. 找NPC提交任务&#10;完成后即可用于单位进化">${escapeHtml(item.questline||'')}</textarea>
+        <textarea class="edit-textarea" data-bind="questline" placeholder="例如：&#10;1. 前往XX地图击败XX敌人&#10;2. 收集X个XX材料&#10;3. 找NPC提交任务&#10;完成后即可用于单位进化">${escapeHtml(draftItem.questline||'')}</textarea>
         <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
         ${(()=>{
-          const selUnit = itemEditEvolvesUnitId ? state.units.find(u=>u.id===itemEditEvolvesUnitId) : null;
+          const selUnit = draftItem.evolvesUnitId ? state.units.find(u=>u.id===draftItem.evolvesUnitId) : null;
           const selectedHtml = selUnit ? `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-evo-clear="1">${selUnit.image?`<img src="${escapeHtml(String(selUnit.image))}">`:''}${escapeHtml(selUnit.name)} ✕</button>` : `<div class="empty-hint" style="padding-left:0;">不用于进化任何单位</div>`;
-          const remaining = state.units.filter(u=>u.id!==itemEditEvolvesUnitId);
+          const remaining = state.units.filter(u=>u.id!==draftItem.evolvesUnitId);
           const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称（中文/英文均可）...">` : '';
           const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="item-evo-unit">
             <summary class="btn btn-gold">+ 选择单位</summary>
@@ -5489,56 +5490,39 @@ function renderItem(){
       </div>
       <div class="edit-field">
         <span class="edit-label">进化所需数量（可选，比如需要3个这个物品）</span>
-        <input class="edit-input" id="editEvolveQuantity" value="${escapeHtml(item.evolveQuantity||'')}" placeholder="例如：x3">
+        <input class="edit-input" data-bind="evolveQuantity" value="${escapeHtml(draftItem.evolveQuantity||'')}" placeholder="例如：x3">
       </div>
       <div class="save-bar">
         <button class="btn btn-danger" id="deleteBtn">删除物品</button>
       </div>
     `;
-    let pendingImage = item.image;
-    document.getElementById('imageInput').addEventListener('change', (e)=>{
-      handleImageUpload(e.target, (dataUrl)=>{
-        pendingImage = dataUrl;
-        const preview = document.getElementById('imgPreview');
-        const img = document.createElement('img');
-        img.className='image-preview zoomable'; img.id='imgPreview'; img.src=dataUrl;
-        preview.replaceWith(img);
-      });
-    });
-    const removeBtn = document.getElementById('removeImgBtn');
-    if(removeBtn) removeBtn.addEventListener('click', ()=>{
-      pendingImage = '';
-      const preview = document.getElementById('imgPreview');
-      const ph = document.createElement('div');
-      ph.className='image-placeholder'; ph.id='imgPreview'; ph.textContent='无图片';
-      preview.replaceWith(ph);
-    });
+    wireDraftForm(container, draftItem);
+    wirePickerToggles(container);
     container.querySelectorAll('[data-item-evo-select]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        itemEditEvolvesUnitId = btn.dataset.itemEvoSelect;
+        draftItem.evolvesUnitId = btn.dataset.itemEvoSelect;
         render();
       });
     });
     container.querySelectorAll('[data-item-evo-clear]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        itemEditEvolvesUnitId = '';
+        draftItem.evolvesUnitId = '';
         render();
       });
     });
-    wirePickerToggles(container);
-    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; render(); });
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftItem=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
-      item.name = document.getElementById('editName').value.trim() || '未命名物品';
-      item.englishName = document.getElementById('editEnglishName').value.trim();
-      item.image = pendingImage;
-      item.rarity = document.getElementById('editRarity').value || null;
-      item.categoryId = document.getElementById('editItemCategory').value || '';
-      item.description = document.getElementById('editDesc').value;
-      item.questline = document.getElementById('editQuestline').value;
-      item.evolvesUnitId = itemEditEvolvesUnitId || '';
-      item.evolveQuantity = document.getElementById('editEvolveQuantity').value || '';
+      item.name = (draftItem.name||'').trim() || '未命名物品';
+      item.englishName = (draftItem.englishName||'').trim();
+      item.image = draftItem.image || '';
+      item.rarity = draftItem.rarity || null;
+      item.categoryId = draftItem.categoryId || '';
+      item.description = draftItem.description || '';
+      item.questline = draftItem.questline || '';
+      item.evolvesUnitId = draftItem.evolvesUnitId || '';
+      item.evolveQuantity = draftItem.evolveQuantity || '';
       item.updatedAt = Date.now();
-      editMode = false;
+      editMode = false; draftItem = null;
       await saveData(false);
       render();
     });
@@ -5546,7 +5530,7 @@ function renderItem(){
       if(!confirm(`删除「${item.name}」？此操作无法撤销。`)) return;
       state.items = state.items.filter(i=>i.id!==item.id);
       currentView = {type:'home'};
-      editMode = false;
+      editMode = false; draftItem = null;
       await saveData(false);
       render();
     };
@@ -5579,10 +5563,10 @@ function renderItem(){
     if(!isPlainLeftClick(e)) return;
     e.preventDefault();
     goToView({type:'unit', id: evoCard.dataset.id});
-    editMode=false; draftUnit=null; draftSimple=null;
+    editMode=false; draftUnit=null; draftSimple=null; draftItem=null;
     render();
   });
-  const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; itemEditEvolvesUnitId = item.evolvesUnitId || ''; render(); });
+  const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftItem=null; render(); });
   wireBackButton(container);
 }
 
@@ -5847,7 +5831,7 @@ function renderGallery(type){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type: card.dataset.view, id: card.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null; showingShinyImage=false;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null; showingShinyImage=false;
       render();
     });
   });
@@ -6155,7 +6139,7 @@ function renderSimpleEntity(type){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'unit', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null;
       render();
     });
   });
@@ -6164,7 +6148,7 @@ function renderSimpleEntity(type){
       if(!isPlainLeftClick(e)) return;
       e.preventDefault();
       goToView({type:'family', id: chip.dataset.id});
-      editMode = false; draftUnit=null; draftSimple=null;
+      editMode = false; draftUnit=null; draftSimple=null; draftItem=null;
       render();
     });
   });
