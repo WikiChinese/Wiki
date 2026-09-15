@@ -216,6 +216,7 @@
   .content-body li{margin-bottom:6px;}
   .content-body strong{color:var(--gold);font-weight:600;}
   .content-body code{background:var(--card);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);}
+  .content-body mark{background:rgba(201,162,75,.28);color:var(--gold);padding:1px 3px;border-radius:3px;}
 
   .skill-view{display:flex;gap:14px;flex-wrap:wrap;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
   .skill-tab-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
@@ -1401,7 +1402,7 @@ function renderStagePage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个关卡分类的整体规则、玩法、注意事项...">${escapeHtml(draftStage.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
         ${markInsertButtonsHtml('description')}
       </div>
       <div class="edit-field">
@@ -1563,7 +1564,7 @@ function renderStageSubStagePage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个子分类的规则、玩法、掉落、注意事项...">${escapeHtml(draftStageSubStage.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
         ${markInsertButtonsHtml('description')}
       </div>
       <div class="edit-field">
@@ -1874,7 +1875,7 @@ function renderStageLevelPage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="这一关的怪物、机制、掉落、注意事项...">${escapeHtml(draftStageLevel.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
         ${markInsertButtonsHtml('description')}
       </div>
       <div class="edit-field">
@@ -2097,7 +2098,7 @@ function renderUpgradePage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个升级类型的规则、玩法、消耗、注意事项...">${escapeHtml(draftUpgrade.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">升级 (每一项)</span>
@@ -2681,7 +2682,10 @@ function renderMarkdownLite(text){
 }
 function inline(s){
   let e = escapeHtml(s);
+  e = e.replace(/==(.+?)==/g, '<mark>$1</mark>');
   e = e.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  e = e.replace(/~~(.+?)~~/g, '<del>$1</del>');
+  e = e.replace(/(^|[^*])\*(?!\*)(.+?)\*(?!\*)/g, '$1<em>$2</em>');
   e = e.replace(/`(.+?)`/g, '<code>$1</code>');
   e = e.replace(/\[\[([^\|\]]+?)(?:\|([^\]]+))?\]\]/g, (match, name, val) => renderInlineMarkToken(name.trim(), val ? val.trim() : ''));
   return e;
@@ -3041,10 +3045,13 @@ function obtainMethodPickerHtml(selectedArr, fieldName){
   const remaining = state.obtainMethods.filter(t=>!selected.includes(t.id));
   const key = 'obtain-'+fieldName;
   const isOpen = openPickerKeys.has(key);
+  const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索获取方式名称...">` : '';
   const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
     <summary class="btn btn-gold">+ 选择获取方式</summary>
     <div class="entity-picker-list">
-      ${remaining.map(t=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="${t.id}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</button>`).join('')}
+      ${searchHtml}
+      <div class="entity-picker-items">${remaining.map(t=>`<button type="button" class="entity-picker-item" data-action="toggleExclusiveTarget" data-field="${fieldName}" data-target="${t.id}" data-search="${escapeHtml((t.name||'').toLowerCase())}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</button>`).join('')}</div>
+      <div class="entity-picker-noresult" style="display:none;">没有匹配的获取方式</div>
     </div>
   </details>` : (state.obtainMethods.length===0 ? '<div class="hint">还没有可选的获取方式，请先去「设置 → 获取方式」新增，比如 Raids、Story Stage。</div>' : '');
   return `<div class="mark-row-list">${selectedHtml}</div>${pickerHtml}`;
@@ -3739,7 +3746,7 @@ function renderOdyssey(){
       <div class="edit-field">
         <span class="edit-label">玩法介绍</span>
         <textarea class="edit-textarea tall" data-bind="intro" placeholder="介绍这个玩法模式的规则、目标和流程...">${escapeHtml(draftOdyssey.intro||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
 
       <div class="edit-field">
@@ -3856,7 +3863,7 @@ function renderTierlist(){
       </div>
       <div class="edit-field">
         <textarea class="edit-textarea tall" id="tierContent" placeholder="整理你的分级榜...">${escapeHtml(state.tierlist.content||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
     `;
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; render(); });
@@ -5468,7 +5475,7 @@ function renderItem(){
       <div class="edit-field">
         <span class="edit-label">任务线（可选，获得这个物品后需要完成的任务步骤）</span>
         <textarea class="edit-textarea" data-bind="questline" placeholder="例如：&#10;1. 前往XX地图击败XX敌人&#10;2. 收集X个XX材料&#10;3. 找NPC提交任务&#10;完成后即可用于单位进化">${escapeHtml(draftItem.questline||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
