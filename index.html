@@ -216,7 +216,7 @@
   .content-body li{margin-bottom:6px;}
   .content-body strong{color:var(--gold);font-weight:600;}
   .content-body code{background:var(--card);padding:2px 6px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--teal);}
-  .content-body mark{background:rgba(201,162,75,.28);color:var(--gold);padding:1px 3px;border-radius:3px;}
+  .content-body mark{background:rgba(74,139,124,.28);color:var(--teal);padding:1px 3px;border-radius:3px;}
 
   .skill-view{display:flex;gap:14px;flex-wrap:wrap;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:10px;padding:14px 16px;margin-bottom:12px;}
   .skill-tab-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
@@ -1164,6 +1164,7 @@ function migrateState(){
     u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; if(s.referenceUrl===undefined) s.referenceUrl=''; if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : []; });
     if(!Array.isArray(u.passives)) u.passives = u.passive ? [{id:uid(), name:'被动1', description:u.passive}] : [];
     if(u.placementLimit===undefined) u.placementLimit = '';
+    if(u.placementCost===undefined) u.placementCost = '';
     if(u.isLimitedReturn===undefined) u.isLimitedReturn = false;
     if(u.evolvedName===undefined) u.evolvedName = '';
     if(u.evolvedImage===undefined) u.evolvedImage = '';
@@ -3923,6 +3924,7 @@ function startUnitEdit(unit){
     draftUnit.passives = unit.passive ? [{id:uid(), name:'被动1', description:unit.passive}] : [];
   }
   draftUnit.placementLimit = unit.placementLimit || '';
+  draftUnit.placementCost = unit.placementCost || '';
   draftUnit.obtainWay = unit.obtainWay || '';
   if(!Array.isArray(draftUnit.otherForms)) draftUnit.otherForms = [];
   if(!Array.isArray(draftUnit.linkedMemories)) draftUnit.linkedMemories = [];
@@ -3949,6 +3951,7 @@ function passiveCardHtml(passive, i, pathPrefix, includeScope){
     </div>
     ${scopeHtml}
     <textarea class="edit-textarea" data-bind="${pathPrefix}.${i}.description" placeholder="被动效果...">${escapeHtml(passive.description||'')}</textarea>
+    <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
     ${markInsertButtonsHtml(`${pathPrefix}.${i}.description`)}
   </div>`;
 }
@@ -4066,6 +4069,7 @@ function skillCardHtml(skill, i){
           </div>
         </div>
         <textarea class="edit-textarea" data-bind="skills.${i}.description" placeholder="技能描述...">${escapeHtml(skill.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
         ${markInsertButtonsHtml(`skills.${i}.description`)}
       </div>
     </div>
@@ -4809,6 +4813,10 @@ function renderUnit(){
             <label>放置限制</label>
             <input class="edit-input" data-bind="placementLimit" value="${escapeHtml(draftUnit.placementLimit)}" placeholder="例如：3，留空不限制">
           </div>
+          <div class="attack-overview-cell">
+            <label>放置费用</label>
+            <input class="edit-input" data-bind="placementCost" value="${escapeHtml(draftUnit.placementCost||'')}" placeholder="例如：550">
+          </div>
         </div>
         <div class="hint" style="margin:8px 0 14px;">选好的特性会自动应用到下面<b>所有</b>攻击方式的伤害/范围/攻速上（不用每个攻击方式单独选）。</div>
         ${draftUnit.attacks.map(attackCardHtml).join('') || '<div class="empty-hint" style="padding-left:0;">暂无攻击方式</div>'}
@@ -4897,6 +4905,7 @@ function renderUnit(){
       unit.elements = draftUnit.elements || [];
       unit.tags = (draftUnit.tagsRaw||'').split(',').map(t=>t.trim()).filter(Boolean);
       unit.placementLimit = draftUnit.placementLimit || '';
+      unit.placementCost = draftUnit.placementCost || '';
       unit.isLimitedReturn = !!draftUnit.isLimitedReturn;
       unit.evolvedName = draftUnit.evolvedName || '';
       unit.evolvedImage = draftUnit.evolvedImage || '';
@@ -5166,7 +5175,7 @@ function renderUnit(){
     </div>`;
   }).join('') : '<p style="color:var(--text-faint);">暂无内容</p>';
 
-  const attackOverviewBarHtml = (unit.unitLv60 || unit.placementLimit || state.traits.length) ? `
+  const attackOverviewBarHtml = (unit.unitLv60 || unit.placementLimit || unit.placementCost || state.traits.length) ? `
     <div class="attack-overview-bar view">
       ${unit.unitLv60 ? `<div class="attack-overview-cell"><label>60级基础数值</label><div class="stat-value">${escapeHtml(unit.unitLv60)}</div></div>` : ''}
       <div class="attack-overview-cell">
@@ -5182,6 +5191,10 @@ function renderUnit(){
         ${unitPreviewTraitId !== (unit.trait||'') ? `<div class="hint" style="margin-top:6px;">当前只是预览效果，不是这个单位真正的默认特性${unit.trait ? '（默认是「'+escapeHtml((state.traits.find(t=>t.id===unit.trait)||{}).name||'')+'」）' : '（默认是"无特性"）'}。</div>` : ''}
       </div>
       ${unit.placementLimit ? `<div class="attack-overview-cell"><label>放置限制</label><div class="stat-value">${escapeHtml(unit.placementLimit)}</div></div>` : ''}
+      ${unit.placementCost ? (()=>{
+        const calcCost = unitTraitObj ? applyTraitPct(unit.placementCost, unitTraitObj.costPct) : null;
+        return `<div class="attack-overview-cell"><label>放置费用</label><div class="stat-value">💰${escapeHtml(unit.placementCost)}${calcCost!==null?`<span class="arrow">→</span><span class="boosted">💰${calcCost.toLocaleString()}</span>`:''}</div></div>`;
+      })() : ''}
     </div>` : '';
 
   const odysseyCardsForUnit = (state.odyssey.characterCards||[]).filter(c=>c.unitId===unit.id);
@@ -5471,6 +5484,7 @@ function renderItem(){
       <div class="edit-field">
         <span class="edit-label">描述</span>
         <textarea class="edit-textarea" data-bind="description" placeholder="物品描述...">${escapeHtml(draftItem.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">任务线（可选，获得这个物品后需要完成的任务步骤）</span>
