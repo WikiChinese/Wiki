@@ -4460,11 +4460,6 @@ function handleDraftAction(ds, draft, el){
   }
 }
 
-function markToggleHtml(mark, isActive){
-  const icon = mark.image ? `<img src="${escapeHtml(String(mark.image))}">` : '';
-  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mark.color, isActive)}" data-action="toggleMark" data-mark-id="${mark.id}" title="${escapeHtml(mark.description||mark.name)}">${icon}${escapeHtml(mark.name)}</button>`;
-}
-
 function enemyMechanicToggleHtml(mech, isActive){
   const icon = mech.image ? `<img src="${escapeHtml(String(mech.image))}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
@@ -5993,9 +5988,29 @@ function renderSimpleEntity(type){
       <div class="edit-field">
         <span class="edit-label">状态标记</span>
         <div class="mark-row-list">
-          ${state.marks.length ? state.marks.map(m=> markToggleHtml(m, draftSimple.marks.includes(m.id))).join('') : ''}
+          ${draftSimple.marks.length ? draftSimple.marks.map(mid=>{
+            const m2 = state.marks.find(x=>x.id===mid);
+            if(!m2) return '';
+            const icon = m2.image ? `<img src="${escapeHtml(String(m2.image))}">` : '';
+            return `<button type="button" class="mark-toggle active" style="${toggleChipStyle(m2.color,true)}" data-action="toggleMark" data-mark-id="${m2.id}">${icon}${escapeHtml(m2.name)} ✕</button>`;
+          }).join('') : '<div class="empty-hint" style="padding-left:0;">尚未选择状态标记</div>'}
         </div>
-        ${state.marks.length===0 ? '<div class="hint">还没有可用的标记，可以在下面直接新增，比如持续伤害、灼烧、流血。</div>' : '<div class="hint">点击标记以添加或移除。</div>'}
+        ${(()=>{
+          const remaining = state.marks.filter(m2=>!draftSimple.marks.includes(m2.id));
+          if(!remaining.length) return '';
+          const key = 'simple-marks-'+draftSimple.id;
+          const isOpen = openPickerKeys.has(key);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索状态标记名称...">` : '';
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">+ 选择状态标记</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(m2=>`<button type="button" class="entity-picker-item" data-action="toggleMark" data-mark-id="${m2.id}" data-search="${escapeHtml((m2.name||'').toLowerCase())}">${m2.image?`<img src="${escapeHtml(String(m2.image))}">`:''}${escapeHtml(m2.name)}</button>`).join('')}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的状态标记</div>
+            </div>
+          </details>`;
+        })()}
+        ${state.marks.length===0 ? '<div class="hint">还没有可用的标记，可以在下面直接新增，比如持续伤害、灼烧、流血。</div>' : ''}
         <div class="mark-quickadd">
           <input class="edit-input" id="newMarkName" placeholder="新标记名称，例如：中毒">
           <label class="file-label" style="margin:0;">图标（可选）<input type="file" accept="image/*" id="newMarkImageInput" style="display:none;"></label>
