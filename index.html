@@ -1150,6 +1150,8 @@ function migrateState(){
       }
       if(a.attackType===undefined) a.attackType = '';
       if(a.attackTypeId===undefined) a.attackTypeId = '';
+      if(a.attackTypeRange===undefined) a.attackTypeRange = '';
+      if(a.hitCount===undefined) a.hitCount = '';
       if(a.baseSpa===undefined) a.baseSpa = '';
       if(a.unitLv60===undefined) a.unitLv60 = '';
       if(a.trait===undefined) a.trait = '';
@@ -4160,15 +4162,15 @@ function attackCardHtml(attack, ai){
     <div class="attack-section-label">基础数值</div>
     <div style="display:flex;gap:10px;margin-bottom:10px;">
       <div style="flex:1;">
-        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">${draftUnit.unitType==='farm' ? '收入' : '伤害'}</label>
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">${draftUnit.unitType==='farm' ? '收入' : '伤害 (DMG)'}</label>
         <input class="edit-input" data-bind="attacks.${ai}.damage" value="${escapeHtml(attack.damage||'')}" placeholder="${draftUnit.unitType==='farm' ? '收入（只填一次）' : '伤害（只填一次）'}">
       </div>
       <div style="flex:1;">
-        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">攻速</label>
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">攻速 (SPA)</label>
         <input class="edit-input" data-bind="attacks.${ai}.baseSpa" value="${escapeHtml(attack.baseSpa||'')}" placeholder="基础攻速（只填一次）">
       </div>
       <div style="flex:1;">
-        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">范围</label>
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">范围 (RNG)</label>
         <input class="edit-input" data-bind="attacks.${ai}.range" value="${escapeHtml(attack.range||'')}" placeholder="范围（只填一次）">
       </div>
     </div>
@@ -4181,6 +4183,14 @@ function attackCardHtml(attack, ai){
           ${state.attackTypes.map(t=>`<option value="${escapeHtml(String(t.id))}" ${attack.attackTypeId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
         </select>
         ${state.attackTypes.length===0 ? `<div class="hint">还没有可选的攻击类型，先去左侧「攻击类型」→「设置」新增，比如 AOE、CONE、半圆。</div>` : ''}
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">范围 (RNG)</label>
+        <input class="edit-input" data-bind="attacks.${ai}.attackTypeRange" value="${escapeHtml(attack.attackTypeRange||'')}" placeholder='例如：30 或 area 40"'>
+      </div>
+      <div style="flex:1;min-width:140px;">
+        <label style="font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;">命中 (Hits)</label>
+        <input class="edit-input" data-bind="attacks.${ai}.hitCount" value="${escapeHtml(attack.hitCount||'')}" placeholder="例如：3">
       </div>
     </div>
 
@@ -5136,9 +5146,9 @@ function renderUnit(){
         <div class="attack-stat-value">${escapeHtml(val)}${calc!==null&&calc!==undefined?`<span class="arrow">→</span><span class="boosted">${calc.toLocaleString()}</span>`:''}</div>
       </div>` : '';
     const plateHtml = [
-      statCell(unit.unitType==='farm' ? '💰' : '⚔️', unit.unitType==='farm' ? '收入' : '伤害', a.damage, calcDamage),
-      statCell('⚡', '攻速', a.baseSpa, calcBaseSpa),
-      statCell('🎯', '范围', a.range, calcRange)
+      statCell(unit.unitType==='farm' ? '💰' : '⚔️', unit.unitType==='farm' ? '收入' : '伤害 (DMG)', a.damage, calcDamage),
+      statCell('⚡', '攻速 (SPA)', a.baseSpa, calcBaseSpa),
+      statCell('🎯', '范围 (RNG)', a.range, calcRange)
     ].join('');
     const mediaList = Array.isArray(a.media) ? a.media.filter(Boolean) : (a.image ? [a.image] : []);
     const mainMedia = mediaList[0] || '';
@@ -5152,6 +5162,8 @@ function renderUnit(){
         <div class="attack-view-titles">
           <h3 class="skill-name">${escapeHtml(a.name)}</h3>
           ${attackTypeObj ? `<span class="attack-type-chip" style="${coloredChipStyle(attackTypeObj.color)}">${attackTypeObj.image?`<img src="${escapeHtml(String(attackTypeObj.image))}">`:''}${escapeHtml(attackTypeObj.name)}</span>` : (attackTypeLegacyLabel ? `<span class="attack-type-chip" style="background:var(--card-hover);color:var(--text-faint);">${escapeHtml(attackTypeLegacyLabel)}</span>` : '')}
+          ${a.attackTypeRange ? `<span class="attack-type-chip" style="background:var(--card-hover);color:var(--text-dim);">🎯 ${escapeHtml(a.attackTypeRange)}</span>` : ''}
+          ${a.hitCount ? `<span class="attack-type-chip" style="background:var(--card-hover);color:var(--text-dim);">✳️ ${escapeHtml(a.hitCount)} 次命中</span>` : ''}
         </div>
       </div>
       ${extraMediaHtml}
