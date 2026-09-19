@@ -651,7 +651,7 @@ function wirePickerToggles(container){
       const q = input.value.trim().toLowerCase();
       const list = input.closest('.entity-picker-list');
       let anyVisible = false;
-      list.querySelectorAll('.entity-picker-item').forEach(btn=>{
+      list.querySelectorAll('[data-search]').forEach(btn=>{
         const match = !q || (btn.dataset.search||'').includes(q);
         btn.style.display = match ? '' : 'none';
         if(match) anyVisible = true;
@@ -1596,9 +1596,22 @@ function renderStageLevelPage(){
       <div class="edit-field">
         <span class="edit-label">敌方机制</span>
         <div class="hint" style="margin-bottom:8px;">这一关的敌人可能带有的特殊机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
-        <div class="mark-row-list">
-          ${state.enemyMechanics.length ? state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStageLevel.mechanics.includes(m.id))).join('') : '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>'}
-        </div>
+        ${(()=>{
+          if(!state.enemyMechanics.length) return '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>';
+          const key = 'stagelevel-mechanics-'+level.id;
+          const isOpen = openPickerKeys.has(key);
+          const selectedCount = draftStageLevel.mechanics.length;
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">机制列表${selectedCount ? ` · 已选 ${selectedCount} 个` : ''}</summary>
+            <div class="entity-picker-list">
+              <input type="text" class="entity-picker-search" placeholder="搜索机制名称...">
+              <div class="entity-picker-items mark-row-list">
+                ${state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStageLevel.mechanics.includes(m.id))).join('')}
+              </div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的机制</div>
+            </div>
+          </details>`;
+        })()}
       </div>
       <div class="edit-field">
         <span class="edit-label">奖励</span>
@@ -1609,15 +1622,15 @@ function renderStageLevelPage(){
       <div class="edit-field">
         <span class="edit-label">特殊获得单位（可选）</span>
         <div class="hint" style="margin-bottom:10px;">如果通关这一关能特殊获得某个单位（比如打赢 Boss 直接给单位），在这里选它——选好之后，那个单位自己的页面也会显示"从这一关获得"。</div>
-        ${draftStageLevel.specialUnitReward ? (()=>{
-          const su = state.units.find(x=>x.id===draftStageLevel.specialUnitReward);
-          if(!su) return '';
-          return `<div class="sub-card" style="display:flex;align-items:center;gap:12px;">
-            ${su.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(su.image))}">` : `<div class="mark-icon-placeholder"></div>`}
-            <div style="flex:1;font-weight:600;">${escapeHtml(su.name)}</div>
-            <button class="btn btn-danger" type="button" data-action="clearSpecialUnitReward">移除</button>
-          </div>`;
-        })() : (()=>{
+        ${(()=>{
+          const su = draftStageLevel.specialUnitReward ? state.units.find(x=>x.id===draftStageLevel.specialUnitReward) : null;
+          if(su){
+            return `<div class="sub-card" style="display:flex;align-items:center;gap:12px;">
+              ${su.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(su.image))}">` : `<div class="mark-icon-placeholder"></div>`}
+              <div style="flex:1;font-weight:600;">${escapeHtml(su.name)}</div>
+              <button class="btn btn-danger" type="button" data-action="clearSpecialUnitReward">移除</button>
+            </div>`;
+          }
           const remaining = state.units;
           const key = 'stagelevel-special-unit-'+level.id;
           const isOpen = openPickerKeys.has(key);
@@ -4173,7 +4186,7 @@ function handleDraftAction(ds, draft, el){
 
 function enemyMechanicToggleHtml(mech, isActive){
   const icon = mech.image ? `<img src="${escapeHtml(String(mech.image))}">` : '';
-  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
+  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" data-search="${escapeHtml((mech.name||'').toLowerCase())}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
 }
 
 function memoryCardPreviewHtml(memoryId){
