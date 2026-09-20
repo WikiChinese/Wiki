@@ -1052,6 +1052,7 @@ function migrateState(){
         if(r.image===undefined) r.image = '';
       });
       if(lv.specialUnitReward===undefined) lv.specialUnitReward = '';
+      if(lv.specialUnitRewardCondition===undefined) lv.specialUnitRewardCondition = '';
     });
   });
   if(!Array.isArray(state.upgrades)) state.upgrades = [];
@@ -1567,6 +1568,7 @@ function renderStageLevelPage(){
     if(!Array.isArray(draftStageLevel.mechanics)) draftStageLevel.mechanics = [];
     if(!Array.isArray(draftStageLevel.rewards)) draftStageLevel.rewards = [];
     if(draftStageLevel.specialUnitReward===undefined) draftStageLevel.specialUnitReward = '';
+    if(draftStageLevel.specialUnitRewardCondition===undefined) draftStageLevel.specialUnitRewardCondition = '';
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑关卡 · ${escapeHtml(stage.name)}</div>
@@ -1644,6 +1646,7 @@ function renderStageLevelPage(){
             </div>
           </details>`;
         })()}
+        <input class="edit-input" style="margin-top:10px;" data-bind="specialUnitRewardCondition" value="${escapeHtml(draftStageLevel.specialUnitRewardCondition||'')}" placeholder="获得条件（可选），比如：首次通关必得 / 每次通关概率掉落">
       </div>
       <div class="edit-field">
         <span class="edit-label">商店</span>
@@ -1671,6 +1674,7 @@ function renderStageLevelPage(){
       level.mechanics = draftStageLevel.mechanics || [];
       level.rewards = draftStageLevel.rewards || [];
       level.specialUnitReward = draftStageLevel.specialUnitReward || '';
+      level.specialUnitRewardCondition = draftStageLevel.specialUnitRewardCondition || '';
       editMode = false; draftStageLevel = null;
       await saveData(false);
       render();
@@ -1737,7 +1741,8 @@ function renderStageLevelPage(){
   const specialUnitHtml = specialUnit ? (()=>{
     const rarityObj = specialUnit.rarity ? state.rarities.find(x=>x.id===specialUnit.rarity) : null;
     const color = (rarityObj && rarityObj.color) || '#c9a24b';
-    return `<div class="mark-row-list" style="margin-bottom:20px;"><a href="${viewToHash({type:'unit', id:specialUnit.id})}" class="badge" data-view="unit" data-id="${specialUnit.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">🎁 ${escapeHtml(specialUnit.name)}</a></div>`;
+    const conditionHtml = level.specialUnitRewardCondition ? `<div style="font-size:13px;color:var(--text-dim);margin-top:6px;">${escapeHtml(level.specialUnitRewardCondition)}</div>` : '';
+    return `<div style="margin-bottom:20px;"><div class="mark-row-list"><a href="${viewToHash({type:'unit', id:specialUnit.id})}" class="badge" data-view="unit" data-id="${specialUnit.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">🎁 ${escapeHtml(specialUnit.name)}</a></div>${conditionHtml}</div>`;
   })() : '';
 
   container.innerHTML = `
