@@ -1646,7 +1646,7 @@ function renderStageLevelPage(){
             </div>
           </details>`;
         })()}
-        <input class="edit-input" style="margin-top:10px;" data-bind="specialUnitRewardCondition" value="${escapeHtml(draftStageLevel.specialUnitRewardCondition||'')}" placeholder="获得条件（可选），比如：首次通关必得 / 每次通关概率掉落">
+        <textarea class="edit-textarea" style="margin-top:10px;" data-bind="specialUnitRewardCondition" placeholder="获得条件（可选），比如：首次通关必得 / 每次通关概率掉落">${escapeHtml(draftStageLevel.specialUnitRewardCondition||'')}</textarea>
       </div>
       <div class="edit-field">
         <span class="edit-label">商店</span>
