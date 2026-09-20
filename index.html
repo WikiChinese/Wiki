@@ -1646,7 +1646,11 @@ function renderStageLevelPage(){
             </div>
           </details>`;
         })()}
-        <textarea class="edit-textarea" style="margin-top:10px;" data-bind="specialUnitRewardCondition" placeholder="获得条件（可选），比如：首次通关必得 / 每次通关概率掉落">${escapeHtml(draftStageLevel.specialUnitRewardCondition||'')}</textarea>
+        <textarea class="edit-textarea" style="margin-top:10px;" data-bind="specialUnitRewardCondition" placeholder="获得条件（可选），比如：
+1. 在关卡开始前...
+2. 到达第 15 波时...
+3. 当...">${escapeHtml(draftStageLevel.specialUnitRewardCondition||'')}</textarea>
+        <div class="hint">支持换行和 1. 2. 3. 列表、**加粗** 等和「说明」一样的格式。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">商店</span>
@@ -1741,7 +1745,7 @@ function renderStageLevelPage(){
   const specialUnitHtml = specialUnit ? (()=>{
     const rarityObj = specialUnit.rarity ? state.rarities.find(x=>x.id===specialUnit.rarity) : null;
     const color = (rarityObj && rarityObj.color) || '#c9a24b';
-    const conditionHtml = level.specialUnitRewardCondition ? `<div style="font-size:13px;color:var(--text-dim);margin-top:6px;">${escapeHtml(level.specialUnitRewardCondition)}</div>` : '';
+    const conditionHtml = level.specialUnitRewardCondition ? `<div class="content-body" style="font-size:13px;color:var(--text-dim);margin-top:6px;">${renderMarkdownLite(level.specialUnitRewardCondition)}</div>` : '';
     return `<div style="margin-bottom:20px;"><div class="mark-row-list"><a href="${viewToHash({type:'unit', id:specialUnit.id})}" class="badge" data-view="unit" data-id="${specialUnit.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">🎁 ${escapeHtml(specialUnit.name)}</a></div>${conditionHtml}</div>`;
   })() : '';
 
