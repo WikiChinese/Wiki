@@ -2865,7 +2865,9 @@ function logEntityChipsHtml(allEntities, selectedIds, viewType, label){
       if(!e) return '';
       const icon = e.image ? `<img src="${escapeHtml(String(e.image))}">` : '';
       const limitedTag = e.isLimitedReturn ? `<span title="限定复刻">🔄</span>` : '';
-      return `<a href="${viewToHash({type:viewType, id:e.id})}" class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle('#8a713a')}cursor:pointer;">${icon}${limitedTag}${escapeHtml(e.name)}</a>`;
+      const rarityObj = e.rarity ? state.rarities.find(x=>x.id===e.rarity) : null;
+      const color = (rarityObj && rarityObj.color) || '#8a713a';
+      return `<a href="${viewToHash({type:viewType, id:e.id})}" class="mark-chip" data-view="${viewType}" data-id="${e.id}" style="${coloredChipStyle(color)}cursor:pointer;" title="${rarityObj ? escapeHtml(rarityObj.name) : ''}">${icon}${limitedTag}${escapeHtml(e.name)}</a>`;
     }).join('')}</div>
   </div>`;
 }
