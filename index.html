@@ -1596,26 +1596,6 @@ function renderStageLevelPage(){
         ${markInsertButtonsHtml('description')}
       </div>
       <div class="edit-field">
-        <span class="edit-label">敌方机制</span>
-        <div class="hint" style="margin-bottom:8px;">这一关的敌人可能带有的特殊机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
-        ${(()=>{
-          if(!state.enemyMechanics.length) return '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>';
-          const key = 'stagelevel-mechanics-'+level.id;
-          const isOpen = openPickerKeys.has(key);
-          const selectedCount = draftStageLevel.mechanics.length;
-          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
-            <summary class="btn btn-gold">机制列表${selectedCount ? ` · 已选 ${selectedCount} 个` : ''}</summary>
-            <div class="entity-picker-list">
-              <input type="text" class="entity-picker-search" placeholder="搜索机制名称...">
-              <div class="entity-picker-items mark-row-list">
-                ${state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStageLevel.mechanics.includes(m.id))).join('')}
-              </div>
-              <div class="entity-picker-noresult" style="display:none;">没有匹配的机制</div>
-            </div>
-          </details>`;
-        })()}
-      </div>
-      <div class="edit-field">
         <span class="edit-label">奖励</span>
         <div class="hint" style="margin-bottom:10px;">通关这一关能拿到的宝石/道具，可以有多条，比如"宝石 500"、"钻石 1000"，各自单独一行，可以加图标。</div>
         ${(draftStageLevel.rewards||[]).map((r,i)=>stageRewardEditRowHtml(r,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无奖励</div>'}
@@ -1651,6 +1631,26 @@ function renderStageLevelPage(){
 2. 到达第 15 波时...
 3. 当...">${escapeHtml(draftStageLevel.specialUnitRewardCondition||'')}</textarea>
         <div class="hint">支持换行和 1. 2. 3. 列表、**加粗** 等和「说明」一样的格式。</div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">敌方机制</span>
+        <div class="hint" style="margin-bottom:8px;">这一关的敌人可能带有的特殊机制，点击选中（可多选）。想新增机制种类，去左侧「敌方机制」页面里编辑。</div>
+        ${(()=>{
+          if(!state.enemyMechanics.length) return '<div class="empty-hint" style="padding-left:0;">还没有敌方机制，去左侧「敌方机制」页面新增。</div>';
+          const key = 'stagelevel-mechanics-'+level.id;
+          const isOpen = openPickerKeys.has(key);
+          const selectedCount = draftStageLevel.mechanics.length;
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">机制列表${selectedCount ? ` · 已选 ${selectedCount} 个` : ''}</summary>
+            <div class="entity-picker-list">
+              <input type="text" class="entity-picker-search" placeholder="搜索机制名称...">
+              <div class="entity-picker-items mark-row-list">
+                ${state.enemyMechanics.map(m=> enemyMechanicToggleHtml(m, draftStageLevel.mechanics.includes(m.id))).join('')}
+              </div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的机制</div>
+            </div>
+          </details>`;
+        })()}
       </div>
       <div class="edit-field">
         <span class="edit-label">商店</span>
@@ -1757,9 +1757,9 @@ function renderStageLevelPage(){
     ${level.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(level.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(level.name)}</h1>
     ${levelMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${levelMechanicsHtml}</div>` : ''}
+    <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     ${levelRewardsHtml ? `<div class="section-label">奖励</div>${levelRewardsHtml}` : ''}
     ${specialUnitHtml ? `<div class="section-label">特殊获得单位</div>${specialUnitHtml}` : ''}
-    <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">商店</div>
     ${shopHtml}
   `;
