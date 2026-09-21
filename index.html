@@ -1459,7 +1459,7 @@ function renderStagePage(){
     if(lv.shop && lv.shop.length) hints.push(`🛒 商店 · ${lv.shop.length} 件商品`);
     const descText = hints.length ? hints.join(' · ') : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
     return `
-    <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id}__${lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
+    <a href="${viewToHash({type:'stageLevel', id: stage.id+'__'+lv.id})}" class="floor-card" data-view="stageLevel" data-id="${stage.id}__${lv.id}" data-level-id="${lv.id}" data-search="${escapeHtml((lv.name||'').toLowerCase())}"${isAdmin ? ' draggable="true"' : ''}>
       ${lv.image ? `<img class="skill-image" src="${escapeHtml(String(lv.image))}">` : ''}
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
@@ -1477,12 +1477,31 @@ function renderStagePage(){
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
     <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">关卡列表</div>
+    ${stage.levels.length ? `<div class="log-meta-bar" style="padding-left:0;margin-bottom:12px;">
+      <span class="log-count">共 ${stage.levels.length} 关</span>
+      ${stage.levels.length>5 ? `<input type="text" id="stageLevelSearchInput" class="log-search-input" placeholder="搜索关卡名称...">` : ''}
+    </div>` : ''}
     ${isAdmin && stage.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 点击关卡进入详情页；按住卡片拖动可以调整关卡顺序。</div>` : ''}
     <div class="floor-list" id="stageLevelsList">${levelsHtml}</div>
+    <div id="stageLevelNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的关卡</div>
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftStage=null; render(); });
   wireBackButton(container);
+
+  const stageLevelSearchInput = document.getElementById('stageLevelSearchInput');
+  if(stageLevelSearchInput) stageLevelSearchInput.addEventListener('input', ()=>{
+    const q = stageLevelSearchInput.value.trim().toLowerCase();
+    const listEl = document.getElementById('stageLevelsList');
+    const noResultEl = document.getElementById('stageLevelNoResult');
+    let anyVisible = false;
+    listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
+      const match = !q || (card.dataset.search||'').includes(q);
+      card.style.display = match ? '' : 'none';
+      if(match) anyVisible = true;
+    });
+    if(noResultEl) noResultEl.style.display = anyVisible ? 'none' : '';
+  });
 
   const listEl = document.getElementById('stageLevelsList');
   listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
@@ -2921,6 +2940,29 @@ function renderHome(){
       </div>`;
   }
 
+  const quickLinks = [
+    {type:'tierlist', label:'📊 分级榜'},
+    {type:'statusEffects', label:'⭐ 状态标记'},
+    {type:'enemyMechanics', label:'☠️ 敌方机制'},
+    {type:'attackTypes', label:'🎯 攻击类型'},
+    {type:'odyssey', label:'🗺️ Odyssey'},
+  ];
+  const stageQuickLinks = state.stages.slice(0,4).map(s=>({id:s.id, label:'🚩 '+s.name}));
+  const quickEntryHtml = (quickLinks.length || stageQuickLinks.length) ? `
+    <div class="section-label" style="margin-top:0;">快捷入口</div>
+    <div class="mark-row-list" style="margin-bottom:20px;">
+      ${quickLinks.map(q=>`<a href="${viewToHash({type:q.type})}" class="mark-chip" style="${coloredChipStyle('#4a6fa5')}cursor:pointer;">${q.label}</a>`).join('')}
+      ${stageQuickLinks.map(q=>`<a href="${viewToHash({type:'stage', id:q.id})}" class="mark-chip" style="${coloredChipStyle('#b8544a')}cursor:pointer;">${escapeHtml(q.label)}</a>`).join('')}
+    </div>` : '';
+
+  const recentUnits = [...state.units].filter(u=>u.updatedAt).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0)).slice(0,10);
+  const recentUnitsHtml = recentUnits.length ? `
+    <div class="section-label" style="margin-top:0;">最近更新的单位</div>
+    <div class="gallery-recent-strip">${recentUnits.map(e=>`<a href="${viewToHash({type:'unit', id:e.id})}" class="gallery-recent-card" data-view="unit" data-id="${e.id}">
+      ${e.image ? `<img class="gallery-recent-img" src="${escapeHtml(String(e.image))}">` : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
+      <div style="font-size:11px;margin-top:4px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(e.name)}</div>
+    </a>`).join('')}</div>` : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <h1 class="page-title" style="margin:0;">更新日志</h1>
@@ -2932,6 +2974,9 @@ function renderHome(){
         <button class="btn btn-gold" id="addLogBtn">+ 新增日志</button>` : ''}
       </div>
     </div>
+    ${quickEntryHtml}
+    ${recentUnitsHtml}
+    <div class="section-label" style="margin-top:0;">更新日志</div>
     ${logs.length ? `<div class="log-meta-bar">
       <span class="log-count">共 ${logs.length} 条更新记录</span>
       <input type="text" id="logSearchInput" class="log-search-input" placeholder="搜索更新标题或内容...">
@@ -3073,10 +3118,40 @@ function renderHome(){
   wireBackButton(container);
 }
 
+function statusListMetaBarHtml(count, inputId, threshold){
+  if(!count) return '';
+  return `<div class="log-meta-bar" style="padding-left:0;">
+    <span class="log-count">共 ${count} 个</span>
+    ${count>(threshold||8) ? `<input type="text" id="${inputId}" class="log-search-input" placeholder="搜索名称...">` : ''}
+  </div>`;
+}
+
+function wireStatusListSearch(container, inputId, groupSelector){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  input.addEventListener('input', ()=>{
+    const q = input.value.trim().toLowerCase();
+    let anyVisible = false;
+    container.querySelectorAll('.status-effect-card[data-search]').forEach(card=>{
+      const match = !q || (card.dataset.search||'').includes(q);
+      card.style.display = match ? '' : 'none';
+      if(match) anyVisible = true;
+    });
+    if(groupSelector){
+      container.querySelectorAll(groupSelector).forEach(group=>{
+        const anyInGroup = [...group.querySelectorAll('.status-effect-card[data-search]')].some(c=>c.style.display!=='none');
+        group.style.display = anyInGroup ? '' : 'none';
+      });
+    }
+    const noResultEl = container.querySelector('.status-list-no-result');
+    if(noResultEl) noResultEl.style.display = anyVisible ? 'none' : '';
+  });
+}
+
 function renderStatusEffects(){
   const container = document.getElementById('mainInner');
   const markCardHtml = m => `
-    <div class="status-effect-card">
+    <div class="status-effect-card" data-search="${escapeHtml((m.name||'').toLowerCase())}">
       ${m.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
@@ -3111,18 +3186,21 @@ function renderStatusEffects(){
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToMarkSettingsBtn">去设置页管理</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了所有单位可能带有的状态效果标记，方便查阅每种标记具体是什么效果。</div>
+    ${statusListMetaBarHtml(state.marks.length, 'statusEffectSearchInput')}
     ${cardsHtml}
+    ${state.marks.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的标记</div>` : ''}
   `;
   const goBtn = document.getElementById('goToMarkSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
   wireCollapsibleBlocks(container, '.status-effect-category-group', 'statusEffects');
+  wireStatusListSearch(container, 'statusEffectSearchInput', '.status-effect-category-group');
   wireBackButton(container);
 }
 
 function renderAttackTypes(){
   const container = document.getElementById('mainInner');
   const cardsHtml = state.attackTypes.length ? state.attackTypes.map(t=>`
-    <div class="status-effect-card">
+    <div class="status-effect-card" data-search="${escapeHtml((t.name||'').toLowerCase())}">
       ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(t.name)}</div>
@@ -3136,10 +3214,13 @@ function renderAttackTypes(){
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToAttackTypeSettingsBtn">去设置页管理</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了单位攻击方式可能用到的攻击类型（比如 AOE、CONE、半圆），方便查阅每种类型具体是什么形状/范围。</div>
+    ${statusListMetaBarHtml(state.attackTypes.length, 'attackTypeSearchInput')}
     <div class="status-effect-list">${cardsHtml}</div>
+    ${state.attackTypes.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的攻击类型</div>` : ''}
   `;
   const goBtn = document.getElementById('goToAttackTypeSettingsBtn');
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  wireStatusListSearch(container, 'attackTypeSearchInput', null);
   wireBackButton(container);
 }
 
@@ -3229,7 +3310,7 @@ function renderEnemyMechanics(){
   }
 
   const mechCardHtml = m => `
-    <div class="status-effect-card">
+    <div class="status-effect-card" data-search="${escapeHtml((m.name||'').toLowerCase())}">
       ${m.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
@@ -3264,11 +3345,14 @@ function renderEnemyMechanics(){
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editEnemyMechanicsBtn">编辑</button>' : ''}</div>
     </div>
     <div class="hint" style="margin:-6px 0 16px;">这里汇总了敌人可能带有的特殊机制，比如护盾、免疫控制、狂暴、召唤小怪等，方便查阅每种机制具体是什么效果、该怎么应对。</div>
+    ${statusListMetaBarHtml(state.enemyMechanics.length, 'enemyMechanicSearchInput')}
     ${cardsHtml}
+    ${state.enemyMechanics.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的机制</div>` : ''}
   `;
   const editBtn = document.getElementById('editEnemyMechanicsBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingEnemyMechanics = true; renderEnemyMechanics(); });
   wireCollapsibleBlocks(container, '.status-effect-category-group', 'enemyMechanics');
+  wireStatusListSearch(container, 'enemyMechanicSearchInput', '.status-effect-category-group');
   wireBackButton(container);
 }
 
