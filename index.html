@@ -326,6 +326,12 @@
   .attack-cost-bar .value{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--gold);font-size:15px;}
   .coin-badge{width:24px;height:24px;border-radius:50%;background:linear-gradient(160deg, var(--gold) 0%, var(--gold-dim) 100%);display:flex;align-items:center;justify-content:center;font-size:12px;box-shadow:0 2px 5px rgba(0,0,0,.3);flex-shrink:0;}
 
+  .log-meta-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding-left:28px;}
+  .log-count{font-size:12px;color:var(--text-faint);white-space:nowrap;}
+  .log-search-input{flex:1;min-width:160px;max-width:280px;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:20px;font-size:13px;outline:none;}
+  .log-search-input:focus{border-color:var(--gold-dim);}
+  .log-month-divider{position:relative;margin:4px 0 14px;padding-left:0;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--gold-dim);}
+  .badge-new{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;font-family:'Noto Sans SC',sans-serif;color:#14161f;background:var(--gold);border-radius:20px;padding:3px 10px;vertical-align:middle;}
   .log-timeline{position:relative;padding-left:28px;}
   .log-timeline::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:linear-gradient(180deg, var(--gold-dim) 0%, var(--border) 85%, transparent 100%);}
   .log-entry{position:relative;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:18px;}
@@ -2926,19 +2932,30 @@ function renderHome(){
         <button class="btn btn-gold" id="addLogBtn">+ 新增日志</button>` : ''}
       </div>
     </div>
+    ${logs.length ? `<div class="log-meta-bar">
+      <span class="log-count">共 ${logs.length} 条更新记录</span>
+      <input type="text" id="logSearchInput" class="log-search-input" placeholder="搜索更新标题或内容...">
+    </div>` : ''}
     ${addFormHtml}
     <div id="logList" class="log-timeline">
-      ${logs.length ? logs.map(l=>{
-        const hasLimitedUnit = (l.linkedUnits||[]).some(id=>{
-          const u = state.units.find(x=>x.id===id);
-          return u && u.isLimitedReturn;
-        });
-        const limitedText = (l.isLimitedReturn || hasLimitedUnit) ? '限定复刻单位' : '';
-        return `
-        <div class="log-entry">
+      ${logs.length ? (()=>{
+        let prevMonth = '';
+        return logs.map((l,i)=>{
+          const hasLimitedUnit = (l.linkedUnits||[]).some(id=>{
+            const u = state.units.find(x=>x.id===id);
+            return u && u.isLimitedReturn;
+          });
+          const limitedText = (l.isLimitedReturn || hasLimitedUnit) ? '限定复刻单位' : '';
+          const month = (l.date||'').slice(0,7);
+          const monthLabel = month ? month.replace(/^(\d{4})-(\d{2})$/, '$1年$2月') : '';
+          const monthDividerHtml = (month && month!==prevMonth) ? `<div class="log-month-divider">${escapeHtml(monthLabel)}</div>` : '';
+          prevMonth = month;
+          const searchKey = ((l.title||'')+' '+(l.content||'')).toLowerCase();
+          return `${monthDividerHtml}
+        <div class="log-entry" data-log-search="${escapeHtml(searchKey)}">
           <div class="log-top">
             <div class="log-top-left">
-              <span class="log-title">${escapeHtml(l.title)}${limitedText ? ` <span class="badge-limited-return">🔄 ${escapeHtml(limitedText)}</span>` : ''}</span>
+              <span class="log-title">${escapeHtml(l.title)}${i===0 ? ` <span class="badge-new">🆕 最新</span>` : ''}${limitedText ? ` <span class="badge-limited-return">🔄 ${escapeHtml(limitedText)}</span>` : ''}</span>
               <span class="log-date">${escapeHtml(l.date)}</span>
             </div>
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
@@ -2949,11 +2966,32 @@ function renderHome(){
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
           ${logEntityChipsHtml(state.families, l.linkedFamilies, 'family', '新使魔')}
         </div>`;
-      }).join('') : `<div class="empty-hint" style="padding-left:0;">暂无更新记录</div>`}
+        }).join('');
+      })() : `<div class="empty-hint" style="padding-left:0;">暂无更新记录</div>`}
     </div>
+    <div id="logNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的更新记录</div>
   `;
 
   if(addingLog && draftLogEntry){ wireDraftForm(container, draftLogEntry); wirePickerToggles(container); }
+
+  const logSearchInput = document.getElementById('logSearchInput');
+  if(logSearchInput) logSearchInput.addEventListener('input', ()=>{
+    const q = logSearchInput.value.trim().toLowerCase();
+    const listEl = document.getElementById('logList');
+    const noResultEl = document.getElementById('logNoResult');
+    let anyVisible = false;
+    listEl.querySelectorAll(':scope > .log-month-divider, :scope > .log-entry').forEach(el=>{ el.style.display = 'none'; });
+    listEl.querySelectorAll(':scope > .log-entry').forEach(entry=>{
+      const match = !q || (entry.dataset.logSearch||'').includes(q);
+      if(match){
+        entry.style.display = '';
+        anyVisible = true;
+        const divider = entry.previousElementSibling;
+        if(divider && divider.classList.contains('log-month-divider')) divider.style.display = '';
+      }
+    });
+    if(noResultEl) noResultEl.style.display = anyVisible ? 'none' : '';
+  });
 
   const addUnitHomeBtn = document.getElementById('addUnitHomeBtn');
   if(addUnitHomeBtn) addUnitHomeBtn.addEventListener('click', ()=> document.getElementById('addUnitBtn').click());
