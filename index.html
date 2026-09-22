@@ -101,14 +101,11 @@
   .gallery-card-en{display:block;font-size:10.5px;color:var(--text-faint);margin-top:2px;}
   .gallery-card:hover .gallery-card-img,.gallery-card:hover .gallery-card-placeholder{border-color:var(--gold-dim);}
   .gallery-card:hover .gallery-card-name{color:var(--gold);}
-  .animated-gradient-text{
-    background:linear-gradient(90deg,#8a713a,#f0d98a,#8a713a);
-    background-size:300% 100%;
-    -webkit-background-clip:text; background-clip:text; color:transparent;
-    animation:textGradientPulse 4s ease-in-out infinite;
-  }
   @keyframes textGradientPulse{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
-  @media (prefers-reduced-motion: reduce){ .animated-gradient-text{animation:none;} }
+  .gallery-card-img-wrap.animated-border{padding:3px;border-radius:13px;background:linear-gradient(135deg,#3a2f14,#c9a24b,#3a2f14);background-size:300% 300%;animation:galleryBorderPulse 4s ease-in-out infinite;}
+  .gallery-card-img-wrap.animated-border .gallery-card-img,.gallery-card-img-wrap.animated-border .gallery-card-placeholder{border:none;border-radius:10px;}
+  @keyframes galleryBorderPulse{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
+  @media (prefers-reduced-motion: reduce){ .gallery-card-img-wrap.animated-border{animation:none;} }
   .rarity-section{margin-bottom:32px;}
   .rarity-section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;list-style:none;user-select:none;}
   .rarity-section-head::-webkit-details-marker{display:none;}
@@ -1244,6 +1241,7 @@ function migrateState(){
     if(!Array.isArray(m.obtainMethods)) m.obtainMethods = [];
     if(!Array.isArray(m.linkedFamilies)) m.linkedFamilies = [];
     if(!Array.isArray(m.comments)) m.comments = [];
+    if(m.personalColor===undefined) m.personalColor = '';
   });
 }
 
@@ -2417,6 +2415,13 @@ function escapeHtml(s){
 // Renders a unit's personalColor as an inline style. Accepts either a plain color (hex/rgb/named)
 // or a full CSS gradient string (e.g. "linear-gradient(90deg, gold, red)") — gradients can't be
 // applied via the `color` property directly, so text needs the background-clip:text trick instead.
+function unitBorderGradientStyle(value){
+  if(!value) return '';
+  const v = String(value).trim();
+  if(!v || !/gradient/i.test(v)) return '';
+  const safe = v.replace(/[<>"']/g, '');
+  return ` style="padding:3px;border-radius:13px;background:${safe};background-size:300% 300%;animation:galleryBorderPulse 4s ease-in-out infinite;"`;
+}
 function unitNameColorStyle(value){
   if(!value) return '';
   const v = String(value).trim();
@@ -3662,11 +3667,11 @@ function renderOdyssey(){
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
-      <div class="gallery-card-img-wrap">
+      <div class="gallery-card-img-wrap${/gradient/i.test(u.personalColor||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(u.personalColor)}>
         ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name${u.personalColor ? '' : ' animated-gradient-text'}"${unitNameColorStyle(u.personalColor)}>${escapeHtml(u.name)}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(u.personalColor)}>${escapeHtml(u.name)}</div>
     </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
   container.innerHTML = `
@@ -4114,6 +4119,7 @@ function handleDraftAction(ds, draft, el){
   }
   else if(action==='removeQuestlineStep') draft.questline.splice(idx,1);
   else if(action==='clearUnitPersonalColor') draft.personalColor = '';
+  else if(action==='clearMemoryPersonalColor') draft.personalColor = '';
   else if(action==='addCharacterCard') draft.characterCards.push({id:uid(), name:'新单位卡', image:'', description:'', rarity:'', unitId:''});
   else if(action==='removeCharacterCard') draft.characterCards.splice(idx,1);
   else if(action==='addBasicCard') draft.basicCards.push({id:uid(), name:'新奥德赛修正器', image:'', description:'', rarity:''});
@@ -5114,7 +5120,7 @@ function renderUnit(){
       ${mainImageHtml ? `<div class="unit-hero-image">${mainImageHtml}</div>` : ''}
       <div class="unit-hero-info">
         <div class="page-header">
-          <h1 class="page-title${unit.personalColor ? '' : ' animated-gradient-text'}"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
+          <h1 class="page-title"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
           <div class="meta-row">${rarityBadge(unit.rarity)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
@@ -5491,11 +5497,11 @@ function renderGallery(type){
       return ` data-filter-${f.key.toLowerCase()}="${vals.join(',')}"`;
     }).join('');
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
-      <div class="gallery-card-img-wrap">
+      <div class="gallery-card-img-wrap${((type==='unit'||type==='memory') && /gradient/i.test(entity.personalColor||'')) ? ' animated-border' : ''}"${(type==='unit'||type==='memory') ? unitBorderGradientStyle(entity.personalColor) : ''}>
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name${(type==='unit' && !entity.personalColor) ? ' animated-gradient-text' : ''}"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
     </a>`;
   }
   const categoryFilterHtml = (type==='item' && list.length && state.itemCategories.length) ? `<div class="gallery-category-filter">
@@ -5770,6 +5776,7 @@ function startSimpleEdit(type, entity){
   if(type==='memory'){
     draftSimple.personalTarget = Array.isArray(entity.personalTarget) ? entity.personalTarget.slice() : (entity.personalTarget ? [entity.personalTarget] : []);
     if(!Array.isArray(draftSimple.linkedFamilies)) draftSimple.linkedFamilies = [];
+    if(draftSimple.personalColor===undefined) draftSimple.personalColor = '';
   }
   draftSimple.rarity = entity.rarity || '';
   draftSimple.obtainWay = entity.obtainWay || '';
@@ -5819,6 +5826,16 @@ function renderSimpleEntity(type){
         <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftSimple.name)}" placeholder="${cfg.label}名称">
         <input class="edit-input" style="margin-top:8px;" data-bind="englishName" value="${escapeHtml(draftSimple.englishName||'')}" placeholder="英文名（可选，方便搜索）">
       </div>
+
+      ${type==='memory' ? `<div class="edit-field">
+        <span class="edit-label">记忆名字颜色（可选，用在详情页标题和画廊卡片名字上）</span>
+        <div class="hint" style="margin-bottom:8px;">可以填纯色（比如 #ff0000），也可以填一整段 CSS 渐变，比如：<code>linear-gradient(90deg, gold, red)</code>，填渐变会自动带呼吸动画。</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="color" id="memoryColorPickerHelper" value="${escapeHtml(/^#[0-9a-fA-F]{3,8}$/.test(draftSimple.personalColor||'') ? draftSimple.personalColor : '#c9a24b')}" title="快速选一个纯色">
+          <input class="edit-input" style="flex:1;" id="memoryPersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftSimple.personalColor||'')}" placeholder="留空 = 默认颜色，不填就不会动">
+          <button type="button" class="btn" data-action="clearMemoryPersonalColor">清除</button>
+        </div>
+      </div>` : ''}
 
       <div class="edit-field">
         <span class="edit-label">图片</span>
@@ -5923,6 +5940,7 @@ function renderSimpleEntity(type){
       if(type==='memory'){
         entity.personalTarget = Array.isArray(draftSimple.personalTarget) ? draftSimple.personalTarget : [];
         entity.linkedFamilies = draftSimple.linkedFamilies || [];
+        entity.personalColor = draftSimple.personalColor || '';
       }
       entity.rarity = draftSimple.rarity || '';
       entity.obtainWay = draftSimple.obtainWay || '';
@@ -5932,6 +5950,12 @@ function renderSimpleEntity(type){
       draftSimple = null;
       await saveData(false);
       render();
+    });
+    const memoryColorPickerHelper = document.getElementById('memoryColorPickerHelper');
+    if(memoryColorPickerHelper) memoryColorPickerHelper.addEventListener('input', ()=>{
+      draftSimple.personalColor = memoryColorPickerHelper.value;
+      const textInput = document.getElementById('memoryPersonalColorInput');
+      if(textInput) textInput.value = memoryColorPickerHelper.value;
     });
     const doDeleteSimpleEntity = async ()=>{
       if(!confirm(`删除「${entity.name}」？此操作无法撤销。`)) return;
@@ -6013,7 +6037,7 @@ function renderSimpleEntity(type){
     </div>
     ${entity.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(entity.image))}">` : ''}
     <div class="page-header">
-      <h1 class="page-title">${escapeHtml(entity.name)}</h1>
+      <h1 class="page-title"${type==='memory' ? unitNameColorStyle(entity.personalColor) : ''}>${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
       <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
