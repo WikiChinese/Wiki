@@ -1226,6 +1226,7 @@ function migrateState(){
     if(f.obtainWay===undefined) f.obtainWay = '';
     if(!Array.isArray(f.obtainMethods)) f.obtainMethods = [];
     if(!Array.isArray(f.comments)) f.comments = [];
+    if(f.personalColor===undefined) f.personalColor = '';
   });
   state.memories.forEach(m=>{
     if(!Array.isArray(m.marks)) m.marks = [];
@@ -2415,6 +2416,17 @@ function escapeHtml(s){
 // Renders a unit's personalColor as an inline style. Accepts either a plain color (hex/rgb/named)
 // or a full CSS gradient string (e.g. "linear-gradient(90deg, gold, red)") — gradients can't be
 // applied via the `color` property directly, so text needs the background-clip:text trick instead.
+// Resolves the color to actually use for an entity's name/border: its own personalColor if set,
+// else falls back to its rarity's color, but only when that rarity's color is itself a gradient
+// (a flat rarity color should not suddenly make every unit of that rarity animate).
+function resolveEntityColorValue(entity){
+  if(entity.personalColor) return entity.personalColor;
+  if(entity.rarity){
+    const r = state.rarities.find(x=>x.id===entity.rarity);
+    if(r && r.color && /gradient/i.test(r.color)) return r.color;
+  }
+  return '';
+}
 function unitBorderGradientStyle(value){
   if(!value) return '';
   const v = String(value).trim();
@@ -2743,7 +2755,8 @@ function rarityBadge(rarity){
   const r = state.rarities.find(x=>x.id===rarity);
   if(!r) return '';
   const raw = r.color || '#c9a24b';
-  return `<span class="badge" style="background:${raw};color:#ffffff;font-weight:700;">${escapeHtml(r.name)}</span>`;
+  const animStyle = /gradient/i.test(raw) ? 'background-size:300% 300%;animation:galleryBorderPulse 4s ease-in-out infinite;' : '';
+  return `<span class="badge" style="background:${raw};${animStyle}color:#ffffff;font-weight:700;">${escapeHtml(r.name)}</span>`;
 }
 
 function isVideoUrl(url){
@@ -3667,11 +3680,11 @@ function renderOdyssey(){
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
-      <div class="gallery-card-img-wrap${/gradient/i.test(u.personalColor||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(u.personalColor)}>
+      <div class="gallery-card-img-wrap${/gradient/i.test(resolveEntityColorValue(u)||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(resolveEntityColorValue(u))}>
         ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${unitNameColorStyle(u.personalColor)}>${escapeHtml(u.name)}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(resolveEntityColorValue(u))}>${escapeHtml(u.name)}</div>
     </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
   container.innerHTML = `
@@ -4119,7 +4132,7 @@ function handleDraftAction(ds, draft, el){
   }
   else if(action==='removeQuestlineStep') draft.questline.splice(idx,1);
   else if(action==='clearUnitPersonalColor') draft.personalColor = '';
-  else if(action==='clearMemoryPersonalColor') draft.personalColor = '';
+  else if(action==='clearSimplePersonalColor') draft.personalColor = '';
   else if(action==='addCharacterCard') draft.characterCards.push({id:uid(), name:'新单位卡', image:'', description:'', rarity:'', unitId:''});
   else if(action==='removeCharacterCard') draft.characterCards.splice(idx,1);
   else if(action==='addBasicCard') draft.basicCards.push({id:uid(), name:'新奥德赛修正器', image:'', description:'', rarity:''});
@@ -5120,7 +5133,7 @@ function renderUnit(){
       ${mainImageHtml ? `<div class="unit-hero-image">${mainImageHtml}</div>` : ''}
       <div class="unit-hero-info">
         <div class="page-header">
-          <h1 class="page-title"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
+          <h1 class="page-title"${unitNameColorStyle(resolveEntityColorValue(unit))}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
           <div class="meta-row">${rarityBadge(unit.rarity)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
@@ -5497,11 +5510,11 @@ function renderGallery(type){
       return ` data-filter-${f.key.toLowerCase()}="${vals.join(',')}"`;
     }).join('');
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
-      <div class="gallery-card-img-wrap${((type==='unit'||type==='memory') && /gradient/i.test(entity.personalColor||'')) ? ' animated-border' : ''}"${(type==='unit'||type==='memory') ? unitBorderGradientStyle(entity.personalColor) : ''}>
+      <div class="gallery-card-img-wrap${/gradient/i.test(resolveEntityColorValue(entity)||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(resolveEntityColorValue(entity))}>
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(resolveEntityColorValue(entity))}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
     </a>`;
   }
   const categoryFilterHtml = (type==='item' && list.length && state.itemCategories.length) ? `<div class="gallery-category-filter">
@@ -5776,8 +5789,8 @@ function startSimpleEdit(type, entity){
   if(type==='memory'){
     draftSimple.personalTarget = Array.isArray(entity.personalTarget) ? entity.personalTarget.slice() : (entity.personalTarget ? [entity.personalTarget] : []);
     if(!Array.isArray(draftSimple.linkedFamilies)) draftSimple.linkedFamilies = [];
-    if(draftSimple.personalColor===undefined) draftSimple.personalColor = '';
   }
+  if(draftSimple.personalColor===undefined) draftSimple.personalColor = '';
   draftSimple.rarity = entity.rarity || '';
   draftSimple.obtainWay = entity.obtainWay || '';
   editMode = true;
@@ -5827,15 +5840,15 @@ function renderSimpleEntity(type){
         <input class="edit-input" style="margin-top:8px;" data-bind="englishName" value="${escapeHtml(draftSimple.englishName||'')}" placeholder="英文名（可选，方便搜索）">
       </div>
 
-      ${type==='memory' ? `<div class="edit-field">
-        <span class="edit-label">记忆名字颜色（可选，用在详情页标题和画廊卡片名字上）</span>
-        <div class="hint" style="margin-bottom:8px;">可以填纯色（比如 #ff0000），也可以填一整段 CSS 渐变，比如：<code>linear-gradient(90deg, gold, red)</code>，填渐变会自动带呼吸动画。</div>
+      <div class="edit-field">
+        <span class="edit-label">${cfg.label}名字颜色（可选，用在详情页标题和画廊卡片名字上）</span>
+        <div class="hint" style="margin-bottom:8px;">可以填纯色（比如 #ff0000），也可以填一整段 CSS 渐变，比如：<code>linear-gradient(90deg, gold, red)</code>，填渐变会自动带呼吸动画。留空的话，如果这个${cfg.label}的稀有度本身设置了渐变颜色，也会自动跟着那个稀有度的颜色动。</div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <input type="color" id="memoryColorPickerHelper" value="${escapeHtml(/^#[0-9a-fA-F]{3,8}$/.test(draftSimple.personalColor||'') ? draftSimple.personalColor : '#c9a24b')}" title="快速选一个纯色">
-          <input class="edit-input" style="flex:1;" id="memoryPersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftSimple.personalColor||'')}" placeholder="留空 = 默认颜色，不填就不会动">
-          <button type="button" class="btn" data-action="clearMemoryPersonalColor">清除</button>
+          <input type="color" id="simpleColorPickerHelper" value="${escapeHtml(/^#[0-9a-fA-F]{3,8}$/.test(draftSimple.personalColor||'') ? draftSimple.personalColor : '#c9a24b')}" title="快速选一个纯色">
+          <input class="edit-input" style="flex:1;" id="simplePersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftSimple.personalColor||'')}" placeholder="留空 = 跟随稀有度颜色">
+          <button type="button" class="btn" data-action="clearSimplePersonalColor">清除</button>
         </div>
-      </div>` : ''}
+      </div>
 
       <div class="edit-field">
         <span class="edit-label">图片</span>
@@ -5940,8 +5953,8 @@ function renderSimpleEntity(type){
       if(type==='memory'){
         entity.personalTarget = Array.isArray(draftSimple.personalTarget) ? draftSimple.personalTarget : [];
         entity.linkedFamilies = draftSimple.linkedFamilies || [];
-        entity.personalColor = draftSimple.personalColor || '';
       }
+      entity.personalColor = draftSimple.personalColor || '';
       entity.rarity = draftSimple.rarity || '';
       entity.obtainWay = draftSimple.obtainWay || '';
       entity.obtainMethods = Array.isArray(draftSimple.obtainMethods) ? draftSimple.obtainMethods : [];
@@ -5951,11 +5964,11 @@ function renderSimpleEntity(type){
       await saveData(false);
       render();
     });
-    const memoryColorPickerHelper = document.getElementById('memoryColorPickerHelper');
-    if(memoryColorPickerHelper) memoryColorPickerHelper.addEventListener('input', ()=>{
-      draftSimple.personalColor = memoryColorPickerHelper.value;
-      const textInput = document.getElementById('memoryPersonalColorInput');
-      if(textInput) textInput.value = memoryColorPickerHelper.value;
+    const simpleColorPickerHelper = document.getElementById('simpleColorPickerHelper');
+    if(simpleColorPickerHelper) simpleColorPickerHelper.addEventListener('input', ()=>{
+      draftSimple.personalColor = simpleColorPickerHelper.value;
+      const textInput = document.getElementById('simplePersonalColorInput');
+      if(textInput) textInput.value = simpleColorPickerHelper.value;
     });
     const doDeleteSimpleEntity = async ()=>{
       if(!confirm(`删除「${entity.name}」？此操作无法撤销。`)) return;
@@ -6037,7 +6050,7 @@ function renderSimpleEntity(type){
     </div>
     ${entity.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(entity.image))}">` : ''}
     <div class="page-header">
-      <h1 class="page-title"${type==='memory' ? unitNameColorStyle(entity.personalColor) : ''}>${escapeHtml(entity.name)}</h1>
+      <h1 class="page-title"${unitNameColorStyle(resolveEntityColorValue(entity))}>${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
       <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
