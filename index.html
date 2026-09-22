@@ -3684,7 +3684,7 @@ function renderOdyssey(){
         ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${unitNameColorStyle(resolveEntityColorValue(u))}>${escapeHtml(u.name)}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(u.personalColor)}>${escapeHtml(u.name)}</div>
     </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
   container.innerHTML = `
@@ -4957,7 +4957,7 @@ function renderUnit(){
     return `<div class="skill-view">
       ${media}
       <div class="skill-view-body">
-        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'memory', id:m.id})}" data-view="memory" data-id="${m.id}" style="color:inherit;text-decoration:none;cursor:pointer;">${escapeHtml(m.name)}</a></h3>
+        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'memory', id:m.id})}" data-view="memory" data-id="${m.id}" style="${m.personalColor ? unitNameColorStyle(m.personalColor).replace(/^\s*style="|"$/g,'') : 'color:inherit;'}text-decoration:none;cursor:pointer;">${escapeHtml(m.name)}</a></h3>
         ${passivesInner}
       </div>
     </div>`;
@@ -4978,7 +4978,7 @@ function renderUnit(){
     return `<div class="skill-view">
       ${media2}
       <div class="skill-view-body">
-        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'family', id:f.id})}" data-view="family" data-id="${f.id}" style="color:inherit;text-decoration:none;cursor:pointer;">${escapeHtml(f.name)}</a></h3>
+        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'family', id:f.id})}" data-view="family" data-id="${f.id}" style="${f.personalColor ? unitNameColorStyle(f.personalColor).replace(/^\s*style="|"$/g,'') : 'color:inherit;'}text-decoration:none;cursor:pointer;">${escapeHtml(f.name)}</a></h3>
         ${fpassivesInner}
       </div>
     </div>`;
@@ -5133,7 +5133,7 @@ function renderUnit(){
       ${mainImageHtml ? `<div class="unit-hero-image">${mainImageHtml}</div>` : ''}
       <div class="unit-hero-info">
         <div class="page-header">
-          <h1 class="page-title"${unitNameColorStyle(resolveEntityColorValue(unit))}>${escapeHtml(unit.name)}</h1>
+          <h1 class="page-title"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
           <div class="meta-row">${rarityBadge(unit.rarity)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
@@ -5514,7 +5514,7 @@ function renderGallery(type){
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${unitNameColorStyle(resolveEntityColorValue(entity))}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
+      <div class="gallery-card-name"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
     </a>`;
   }
   const categoryFilterHtml = (type==='item' && list.length && state.itemCategories.length) ? `<div class="gallery-category-filter">
@@ -6050,7 +6050,7 @@ function renderSimpleEntity(type){
     </div>
     ${entity.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(entity.image))}">` : ''}
     <div class="page-header">
-      <h1 class="page-title"${unitNameColorStyle(resolveEntityColorValue(entity))}>${escapeHtml(entity.name)}</h1>
+      <h1 class="page-title"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
       <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
