@@ -2416,17 +2416,6 @@ function escapeHtml(s){
 // Renders a unit's personalColor as an inline style. Accepts either a plain color (hex/rgb/named)
 // or a full CSS gradient string (e.g. "linear-gradient(90deg, gold, red)") — gradients can't be
 // applied via the `color` property directly, so text needs the background-clip:text trick instead.
-// Resolves the color to actually use for an entity's name/border: its own personalColor if set,
-// else falls back to its rarity's color, but only when that rarity's color is itself a gradient
-// (a flat rarity color should not suddenly make every unit of that rarity animate).
-function resolveEntityColorValue(entity){
-  if(entity.personalColor) return entity.personalColor;
-  if(entity.rarity){
-    const r = state.rarities.find(x=>x.id===entity.rarity);
-    if(r && r.color && /gradient/i.test(r.color)) return r.color;
-  }
-  return '';
-}
 function unitBorderGradientStyle(value){
   if(!value) return '';
   const v = String(value).trim();
@@ -3680,7 +3669,7 @@ function renderOdyssey(){
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
-      <div class="gallery-card-img-wrap${/gradient/i.test(resolveEntityColorValue(u)||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(resolveEntityColorValue(u))}>
+      <div class="gallery-card-img-wrap${/gradient/i.test(u.personalColor||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(u.personalColor)}>
         ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
@@ -5510,7 +5499,7 @@ function renderGallery(type){
       return ` data-filter-${f.key.toLowerCase()}="${vals.join(',')}"`;
     }).join('');
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
-      <div class="gallery-card-img-wrap${/gradient/i.test(resolveEntityColorValue(entity)||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(resolveEntityColorValue(entity))}>
+      <div class="gallery-card-img-wrap${/gradient/i.test(entity.personalColor||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(entity.personalColor)}>
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
