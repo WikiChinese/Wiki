@@ -2423,7 +2423,7 @@ function unitNameColorStyle(value){
   if(!v) return '';
   const safe = v.replace(/[<>"']/g, '');
   if(/gradient/i.test(safe)){
-    return ` style="background:${safe};-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;"`;
+    return ` style="background:${safe};background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:textGradientPulse 4s ease-in-out infinite;"`;
   }
   return ` style="color:${safe};"`;
 }
@@ -4442,7 +4442,7 @@ function renderUnit(){
         <div class="hint" style="margin-bottom:8px;">可以填纯色（比如 #ff0000），也可以填一整段 CSS 渐变，比如：<code>linear-gradient(90deg, gold, red)</code></div>
         <div style="display:flex;align-items:center;gap:10px;">
           <input type="color" id="unitColorPickerHelper" value="${escapeHtml(/^#[0-9a-fA-F]{3,8}$/.test(draftUnit.personalColor||'') ? draftUnit.personalColor : '#c9a24b')}" title="快速选一个纯色">
-          <input class="edit-input" style="flex:1;" id="unitPersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftUnit.personalColor||'')}" placeholder="留空 = 默认颜色，也可以填渐变 CSS">
+          <input class="edit-input" style="flex:1;" id="unitPersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftUnit.personalColor||'')}" placeholder="留空 = 默认渐变动画，也可以填自己的渐变 CSS（会自动带呼吸动画）">
           <button type="button" class="btn" data-action="clearUnitPersonalColor">清除</button>
         </div>
       </div>
