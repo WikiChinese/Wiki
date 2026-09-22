@@ -3463,7 +3463,7 @@ function odysseyCardEditHtml(card, i, kind, removeAction, linkToUnit, labelWord)
       </select>
     </div>
     ${linkToUnit ? `<div class="edit-field">
-      <span class="edit-label">对应单位（在这个单位的详情页会显示这张角色卡）</span>
+      <span class="edit-label">对应单位（在这个单位的详情页会显示这张单位卡）</span>
       <select class="edit-select" data-bind="${kind}.${i}.unitId">
         <option value="">不关联任何单位</option>
         ${state.units.map(u=>`<option value="${escapeHtml(String(u.id))}" ${card.unitId===u.id?'selected':''}>${escapeHtml(u.name)}</option>`).join('')}
@@ -3513,7 +3513,7 @@ function odysseyCardInlineEditHtml(card){
     </div>
     <div class="edit-field">
       <span class="edit-label">卡片名称</span>
-      <input class="edit-input" data-oc-bind="name" value="${escapeHtml(card.name)}" placeholder="角色卡名称">
+      <input class="edit-input" data-oc-bind="name" value="${escapeHtml(card.name)}" placeholder="单位卡名称">
     </div>
     <div class="edit-field">
       <span class="edit-label">稀有度</span>
@@ -3571,7 +3571,7 @@ function wireOdysseyCardInlineEdit(container, cardId){
   if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingOdysseyCardId = null; render(); });
   const deleteBtn = container.querySelector('#deleteOdysseyCardBtn');
   if(deleteBtn) deleteBtn.addEventListener('click', async ()=>{
-    if(!confirm('确定删除这张角色卡？')) return;
+    if(!confirm('确定删除这张单位卡？')) return;
     state.odyssey.characterCards = state.odyssey.characterCards.filter(c=>c.id!==cardId);
     editingOdysseyCardId = null;
     await saveData(true);
@@ -3613,15 +3613,15 @@ function renderOdyssey(){
       </div>
 
       <div class="edit-field">
-        <span class="edit-label">角色卡 (Character Card)</span>
-        ${draftOdyssey.characterCards.map((c,i)=>odysseyCardEditHtml(c,i,'characterCards','removeCharacterCard',true,'角色卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无角色卡</div>'}
-        <button class="btn btn-gold" data-action="addCharacterCard">+ 新增角色卡</button>
+        <span class="edit-label">单位卡 (Unit Card)</span>
+        ${draftOdyssey.characterCards.map((c,i)=>odysseyCardEditHtml(c,i,'characterCards','removeCharacterCard',true,'单位卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无单位卡</div>'}
+        <button class="btn btn-gold" data-action="addCharacterCard">+ 新增单位卡</button>
       </div>
 
       <div class="edit-field">
-        <span class="edit-label">基础卡 (Basic Card)</span>
-        ${draftOdyssey.basicCards.map((c,i)=>odysseyCardEditHtml(c,i,'basicCards','removeBasicCard',false,'基础卡')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无基础卡</div>'}
-        <button class="btn btn-gold" data-action="addBasicCard">+ 新增基础卡</button>
+        <span class="edit-label">奥德赛修正器 (Odyssey Modifier)</span>
+        ${draftOdyssey.basicCards.map((c,i)=>odysseyCardEditHtml(c,i,'basicCards','removeBasicCard',false,'奥德赛修正器')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无奥德赛修正器</div>'}
+        <button class="btn btn-gold" data-action="addBasicCard">+ 新增奥德赛修正器</button>
       </div>
     `;
     wireDraftForm(container, draftOdyssey);
@@ -3665,11 +3665,11 @@ function renderOdyssey(){
     <div class="section-label">可选择的单位</div>
     ${selectedUnits.length>1 ? `<div class="gallery-search-bar"><span class="gallery-search-icon">🔍</span><input type="text" id="odysseyUnitSearchInput" class="gallery-search-input" placeholder="搜索单位名称（中文/英文均可）..."></div>` : ''}
     <div class="gallery-grid" id="odysseyUnitGrid">${unitsHtml}</div>
-    <div class="section-label">角色卡 (Character Card)</div>
-    <div class="hint" style="margin:-6px 0 12px;">已经关联到某个单位的角色卡，只会显示在那个单位的详情页里，这里只列出还没关联单位的角色卡。</div>
-    <div class="odyssey-card-grid">${unassignedCharacterCards.length ? unassignedCharacterCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无未关联单位的角色卡</div>'}</div>
-    <div class="section-label">基础卡 (Basic Card)</div>
-    <div class="odyssey-card-grid">${od.basicCards.length ? od.basicCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无基础卡</div>'}</div>
+    <div class="section-label">单位卡 (Unit Card)</div>
+    <div class="hint" style="margin:-6px 0 12px;">已经关联到某个单位的单位卡，只会显示在那个单位的详情页里，这里只列出还没关联单位的单位卡。</div>
+    <div class="odyssey-card-grid">${unassignedCharacterCards.length ? unassignedCharacterCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无未关联单位的单位卡</div>'}</div>
+    <div class="section-label">奥德赛修正器 (Odyssey Modifier)</div>
+    <div class="odyssey-card-grid">${od.basicCards.length ? od.basicCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无奥德赛修正器</div>'}</div>
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftOdyssey=null; render(); });
@@ -4098,9 +4098,9 @@ function handleDraftAction(ds, draft, el){
   }
   else if(action==='removeQuestlineStep') draft.questline.splice(idx,1);
   else if(action==='clearUnitPersonalColor') draft.personalColor = '';
-  else if(action==='addCharacterCard') draft.characterCards.push({id:uid(), name:'新角色卡', image:'', description:'', rarity:'', unitId:''});
+  else if(action==='addCharacterCard') draft.characterCards.push({id:uid(), name:'新单位卡', image:'', description:'', rarity:'', unitId:''});
   else if(action==='removeCharacterCard') draft.characterCards.splice(idx,1);
-  else if(action==='addBasicCard') draft.basicCards.push({id:uid(), name:'新基础卡', image:'', description:'', rarity:''});
+  else if(action==='addBasicCard') draft.basicCards.push({id:uid(), name:'新奥德赛修正器', image:'', description:'', rarity:''});
   else if(action==='removeBasicCard') draft.basicCards.splice(idx,1);
   else if(action==='addFloor') draft.floors.push({id:uid(), name:'第 '+(draft.floors.length+1)+' 层', image:'', description:''});
   else if(action==='removeFloor') draft.floors.splice(idx,1);
@@ -5121,7 +5121,7 @@ function renderUnit(){
     ${attacksHtml}
     ${unit.attacks&&unit.attacks.length>1 ? `<div class="attack-cost-bar" style="border-color:var(--gold);background:rgba(201,162,75,0.14);"><span class="label">全部攻击方式总花费</span><span class="value" style="font-size:17px;">${unit.attacks.reduce((sum,a)=>sum+sumAttackCost(a),0).toLocaleString()}</span></div>` : ''}
     ${unit.otherForms&&unit.otherForms.length ? `<div class="section-label">其他形态</div>${otherFormsHtml}` : ''}
-    ${odysseyCardsForUnit.length || isAdmin ? `<div class="section-label">Odyssey 角色卡</div>` : ''}
+    ${odysseyCardsForUnit.length || isAdmin ? `<div class="section-label">Odyssey 单位卡</div>` : ''}
     ${odysseyCardsForUnit.length ? `<div class="odyssey-card-grid">${odysseyCardsForUnit.map(c=>{
       if(isAdmin && editingOdysseyCardId===c.id) return odysseyCardInlineEditHtml(c);
       const viewHtml = odysseyCardViewHtml(c, true);
@@ -5131,7 +5131,7 @@ function renderUnit(){
     <div class="sub-card" style="margin-top:12px;">
       <div class="edit-field">
         <span class="edit-label">卡片名称</span>
-        <input class="edit-input" id="newCharCardName" value="${escapeHtml(newCharacterCardDraft?.name||'')}" placeholder="角色卡名称">
+        <input class="edit-input" id="newCharCardName" value="${escapeHtml(newCharacterCardDraft?.name||'')}" placeholder="单位卡名称">
       </div>
       <div class="image-upload-box" style="margin:10px 0;">
         ${newCharacterCardDraft?.image ? `<img class="image-preview small zoomable" src="${escapeHtml(String(newCharacterCardDraft.image))}">` : `<div class="image-placeholder small">无图片</div>`}
@@ -5149,14 +5149,14 @@ function renderUnit(){
       </div>
       <div class="edit-field">
         <span class="edit-label">说明</span>
-        <textarea class="edit-input" id="newCharCardDesc" rows="3" placeholder="这张角色卡的效果/用途说明...">${escapeHtml(newCharacterCardDraft?.description||'')}</textarea>
+        <textarea class="edit-input" id="newCharCardDesc" rows="3" placeholder="这张单位卡的效果/用途说明...">${escapeHtml(newCharacterCardDraft?.description||'')}</textarea>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
         <button class="btn" id="newCharCardCancel">取消</button>
-        <button class="btn btn-gold" id="newCharCardSave">保存角色卡</button>
+        <button class="btn btn-gold" id="newCharCardSave">保存单位卡</button>
       </div>
     </div>
-    ` : `<button class="btn btn-gold" id="addCharCardForUnitBtn" style="margin-top:${odysseyCardsForUnit.length?'12px':'0'};">+ 为这个单位新增角色卡</button>`) : ''}
+    ` : `<button class="btn btn-gold" id="addCharCardForUnitBtn" style="margin-top:${odysseyCardsForUnit.length?'12px':'0'};">+ 为这个单位新增单位卡</button>`) : ''}
     ${commentsSectionHtml(unit, 'unit')}
   `;
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; startUnitEdit(unit); render(); });
@@ -5258,7 +5258,7 @@ function renderUnit(){
     addingCharacterCardForUnit = false;
     newCharacterCardDraft = null;
     await saveData(true);
-    showToast('角色卡已新增');
+    showToast('单位卡已新增');
     render();
   });
   container.querySelectorAll('[data-trait-id]').forEach(chip=>{
