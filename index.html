@@ -1070,6 +1070,7 @@ function migrateState(){
   });
   if(!state.odyssey || typeof state.odyssey !== 'object') state.odyssey = {};
   if(state.odyssey.intro===undefined) state.odyssey.intro = '';
+  if(state.odyssey.modifierIntro===undefined) state.odyssey.modifierIntro = '';
   if(!Array.isArray(state.odyssey.unitIds)) state.odyssey.unitIds = [];
   if(!Array.isArray(state.odyssey.characterCards)) state.odyssey.characterCards = [];
   if(!Array.isArray(state.odyssey.basicCards)) state.odyssey.basicCards = [];
@@ -3619,8 +3620,12 @@ function renderOdyssey(){
       </div>
 
       <div class="edit-field">
-        <span class="edit-label">奥德赛修正器 (Odyssey Modifier)</span>
-        <div class="hint" style="margin-bottom:10px;">不绑定某个特定单位，适用于整个奥德赛副本的强化/效果卡片，比如给全队加成、改变楼层规则等。每张修正器自己的说明写在它自己的卡片里。</div>
+        <span class="edit-label">奥德赛修正器 (Odyssey Modifier) 整体说明</span>
+        <textarea class="edit-textarea" data-bind="modifierIntro" placeholder="解释一下「奥德赛修正器」整体是什么、怎么用，比如：不绑定某个特定单位，适用于整个奥德赛副本的强化/效果卡片...">${escapeHtml(draftOdyssey.modifierIntro||'')}</textarea>
+        <div class="hint">这是整个分类的说明，会显示在下面卡片列表的上方。每张修正器自己具体的效果，写在它自己卡片下面的"说明"里。</div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">奥德赛修正器列表</span>
         ${draftOdyssey.basicCards.map((c,i)=>odysseyCardEditHtml(c,i,'basicCards','removeBasicCard',false,'奥德赛修正器')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无奥德赛修正器</div>'}
         <button class="btn btn-gold" data-action="addBasicCard">+ 新增奥德赛修正器</button>
       </div>
@@ -3631,6 +3636,7 @@ function renderOdyssey(){
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       state.odyssey = {
         intro: draftOdyssey.intro || '',
+        modifierIntro: draftOdyssey.modifierIntro || '',
         unitIds: draftOdyssey.unitIds || [],
         characterCards: draftOdyssey.characterCards || [],
         basicCards: draftOdyssey.basicCards || [],
@@ -3670,7 +3676,7 @@ function renderOdyssey(){
     <div class="hint" style="margin:-6px 0 12px;">已经关联到某个单位的单位卡，只会显示在那个单位的详情页里，这里只列出还没关联单位的单位卡。</div>
     <div class="odyssey-card-grid">${unassignedCharacterCards.length ? unassignedCharacterCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无未关联单位的单位卡</div>'}</div>
     <div class="section-label">奥德赛修正器 (Odyssey Modifier)</div>
-    <div class="hint" style="margin:-6px 0 12px;">不绑定某个特定单位，适用于整个奥德赛副本的强化/效果卡片，比如给全队加成、改变楼层规则等。</div>
+    ${od.modifierIntro ? `<div class="content-body" style="margin:-6px 0 16px;">${renderMarkdownLite(od.modifierIntro)}</div>` : ''}
     <div class="odyssey-card-grid">${od.basicCards.length ? od.basicCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无奥德赛修正器</div>'}</div>
   `;
   const editBtn = document.getElementById('editBtn');
