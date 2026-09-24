@@ -1068,6 +1068,8 @@ function migrateState(){
         if(it.quantity===undefined) it.quantity='';
       });
       if(!Array.isArray(lv.mechanics)) lv.mechanics=[];
+      if(!Array.isArray(lv.modifiers)) lv.modifiers=[];
+      if(!Array.isArray(lv.lootCards)) lv.lootCards=[];
       if(!Array.isArray(lv.rewards)) lv.rewards=[];
       lv.rewards.forEach(r=>{
         if(r.name===undefined) r.name = '';
@@ -1476,6 +1478,8 @@ function renderStagePage(){
     const hints = [];
     if(lv.rewards && lv.rewards.length) hints.push(`🎁 ${lv.rewards.length} 项奖励`);
     if(lv.mechanics && lv.mechanics.length) hints.push(`☠️ ${lv.mechanics.length} 个机制`);
+    if(lv.modifiers && lv.modifiers.length) hints.push(`🧩 ${lv.modifiers.length} 个修正器`);
+    if(lv.lootCards && lv.lootCards.length) hints.push(`🃏 ${lv.lootCards.length} 张战利品卡`);
     if(lv.shop && lv.shop.length) hints.push(`🛒 商店 · ${lv.shop.length} 件商品`);
     const descText = hints.length ? hints.join(' · ') : (lv.description ? '点击查看关卡详情' : '<span style="color:var(--text-faint);">暂无说明</span>');
     return `
@@ -1611,6 +1615,8 @@ function renderStageLevelPage(){
     if(!draftStageLevel) draftStageLevel = JSON.parse(JSON.stringify(level));
     if(!Array.isArray(draftStageLevel.shop)) draftStageLevel.shop = [];
     if(!Array.isArray(draftStageLevel.mechanics)) draftStageLevel.mechanics = [];
+    if(!Array.isArray(draftStageLevel.modifiers)) draftStageLevel.modifiers = [];
+    if(!Array.isArray(draftStageLevel.lootCards)) draftStageLevel.lootCards = [];
     if(!Array.isArray(draftStageLevel.rewards)) draftStageLevel.rewards = [];
     if(draftStageLevel.specialUnitReward===undefined) draftStageLevel.specialUnitReward = '';
     if(draftStageLevel.specialUnitRewardCondition===undefined) draftStageLevel.specialUnitRewardCondition = '';
@@ -1698,6 +1704,46 @@ function renderStageLevelPage(){
         })()}
       </div>
       <div class="edit-field">
+        <span class="edit-label">修正器 (Modifier)</span>
+        <div class="hint" style="margin-bottom:8px;">这一关能用到/出现的修正器，点击选中（可多选）。想新增修正器种类，去左侧「修正器」页面里编辑。</div>
+        ${(()=>{
+          if(!state.modifiers.length) return '<div class="empty-hint" style="padding-left:0;">还没有修正器，去左侧「修正器」页面新增。</div>';
+          const key = 'stagelevel-modifiers-'+level.id;
+          const isOpen = openPickerKeys.has(key);
+          const selectedCount = draftStageLevel.modifiers.length;
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">修正器列表${selectedCount ? ` · 已选 ${selectedCount} 个` : ''}</summary>
+            <div class="entity-picker-list">
+              <input type="text" class="entity-picker-search" placeholder="搜索修正器名称...">
+              <div class="entity-picker-items mark-row-list">
+                ${state.modifiers.map(m=> modifierToggleHtml(m, draftStageLevel.modifiers.includes(m.id))).join('')}
+              </div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的修正器</div>
+            </div>
+          </details>`;
+        })()}
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">战利品卡 (Loot Card)</span>
+        <div class="hint" style="margin-bottom:8px;">这一关能用到/掉落的战利品卡，点击选中（可多选）。想新增战利品卡种类，去左侧「战利品卡」页面里编辑。</div>
+        ${(()=>{
+          if(!state.lootCards.length) return '<div class="empty-hint" style="padding-left:0;">还没有战利品卡，去左侧「战利品卡」页面新增。</div>';
+          const key = 'stagelevel-lootcards-'+level.id;
+          const isOpen = openPickerKeys.has(key);
+          const selectedCount = draftStageLevel.lootCards.length;
+          return `<details class="entity-picker" data-picker-key="${key}"${isOpen?' open':''}>
+            <summary class="btn btn-gold">战利品卡列表${selectedCount ? ` · 已选 ${selectedCount} 个` : ''}</summary>
+            <div class="entity-picker-list">
+              <input type="text" class="entity-picker-search" placeholder="搜索战利品卡名称...">
+              <div class="entity-picker-items mark-row-list">
+                ${state.lootCards.map(c=> lootCardToggleHtml(c, draftStageLevel.lootCards.includes(c.id))).join('')}
+              </div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的战利品卡</div>
+            </div>
+          </details>`;
+        })()}
+      </div>
+      <div class="edit-field">
         <span class="edit-label">商店</span>
         <div class="hint" style="margin-bottom:10px;">这一关商店里能买到的东西，比如限定道具、装备。</div>
         ${draftStageLevel.shop.map((it,i)=>shopItemEditRowHtml(it,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无商品</div>'}
@@ -1721,6 +1767,8 @@ function renderStageLevelPage(){
       level.description = draftStageLevel.description || '';
       level.shop = draftStageLevel.shop || [];
       level.mechanics = draftStageLevel.mechanics || [];
+      level.modifiers = draftStageLevel.modifiers || [];
+      level.lootCards = draftStageLevel.lootCards || [];
       level.rewards = draftStageLevel.rewards || [];
       level.specialUnitReward = draftStageLevel.specialUnitReward || '';
       level.specialUnitRewardCondition = draftStageLevel.specialUnitRewardCondition || '';
@@ -1780,6 +1828,20 @@ function renderStageLevelPage(){
     return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
   }).join('') : '';
 
+  const levelModifiersHtml = (level.modifiers&&level.modifiers.length) ? level.modifiers.map(mid=>{
+    const m = state.modifiers.find(x=>x.id===mid);
+    if(!m) return '';
+    const icon = m.image ? `<img src="${escapeHtml(String(m.image))}">` : '';
+    return `<span class="mark-chip" style="${coloredChipStyle(m.color)}" title="${escapeHtml(m.description||m.name)}">${icon}${escapeHtml(m.name)}</span>`;
+  }).join('') : '';
+
+  const levelLootCardsHtml = (level.lootCards&&level.lootCards.length) ? level.lootCards.map(cid=>{
+    const c = state.lootCards.find(x=>x.id===cid);
+    if(!c) return '';
+    const icon = c.image ? `<img src="${escapeHtml(String(c.image))}">` : '';
+    return `<span class="mark-chip" style="${coloredChipStyle(c.color)}" title="${escapeHtml(c.description||c.name)}">${icon}${escapeHtml(c.name)}</span>`;
+  }).join('') : '';
+
   const levelRewardsHtml = (level.rewards&&level.rewards.length) ? `<div class="mark-row-list" style="margin-bottom:20px;">${level.rewards.map(r=>{
     if(!r.name && !r.amount) return '';
     const icon = r.image ? `<img src="${escapeHtml(String(r.image))}">` : '';
@@ -1802,6 +1864,8 @@ function renderStageLevelPage(){
     ${level.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(level.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(level.name)}</h1>
     ${levelMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${levelMechanicsHtml}</div>` : ''}
+    ${levelModifiersHtml ? `<div class="section-label">修正器</div><div class="mark-row-list" style="margin-bottom:20px;">${levelModifiersHtml}</div>` : ''}
+    ${levelLootCardsHtml ? `<div class="section-label">战利品卡</div><div class="mark-row-list" style="margin-bottom:20px;">${levelLootCardsHtml}</div>` : ''}
     <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     ${levelRewardsHtml ? `<div class="section-label">奖励</div>${levelRewardsHtml}` : ''}
     ${specialUnitHtml ? `<div class="section-label">特殊获得单位</div>${specialUnitHtml}` : ''}
@@ -4317,6 +4381,18 @@ function handleDraftAction(ds, draft, el){
     const i = draft.mechanics.indexOf(mechId);
     if(i>=0) draft.mechanics.splice(i,1); else draft.mechanics.push(mechId);
   }
+  else if(action==='toggleLevelModifier'){
+    const mid = ds.modifierId;
+    if(!Array.isArray(draft.modifiers)) draft.modifiers = [];
+    const i = draft.modifiers.indexOf(mid);
+    if(i>=0) draft.modifiers.splice(i,1); else draft.modifiers.push(mid);
+  }
+  else if(action==='toggleLevelLootCard'){
+    const lid = ds.lootCardId;
+    if(!Array.isArray(draft.lootCards)) draft.lootCards = [];
+    const i = draft.lootCards.indexOf(lid);
+    if(i>=0) draft.lootCards.splice(i,1); else draft.lootCards.push(lid);
+  }
   else if(action==='selectGroup'){
     const gid = ds.groupId;
     if(!Array.isArray(draft.groups)) draft.groups = [];
@@ -4462,6 +4538,16 @@ function handleDraftAction(ds, draft, el){
 function enemyMechanicToggleHtml(mech, isActive){
   const icon = mech.image ? `<img src="${escapeHtml(String(mech.image))}">` : '';
   return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mech.color, isActive)}" data-action="toggleLevelMechanic" data-mechanic-id="${mech.id}" data-search="${escapeHtml((mech.name||'').toLowerCase())}" title="${escapeHtml(mech.description||mech.name)}">${icon}${escapeHtml(mech.name)}</button>`;
+}
+
+function modifierToggleHtml(mod, isActive){
+  const icon = mod.image ? `<img src="${escapeHtml(String(mod.image))}">` : '';
+  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(mod.color, isActive)}" data-action="toggleLevelModifier" data-modifier-id="${mod.id}" data-search="${escapeHtml((mod.name||'').toLowerCase())}" title="${escapeHtml(mod.description||mod.name)}">${icon}${escapeHtml(mod.name)}</button>`;
+}
+
+function lootCardToggleHtml(card, isActive){
+  const icon = card.image ? `<img src="${escapeHtml(String(card.image))}">` : '';
+  return `<button type="button" class="mark-toggle ${isActive?'active':''}" style="${toggleChipStyle(card.color, isActive)}" data-action="toggleLevelLootCard" data-loot-card-id="${card.id}" data-search="${escapeHtml((card.name||'').toLowerCase())}" title="${escapeHtml(card.description||card.name)}">${icon}${escapeHtml(card.name)}</button>`;
 }
 
 function memoryCardPreviewHtml(memoryId){
