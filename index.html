@@ -692,7 +692,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','stage','stageLevel','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -986,6 +986,18 @@ function migrateState(){
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
   state.attackTypes.forEach(t=>{
     if(t.color===undefined) t.color = '#4a8fd1';
+    if(t.image===undefined) t.image = '';
+    if(t.description===undefined) t.description = '';
+  });
+  if(!Array.isArray(state.modifiers)) state.modifiers = [];
+  state.modifiers.forEach(t=>{
+    if(t.color===undefined) t.color = '#4a8fd1';
+    if(t.image===undefined) t.image = '';
+    if(t.description===undefined) t.description = '';
+  });
+  if(!Array.isArray(state.lootCards)) state.lootCards = [];
+  state.lootCards.forEach(t=>{
+    if(t.color===undefined) t.color = '#c9a24b';
     if(t.image===undefined) t.image = '';
     if(t.description===undefined) t.description = '';
   });
@@ -2536,6 +2548,8 @@ function renderSidebar(){
     <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
     <a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits"><span class="nav-icon">✨</span>特性</a>
     <a href="#/enemyMechanics" class="top-link ${currentView.type==='enemyMechanics'?'active':''}" data-view="enemyMechanics"><span class="nav-icon">☠️</span>敌方机制</a>
+    <a href="#/modifiers" class="top-link ${currentView.type==='modifiers'?'active':''}" data-view="modifiers"><span class="nav-icon">🧩</span>修正器</a>
+    <a href="#/lootCards" class="top-link ${currentView.type==='lootCards'?'active':''}" data-view="lootCards"><span class="nav-icon">🃏</span>战利品卡</a>
   </div>
 
   <div class="nav-section">
@@ -3240,7 +3254,111 @@ function renderAttackTypes(){
   wireBackButton(container);
 }
 
+function renderModifiers(){
+  const container = document.getElementById('mainInner');
+
+  if(editingModifiers && isAdmin){
+    const rowsHtml = state.modifiers.length ? state.modifiers.map(modifierEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无修正器</div>';
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <h1 class="page-title" style="margin:0;">修正器 (Modifier)</h1>
+        <div class="toolbar-actions"><button class="btn btn-gold" id="doneEditModifiersBtn">✓ 完成编辑</button></div>
+      </div>
+      <div class="hint" style="margin:-6px 0 16px;">编辑游戏里的修正器种类。改动会自动保存。</div>
+      <div id="modifiersList">${rowsHtml}</div>
+      <button class="btn btn-gold" id="addModifierBtn">+ 新增修正器</button>
+    `;
+    const doneBtn = document.getElementById('doneEditModifiersBtn');
+    if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingModifiers = false; renderModifiers(); });
+    const addBtn = document.getElementById('addModifierBtn');
+    if(addBtn) addBtn.addEventListener('click', async ()=>{
+      state.modifiers.push({id:uid(), name:'新修正器', image:'', color:'#4a8fd1', description:''});
+      await saveData(true);
+      renderModifiers();
+    });
+    wireSettingsBindElements(container, renderModifiers);
+    return;
+  }
+
+  const cardsHtml = state.modifiers.length ? state.modifiers.map(t=>`
+    <div class="status-effect-card" data-search="${escapeHtml((t.name||'').toLowerCase())}">
+      ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
+      <div class="status-effect-info">
+        <div class="status-effect-name">${escapeHtml(t.name)}</div>
+        <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何修正器，管理员可以点右上角「编辑」新增。</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">修正器 (Modifier)</h1>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editModifiersBtn">编辑</button>' : ''}</div>
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">这里汇总了游戏里出现的各种修正器，方便查阅每一种具体是什么效果。</div>
+    ${statusListMetaBarHtml(state.modifiers.length, 'modifierSearchInput')}
+    <div class="status-effect-list">${cardsHtml}</div>
+    ${state.modifiers.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的修正器</div>` : ''}
+  `;
+  const editBtn = document.getElementById('editModifiersBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingModifiers = true; renderModifiers(); });
+  wireStatusListSearch(container, 'modifierSearchInput', null);
+  wireBackButton(container);
+}
+
+function renderLootCards(){
+  const container = document.getElementById('mainInner');
+
+  if(editingLootCards && isAdmin){
+    const rowsHtml = state.lootCards.length ? state.lootCards.map(lootCardEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无战利品卡</div>';
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <h1 class="page-title" style="margin:0;">战利品卡 (Loot Card)</h1>
+        <div class="toolbar-actions"><button class="btn btn-gold" id="doneEditLootCardsBtn">✓ 完成编辑</button></div>
+      </div>
+      <div class="hint" style="margin:-6px 0 16px;">编辑游戏里的战利品卡种类。改动会自动保存。</div>
+      <div id="lootCardsList">${rowsHtml}</div>
+      <button class="btn btn-gold" id="addLootCardBtn">+ 新增战利品卡</button>
+    `;
+    const doneBtn = document.getElementById('doneEditLootCardsBtn');
+    if(doneBtn) doneBtn.addEventListener('click', ()=>{ editingLootCards = false; renderLootCards(); });
+    const addBtn = document.getElementById('addLootCardBtn');
+    if(addBtn) addBtn.addEventListener('click', async ()=>{
+      state.lootCards.push({id:uid(), name:'新战利品卡', image:'', color:'#c9a24b', description:''});
+      await saveData(true);
+      renderLootCards();
+    });
+    wireSettingsBindElements(container, renderLootCards);
+    return;
+  }
+
+  const cardsHtml = state.lootCards.length ? state.lootCards.map(t=>`
+    <div class="status-effect-card" data-search="${escapeHtml((t.name||'').toLowerCase())}">
+      ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
+      <div class="status-effect-info">
+        <div class="status-effect-name">${escapeHtml(t.name)}</div>
+        <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      </div>
+    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何战利品卡，管理员可以点右上角「编辑」新增。</div>';
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">战利品卡 (Loot Card)</h1>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editLootCardsBtn">编辑</button>' : ''}</div>
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">这里汇总了游戏里出现的各种战利品卡，方便查阅每一种具体是什么效果。</div>
+    ${statusListMetaBarHtml(state.lootCards.length, 'lootCardSearchInput')}
+    <div class="status-effect-list">${cardsHtml}</div>
+    ${state.lootCards.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的战利品卡</div>` : ''}
+  `;
+  const editBtn = document.getElementById('editLootCardsBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editingLootCards = true; renderLootCards(); });
+  wireStatusListSearch(container, 'lootCardSearchInput', null);
+  wireBackButton(container);
+}
+
 let editingEnemyMechanics = false;
+let editingModifiers = false;
+let editingLootCards = false;
 let editingOdysseyCardId = null;
 
 function enemyMechanicCategoryEditRowHtml(cat, i){
@@ -5461,6 +5579,8 @@ function renderMain(){
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
   else if(currentView.type==='enemyMechanics') renderEnemyMechanics();
+  else if(currentView.type==='modifiers') renderModifiers();
+  else if(currentView.type==='lootCards') renderLootCards();
   else if(currentView.type==='traits') renderTraitsPage();
   else if(currentView.type==='stage') renderStagePage();
   else if(currentView.type==='stageLevel') renderStageLevelPage();
@@ -6114,6 +6234,46 @@ function attackTypeEditRowHtml(t, i){
   </div>`;
 }
 
+function modifierEditRowHtml(t, i){
+  const iconHtml = t.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="mark-icon-placeholder"></div>`;
+  const isGradient = /gradient/.test(t.color||'');
+  const colorPickerVal = isGradient ? '#4a8fd1' : (t.color||'#4a8fd1');
+  return `<div class="sub-card">
+    <div class="mark-edit-row">
+      ${iconHtml}
+      <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="modifiers.${i}.image" style="display:none;"></label>
+      <input class="edit-input" data-settings-bind="modifiers.${i}.name" value="${escapeHtml(t.name)}" placeholder="修正器名称">
+      <input type="color" data-settings-bind="modifiers.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
+      ${colorFormulaInputHtml('modifiers', i, t.color)}
+      <button class="btn btn-danger" data-settings-action="removeModifier" data-index="${i}">删除</button>
+    </div>
+    <div class="edit-field" style="margin-top:10px;">
+      <span class="edit-label">说明（会显示在左侧「修正器」页面里）</span>
+      <textarea class="edit-input" data-settings-bind="modifiers.${i}.description" rows="2" placeholder="这个修正器具体是什么效果">${escapeHtml(t.description||'')}</textarea>
+    </div>
+  </div>`;
+}
+
+function lootCardEditRowHtml(t, i){
+  const iconHtml = t.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="mark-icon-placeholder"></div>`;
+  const isGradient = /gradient/.test(t.color||'');
+  const colorPickerVal = isGradient ? '#c9a24b' : (t.color||'#c9a24b');
+  return `<div class="sub-card">
+    <div class="mark-edit-row">
+      ${iconHtml}
+      <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="lootCards.${i}.image" style="display:none;"></label>
+      <input class="edit-input" data-settings-bind="lootCards.${i}.name" value="${escapeHtml(t.name)}" placeholder="战利品卡名称">
+      <input type="color" data-settings-bind="lootCards.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
+      ${colorFormulaInputHtml('lootCards', i, t.color)}
+      <button class="btn btn-danger" data-settings-action="removeLootCard" data-index="${i}">删除</button>
+    </div>
+    <div class="edit-field" style="margin-top:10px;">
+      <span class="edit-label">说明（会显示在左侧「战利品卡」页面里）</span>
+      <textarea class="edit-input" data-settings-bind="lootCards.${i}.description" rows="2" placeholder="这张战利品卡具体是什么效果">${escapeHtml(t.description||'')}</textarea>
+    </div>
+  </div>`;
+}
+
 function markCategoryEditRowHtml(cat, i){
   const isGradient = /gradient/.test(cat.color||'');
   const colorPickerVal = isGradient ? '#c9a24b' : (cat.color||'#c9a24b');
@@ -6390,6 +6550,67 @@ function wireRestoreBackupButtons(container){
   });
 }
 
+function wireSettingsBindElements(container, rerenderFn){
+  container.querySelectorAll('[data-settings-bind]').forEach(el=>{
+    const sync = ()=>{
+      setPath(state, el.dataset.settingsBind, el.value);
+      pendingLocalSave = true;
+      clearTimeout(settingsSyncTimer);
+      settingsSyncTimer = setTimeout(()=>{ saveData(true); }, 400);
+    };
+    el.addEventListener('input', sync);
+    el.addEventListener('change', sync);
+  });
+  container.querySelectorAll('[data-settings-image-bind]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      handleImageUpload(el, async (dataUrl)=>{
+        setPath(state, el.dataset.settingsImageBind, dataUrl);
+        await saveData(true);
+        rerenderFn();
+      });
+    });
+  });
+  container.querySelectorAll('[data-settings-action]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const action = el.dataset.settingsAction;
+      const idx = parseInt(el.dataset.index);
+      // These delete shared config that units/items may reference elsewhere, and used to fire
+      // instantly on click with a silent save — one misclick, gone, no way back. Now confirmed first.
+      const removeMap = {
+        removeMark: {arr: state.marks, label:'状态标记'},
+        removeMarkCategory: {arr: state.markCategories, label:'状态标记分类'},
+        removeItemCategory: {arr: state.itemCategories, label:'物品分类'},
+        removeObtainMethod: {arr: state.obtainMethods, label:'获取方式'},
+        removeAttackType: {arr: state.attackTypes, label:'攻击类型'},
+        removeModifier: {arr: state.modifiers, label:'修正器'},
+        removeLootCard: {arr: state.lootCards, label:'战利品卡'},
+        removeGroup: {arr: state.groups, label:'分组'},
+        removeElement: {arr: state.elements, label:'元素'},
+        removeSeries: {arr: state.series, label:'系列'},
+        removeTrait: {arr: state.traits, label:'特性'},
+        removeRarity: {arr: state.rarities, label:'稀有度'}
+      };
+      if(removeMap[action]){
+        const {arr, label} = removeMap[action];
+        const item = arr[idx];
+        const name = item && item.name ? `「${item.name}」` : '';
+        if(!confirm(`确定删除这个${label}${name}吗？如果有单位/物品正在引用它，这些引用不会自动清掉，只是会指向一个已经不存在的项。`)) return;
+        arr.splice(idx,1);
+      }
+      else if(action==='moveMarkUp') moveArrayItem(state.marks, idx, -1);
+      else if(action==='moveMarkDown') moveArrayItem(state.marks, idx, 1);
+      else if(action==='moveRarityUp'){
+        if(idx>0){ const tmp=state.rarities[idx-1]; state.rarities[idx-1]=state.rarities[idx]; state.rarities[idx]=tmp; }
+      }
+      else if(action==='moveRarityDown'){
+        if(idx<state.rarities.length-1){ const tmp=state.rarities[idx+1]; state.rarities[idx+1]=state.rarities[idx]; state.rarities[idx]=tmp; }
+      }
+      await saveData(true);
+      rerenderFn();
+    });
+  });
+}
+
 function renderSettings(){
   const container = document.getElementById('mainInner');
   const prevSettingsBlockOpenStates = Array.from(container.querySelectorAll('details.settings-block')).map(d=>d.open);
@@ -6572,62 +6793,7 @@ function renderSettings(){
     adminEmailsTextarea.addEventListener('blur', syncAdminEmails);
   }
 
-  container.querySelectorAll('[data-settings-bind]').forEach(el=>{
-    const sync = ()=>{
-      setPath(state, el.dataset.settingsBind, el.value);
-      pendingLocalSave = true;
-      clearTimeout(settingsSyncTimer);
-      settingsSyncTimer = setTimeout(()=>{ saveData(true); }, 400);
-    };
-    el.addEventListener('input', sync);
-    el.addEventListener('change', sync);
-  });
-  container.querySelectorAll('[data-settings-image-bind]').forEach(el=>{
-    el.addEventListener('change', ()=>{
-      handleImageUpload(el, async (dataUrl)=>{
-        setPath(state, el.dataset.settingsImageBind, dataUrl);
-        await saveData(true);
-        renderSettings();
-      });
-    });
-  });
-  container.querySelectorAll('[data-settings-action]').forEach(el=>{
-    el.addEventListener('click', async ()=>{
-      const action = el.dataset.settingsAction;
-      const idx = parseInt(el.dataset.index);
-      // These delete shared config that units/items may reference elsewhere, and used to fire
-      // instantly on click with a silent save — one misclick, gone, no way back. Now confirmed first.
-      const removeMap = {
-        removeMark: {arr: state.marks, label:'状态标记'},
-        removeMarkCategory: {arr: state.markCategories, label:'状态标记分类'},
-        removeItemCategory: {arr: state.itemCategories, label:'物品分类'},
-        removeObtainMethod: {arr: state.obtainMethods, label:'获取方式'},
-        removeAttackType: {arr: state.attackTypes, label:'攻击类型'},
-        removeGroup: {arr: state.groups, label:'分组'},
-        removeElement: {arr: state.elements, label:'元素'},
-        removeSeries: {arr: state.series, label:'系列'},
-        removeTrait: {arr: state.traits, label:'特性'},
-        removeRarity: {arr: state.rarities, label:'稀有度'}
-      };
-      if(removeMap[action]){
-        const {arr, label} = removeMap[action];
-        const item = arr[idx];
-        const name = item && item.name ? `「${item.name}」` : '';
-        if(!confirm(`确定删除这个${label}${name}吗？如果有单位/物品正在引用它，这些引用不会自动清掉，只是会指向一个已经不存在的项。`)) return;
-        arr.splice(idx,1);
-      }
-      else if(action==='moveMarkUp') moveArrayItem(state.marks, idx, -1);
-      else if(action==='moveMarkDown') moveArrayItem(state.marks, idx, 1);
-      else if(action==='moveRarityUp'){
-        if(idx>0){ const tmp=state.rarities[idx-1]; state.rarities[idx-1]=state.rarities[idx]; state.rarities[idx]=tmp; }
-      }
-      else if(action==='moveRarityDown'){
-        if(idx<state.rarities.length-1){ const tmp=state.rarities[idx+1]; state.rarities[idx+1]=state.rarities[idx]; state.rarities[idx]=tmp; }
-      }
-      await saveData(true);
-      renderSettings();
-    });
-  });
+  wireSettingsBindElements(container, renderSettings);
   const addBtn = document.getElementById('addMarkBtn');
   if(addBtn) addBtn.addEventListener('click', async ()=>{
     state.marks.push({id:uid(), name:'新标记', image:'', color:'#c9a24b', categoryId:'', description:''});
@@ -6658,6 +6824,7 @@ function renderSettings(){
     await saveData(true);
     renderSettings();
   });
+
   const settingsSaveBtn = document.getElementById('settingsSaveBtn');
   if(settingsSaveBtn) settingsSaveBtn.addEventListener('click', async ()=>{
     if(document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur();
