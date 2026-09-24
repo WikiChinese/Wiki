@@ -2093,7 +2093,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','stages','upgrades','itemCategories'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
