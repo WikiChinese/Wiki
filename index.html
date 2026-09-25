@@ -1797,9 +1797,9 @@ function renderStageLevelPage(){
         <div class="shop-item-icon-wrap"><div class="shop-item-icon-placeholder"></div></div>
         <div class="shop-item-body">
           <div class="shop-item-name" style="color:var(--text-faint);">尚未选择关联内容</div>
-          ${it.quantity ? `<div class="shop-item-qty">${escapeHtml(it.quantity)}</div>` : ''}
+          ${it.quantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(it.quantity))}</div>` : ''}
         </div>
-        ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
+        ${it.price ? `<div class="shop-item-price">${formatNumberDisplay(escapeHtml(it.price))}</div>` : ''}
       </div>`;
     }
     let typeTagLabel = REF_LABELS[it.refType];
@@ -1815,9 +1815,9 @@ function renderStageLevelPage(){
       </div>
       <div class="shop-item-body">
         <div class="shop-item-name">${escapeHtml(linkedEntity.name)}</div>
-        ${it.quantity ? `<div class="shop-item-qty">${escapeHtml(it.quantity)}</div>` : ''}
+        ${it.quantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(it.quantity))}</div>` : ''}
       </div>
-      ${it.price ? `<div class="shop-item-price">${escapeHtml(it.price)}</div>` : ''}
+      ${it.price ? `<div class="shop-item-price">${formatNumberDisplay(escapeHtml(it.price))}</div>` : ''}
     </a>`;
   }).join('')}</div>` : '<div class="empty-hint" style="padding-left:0;">这一关暂时没有商店商品。</div>';
 
@@ -1845,7 +1845,7 @@ function renderStageLevelPage(){
   const levelRewardsHtml = (level.rewards&&level.rewards.length) ? `<div class="mark-row-list" style="margin-bottom:20px;">${level.rewards.map(r=>{
     if(!r.name && !r.amount) return '';
     const icon = r.image ? `<img src="${escapeHtml(String(r.image))}">` : '';
-    return `<span class="mark-chip" style="background:var(--card);border:1px solid var(--gold-dim);color:var(--gold);">${icon}${escapeHtml(r.name)}${r.amount ? ` ×${escapeHtml(r.amount)}` : ''}</span>`;
+    return `<span class="mark-chip" style="background:var(--card);border:1px solid var(--gold-dim);color:var(--gold);">${icon}${escapeHtml(r.name)}${r.amount ? ` ×${formatNumberDisplay(escapeHtml(r.amount))}` : ''}</span>`;
   }).join('')}</div>` : '';
 
   const specialUnit = level.specialUnitReward ? state.units.find(u2=>u2.id===level.specialUnitReward) : null;
@@ -2488,6 +2488,12 @@ function showToast(msg, duration){
 
 function escapeHtml(s){
   return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// Adds thousand separators to any run of 4+ digits inside a display string (e.g. "宝石 2000" ->
+// "宝石 2,000"), leaving 1-3 digit numbers and any surrounding text untouched. Display only —
+// never applied to the raw value inside an edit input.
+function formatNumberDisplay(s){
+  return (s||'').replace(/\d{4,}/g, m => m.replace(/\B(?=(\d{3})+(?!\d))/g, ','));
 }
 // Renders a unit's personalColor as an inline style. Accepts either a plain color (hex/rgb/named)
 // or a full CSS gradient string (e.g. "linear-gradient(90deg, gold, red)") — gradients can't be
@@ -5294,7 +5300,7 @@ function renderUnit(){
   const evolutionItemsHtml = evolutionItems.length ? `<div class="shop-item-grid">${evolutionItems.map(it=>`
     <a href="${viewToHash({type:'item', id:it.id})}" class="shop-item-card" data-view="item" data-id="${it.id}">
       <div class="shop-item-icon-wrap">${it.image ? `<img class="shop-item-icon" src="${escapeHtml(String(it.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
-      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(it.name)}</div>${it.evolveQuantity ? `<div class="shop-item-qty">${escapeHtml(it.evolveQuantity)}</div>` : ''}${it.questline ? `<div class="shop-item-qty">📜 有任务线</div>` : ''}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(it.name)}</div>${it.evolveQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(it.evolveQuantity))}</div>` : ''}${it.questline ? `<div class="shop-item-qty">📜 有任务线</div>` : ''}</div>
     </a>`).join('')}</div>` : '';
   const relatedUnitsHtml = (unit.relatedUnits&&unit.relatedUnits.length) ? `<div class="shop-item-grid">${unit.relatedUnits.map(r=>{
     const ru = state.units.find(u=>u.id===r.unitId);
@@ -5643,7 +5649,7 @@ function renderItem(){
     ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderMarkdownLite(item.questline)}</div>` : ''}
     ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
       <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
-      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${escapeHtml(item.evolveQuantity)}</div>` : ''}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.evolveQuantity))}</div>` : ''}</div>
     </a>` : ''}
   `;
   const evoCard = container.querySelector('.shop-item-card[data-view="unit"]');
