@@ -1364,7 +1364,7 @@ function traitDetailInnerHtml(t){
       ${iconHtml}
       <div>
         <div class="trait-detail-name" style="color:${/gradient/.test(t.color||'')?'var(--gold)':(t.color||'var(--gold)')};">${escapeHtml(t.name)}</div>
-        <div class="trait-detail-sub">${[t.odds, t.pity].filter(Boolean).map(escapeHtml).join('&nbsp;&nbsp;')}</div>
+        <div class="trait-detail-sub">${[t.odds, t.pity].filter(Boolean).map(v=>formatNumberDisplay(escapeHtml(v))).join('&nbsp;&nbsp;')}</div>
       </div>
     </div>
     <div class="trait-detail-body">
@@ -5103,7 +5103,7 @@ function renderUnit(){
       return `<div class="skill-tab-panel ${i===0?'active':''}" data-skill-panel="${i}">
         <div class="skill-menu-header">
           <span class="skill-menu-name">${escapeHtml(s.name)}</span>
-          ${s.cost ? `<span class="skill-menu-cost">${escapeHtml(s.cost)}</span>` : ''}
+          ${s.cost ? `<span class="skill-menu-cost">${formatNumberDisplay(escapeHtml(s.cost))}</span>` : ''}
         </div>
         <div class="skill-view">
           ${mediaHtml ? `<div class="skill-view-media-stack">${mediaHtml}</div>` : ''}
