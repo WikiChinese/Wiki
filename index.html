@@ -2613,13 +2613,15 @@ function renderSidebar(){
   </div>
 
   <div class="nav-section">
-    <div class="nav-section-label">参考资料</div>
-    <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
-    <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
-    <a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits"><span class="nav-icon">✨</span>特性</a>
-    <a href="#/enemyMechanics" class="top-link ${currentView.type==='enemyMechanics'?'active':''}" data-view="enemyMechanics"><span class="nav-icon">☠️</span>敌方机制</a>
-    <a href="#/modifiers" class="top-link ${currentView.type==='modifiers'?'active':''}" data-view="modifiers"><span class="nav-icon">🧩</span>修正器</a>
-    <a href="#/lootCards" class="top-link ${currentView.type==='lootCards'?'active':''}" data-view="lootCards"><span class="nav-icon">🃏</span>战利品卡</a>
+    <details class="nav-collapsible" data-picker-key="sidebar-reference"${(openPickerKeys.has('sidebar-reference') || ['statusEffects','attackTypes','traits','enemyMechanics','modifiers','lootCards'].includes(currentView.type)) ? ' open' : ''}>
+      <summary class="nav-section-label" style="cursor:pointer;">参考资料</summary>
+      <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
+      <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
+      <a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits"><span class="nav-icon">✨</span>特性</a>
+      <a href="#/enemyMechanics" class="top-link ${currentView.type==='enemyMechanics'?'active':''}" data-view="enemyMechanics"><span class="nav-icon">☠️</span>敌方机制</a>
+      <a href="#/modifiers" class="top-link ${currentView.type==='modifiers'?'active':''}" data-view="modifiers"><span class="nav-icon">🧩</span>修正器</a>
+      <a href="#/lootCards" class="top-link ${currentView.type==='lootCards'?'active':''}" data-view="lootCards"><span class="nav-icon">🃏</span>战利品卡</a>
+    </details>
   </div>
 
   <div class="nav-section">
