@@ -971,6 +971,8 @@ function migrateState(){
     if(it.questline===undefined) it.questline = '';
     if(it.evolvesUnitId===undefined) it.evolvesUnitId = '';
     if(it.evolveQuantity===undefined) it.evolveQuantity = '';
+    if(it.linkedItemId===undefined) it.linkedItemId = '';
+    if(it.linkedItemQuantity===undefined) it.linkedItemQuantity = '';
     if(it.categoryId===undefined) it.categoryId = '';
     if(it.englishName===undefined) it.englishName = '';
   });
@@ -5518,6 +5520,8 @@ function renderItem(){
   const item = state.items.find(i=>i.id===currentView.id);
   if(!item){ container.innerHTML = `<div class="empty-state"><h2>未找到该物品</h2></div>`; return; }
   const evolvesUnit = item.evolvesUnitId ? state.units.find(u=>u.id===item.evolvesUnitId) : null;
+  const linkedItem = item.linkedItemId ? state.items.find(x=>x.id===item.linkedItemId) : null;
+  const referencingItems = state.items.filter(x=>x.linkedItemId===item.id);
   const itemCategoryObj = item.categoryId ? state.itemCategories.find(c=>c.id===item.categoryId) : null;
 
   if(editMode){
@@ -5588,6 +5592,28 @@ function renderItem(){
         <span class="edit-label">进化所需数量（可选，比如需要3个这个物品）</span>
         <input class="edit-input" data-bind="evolveQuantity" value="${escapeHtml(draftItem.evolveQuantity||'')}" placeholder="例如：x3">
       </div>
+      <div class="edit-field">
+        <span class="edit-label">关联物品（可选，比如合成/兑换需要用到的另一个物品）</span>
+        ${(()=>{
+          const selItem = draftItem.linkedItemId ? state.items.find(x=>x.id===draftItem.linkedItemId) : null;
+          const selectedHtml = selItem ? `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-link-clear="1">${selItem.image?`<img src="${escapeHtml(String(selItem.image))}">`:''}${escapeHtml(selItem.name)} ✕</button>` : `<div class="empty-hint" style="padding-left:0;">没有关联其他物品</div>`;
+          const remaining = state.items.filter(x=>x.id!==item.id && x.id!==draftItem.linkedItemId);
+          const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索物品名称（中文/英文均可）...">` : '';
+          const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="item-link-item">
+            <summary class="btn btn-gold">+ 选择物品</summary>
+            <div class="entity-picker-list">
+              ${searchHtml}
+              <div class="entity-picker-items">${remaining.map(x=>`<button type="button" class="entity-picker-item" data-item-link-select="${x.id}" data-search="${escapeHtml(((x.name||'')+' '+(x.englishName||'')).toLowerCase())}">${x.image?`<img src="${escapeHtml(String(x.image))}">`:''}${escapeHtml(x.name)}${x.englishName?` <span class="entity-picker-en">${escapeHtml(x.englishName)}</span>`:''}</button>`).join('')}</div>
+              <div class="entity-picker-noresult" style="display:none;">没有匹配的物品</div>
+            </div>
+          </details>` : '';
+          return `<div class="mark-row-list">${selectedHtml}</div>${pickerHtml}`;
+        })()}
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">关联数量/说明（可选，比如需要3个，或者写清楚用途）</span>
+        <input class="edit-input" data-bind="linkedItemQuantity" value="${escapeHtml(draftItem.linkedItemQuantity||'')}" placeholder="例如：x3，或者 用于兑换">
+      </div>
       <div class="save-bar">
         <button class="btn btn-danger" id="deleteBtn">删除物品</button>
       </div>
@@ -5606,6 +5632,18 @@ function renderItem(){
         render();
       });
     });
+    container.querySelectorAll('[data-item-link-select]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        draftItem.linkedItemId = btn.dataset.itemLinkSelect;
+        render();
+      });
+    });
+    container.querySelectorAll('[data-item-link-clear]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        draftItem.linkedItemId = '';
+        render();
+      });
+    });
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftItem=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       item.name = (draftItem.name||'').trim() || '未命名物品';
@@ -5617,6 +5655,8 @@ function renderItem(){
       item.questline = draftItem.questline || '';
       item.evolvesUnitId = draftItem.evolvesUnitId || '';
       item.evolveQuantity = draftItem.evolveQuantity || '';
+      item.linkedItemId = draftItem.linkedItemId || '';
+      item.linkedItemQuantity = draftItem.linkedItemQuantity || '';
       item.updatedAt = Date.now();
       editMode = false; draftItem = null;
       await saveData(false);
@@ -5653,14 +5693,23 @@ function renderItem(){
       <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.evolveQuantity))}</div>` : ''}</div>
     </a>` : ''}
+    ${linkedItem ? `<div class="section-label">关联物品</div><a href="${viewToHash({type:'item', id:linkedItem.id})}" class="shop-item-card" data-view="item" data-id="${linkedItem.id}" style="max-width:220px;">
+      <div class="shop-item-icon-wrap">${linkedItem.image ? `<img class="shop-item-icon" src="${escapeHtml(String(linkedItem.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(linkedItem.name)}</div>${item.linkedItemQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.linkedItemQuantity))}</div>` : ''}</div>
+    </a>` : ''}
+    ${referencingItems.length ? `<div class="section-label">被这些物品关联</div><div class="shop-item-grid">${referencingItems.map(ri=>`<a href="${viewToHash({type:'item', id:ri.id})}" class="shop-item-card" data-view="item" data-id="${ri.id}">
+      <div class="shop-item-icon-wrap">${ri.image ? `<img class="shop-item-icon" src="${escapeHtml(String(ri.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(ri.name)}</div>${ri.linkedItemQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(ri.linkedItemQuantity))}</div>` : ''}</div>
+    </a>`).join('')}</div>` : ''}
   `;
-  const evoCard = container.querySelector('.shop-item-card[data-view="unit"]');
-  if(evoCard) evoCard.addEventListener('click', (e)=>{
-    if(!isPlainLeftClick(e)) return;
-    e.preventDefault();
-    goToView({type:'unit', id: evoCard.dataset.id});
-    editMode=false; draftUnit=null; draftSimple=null; draftItem=null;
-    render();
+  container.querySelectorAll('.shop-item-card[data-view]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type: card.dataset.view, id: card.dataset.id});
+      editMode=false; draftUnit=null; draftSimple=null; draftItem=null;
+      render();
+    });
   });
   const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftItem=null; render(); });
   wireBackButton(container);
