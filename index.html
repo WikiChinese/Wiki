@@ -6159,14 +6159,6 @@ function renderSimpleEntity(type){
         </div>
       </div>
 
-      ${type==='memory' ? `<div class="edit-field">
-        <span class="edit-label">使魔</span>
-        <div class="mark-row-list">
-          ${state.families.length ? state.families.map(f=> familyToggleHtml(f, draftSimple.linkedFamilies.includes(f.id))).join('') : ''}
-        </div>
-        ${state.families.length===0 ? '<div class="hint">还没有使魔，可以先到左侧「使魔」页面新增。</div>' : '<div class="hint">点击选择这个记忆关联的使魔，再点一次可取消选择。</div>'}
-      </div>` : ''}
-
       <div class="save-bar">
         <button class="btn btn-danger" id="deleteBtn">删除${cfg.label}</button>
       </div>
