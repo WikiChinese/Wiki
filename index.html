@@ -5866,8 +5866,10 @@ function renderGallery(type){
   wireBackButton(container);
   wirePickerToggles(container);
 
+  let suppressRarityToggleTracking = false;
   container.querySelectorAll('details.rarity-section[data-rarity-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
+      if(suppressRarityToggleTracking) return;
       if(d.open) openRaritySections.add(d.dataset.rarityKey);
       else openRaritySections.delete(d.dataset.rarityKey);
     });
@@ -5892,6 +5894,7 @@ function renderGallery(type){
       return searchOk && catOk && attrOk;
     };
     if(sections.length){
+      suppressRarityToggleTracking = true;
       sections.forEach(section=>{
         let anyVisible = false;
         section.querySelectorAll('.gallery-card').forEach(card=>{
@@ -5902,6 +5905,7 @@ function renderGallery(type){
         section.style.display = anyVisible ? '' : 'none';
         section.open = (q || activeCategoryFilter || anyAttrFilterActive) ? true : openRaritySections.has(section.dataset.rarityKey);
       });
+      suppressRarityToggleTracking = false;
     } else {
       container.querySelectorAll('.gallery-card').forEach(card=>{
         card.style.display = matchCard(card) ? '' : 'none';
