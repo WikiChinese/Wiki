@@ -337,6 +337,45 @@
   .log-search-input:focus{border-color:var(--gold-dim);}
   .log-month-divider{position:relative;margin:4px 0 14px;padding-left:0;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--gold-dim);}
   .badge-new{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;font-family:'Noto Sans SC',sans-serif;color:#14161f;background:var(--gold);border-radius:20px;padding:3px 10px;vertical-align:middle;}
+  .tier-meta{font-size:12px;color:var(--text-faint);margin:-4px 0 14px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+  .tier-filter-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;}
+  .tier-filter-bar .log-search-input{flex:1;min-width:160px;max-width:260px;}
+  .tier-filter-bar .edit-select{width:auto;min-width:110px;padding:7px 10px;font-size:13px;border-radius:20px;}
+  .tier-row{display:flex;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;background:var(--card);}
+  .tier-label{flex:0 0 74px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;text-align:center;padding:8px 4px;word-break:break-all;line-height:1.1;}
+  .tier-body{flex:1;min-width:0;padding:10px 12px;}
+  .tier-units{display:flex;flex-wrap:wrap;gap:12px;min-height:40px;}
+  .tier-empty{font-size:12px;color:var(--text-faint);align-self:center;}
+  .tier-card-wrap{position:relative;width:72px;}
+  .tier-card{display:block;text-decoration:none;color:inherit;text-align:center;}
+  .tier-card-img{position:relative;width:72px;height:72px;}
+  .tier-card-img img,.tier-card-img .gallery-card-placeholder{width:72px;height:72px;border-radius:10px;object-fit:cover;border:1px solid var(--border);background:var(--card-hover);transition:border-color .15s,transform .15s;display:block;}
+  .tier-card:hover .tier-card-img img{border-color:var(--gold-dim);transform:translateY(-2px);}
+  .tier-card-name{font-size:11px;margin-top:4px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tier-card:hover .tier-card-name{color:var(--gold);}
+  .tier-change{position:absolute;right:-4px;bottom:-4px;font-size:11px;font-weight:800;padding:1px 6px;border-radius:10px;line-height:1.4;color:#fff;box-shadow:0 1px 3px rgba(0,0,0,.45);}
+  .tier-change.up{background:#3f9e5a;}
+  .tier-change.down{background:#c9534a;}
+  .tier-change.new{background:var(--gold);color:#14161f;}
+  .tier-note-btn{position:absolute;left:-5px;top:-5px;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--card-hover);font-size:11px;cursor:pointer;padding:0;line-height:20px;}
+  .tier-note-btn:hover{border-color:var(--gold-dim);}
+  .tier-note-panel{margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--card-hover);border:1px solid var(--border);font-size:13px;color:var(--text-dim);line-height:1.6;}
+  .tier-note-panel[hidden]{display:none;}
+  .tier-edit-block{border:1px solid var(--border);border-left-width:6px;border-radius:10px;padding:12px;margin-bottom:14px;background:var(--card);}
+  .tier-edit-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
+  .tier-edit-head input[type=color]{width:38px;height:34px;padding:0;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;}
+  .tier-edit-entries{display:flex;flex-direction:column;gap:6px;min-height:34px;margin-bottom:10px;padding:4px;border-radius:8px;}
+  .tier-edit-entries.drag-over{outline:2px dashed var(--gold-dim);}
+  .tier-edit-entry{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--card-hover);}
+  .tier-edit-entry.dragging{opacity:.4;}
+  .tier-edit-entry.drag-over{border-color:var(--gold);}
+  .tier-edit-entry img{width:36px;height:36px;border-radius:6px;object-fit:cover;}
+  .tier-edit-name{font-weight:600;font-size:13px;min-width:70px;}
+  .tier-edit-entry .tier-note-input{flex:1;min-width:140px;padding:6px 8px;font-size:12px;}
+  .tier-edit-entry .edit-select{width:auto;padding:5px 6px;font-size:12px;}
+  .tier-edit-entry .btn{padding:4px 8px;font-size:12px;}
+  .tier-drag-handle{cursor:grab;color:var(--text-faint);font-size:16px;user-select:none;padding:0 2px;}
+  @media (max-width:600px){ .tier-label{flex-basis:54px;font-size:20px;} .tier-card-wrap,.tier-card-img,.tier-card-img img,.tier-card-img .gallery-card-placeholder{width:62px;} .tier-card-img,.tier-card-img img,.tier-card-img .gallery-card-placeholder{height:62px;} }
   .log-timeline{position:relative;padding-left:28px;}
   .log-timeline::before{content:'';position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:linear-gradient(180deg, var(--gold-dim) 0%, var(--border) 85%, transparent 100%);}
   .log-entry{position:relative;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:18px;}
@@ -680,6 +719,7 @@ let draftUnit = null;
 let draftSimple = null;
 let draftOdyssey = null;
 let draftStage = null;
+let draftTierlist = null;
 let draftItem = null;
 let addingCharacterCardForUnit = false;
 let activeSkillEditTabIndex = 0;
@@ -1132,6 +1172,26 @@ function migrateState(){
   if(!Array.isArray(state.memories)) state.memories = [];
   state.memories.forEach(m2=>{ if(m2.englishName===undefined) m2.englishName = ''; });
   if(!state.tierlist) state.tierlist = {content:''};
+  if(state.tierlist.content===undefined) state.tierlist.content = '';
+  if(!Array.isArray(state.tierlist.tiers)){
+    state.tierlist.tiers = [
+      {id:uid(), label:'S', color:'#e05a5a', entries:[]},
+      {id:uid(), label:'A', color:'#e0944a', entries:[]},
+      {id:uid(), label:'B', color:'#d4b94a', entries:[]},
+      {id:uid(), label:'C', color:'#6bb36b', entries:[]},
+      {id:uid(), label:'D', color:'#5b8fd1', entries:[]}
+    ];
+  }
+  state.tierlist.tiers.forEach(t=>{
+    if(!t.id) t.id = uid();
+    if(t.label===undefined) t.label = '';
+    if(!t.color) t.color = '#8a8a8a';
+    if(!Array.isArray(t.entries)) t.entries = [];
+    t.entries.forEach(e=>{ if(e.note===undefined) e.note = ''; });
+  });
+  if(state.tierlist.updatedAt===undefined) state.tierlist.updatedAt = '';
+  if(state.tierlist.snapshot===undefined) state.tierlist.snapshot = null;
+  if(state.tierlist.prevSnapshot===undefined) state.tierlist.prevSnapshot = null;
   if(!Array.isArray(state.marks)) state.marks = [];
   if(!Array.isArray(state.markCategories)){
     state.markCategories = [
@@ -2216,7 +2276,7 @@ async function loadData(){
   window.addEventListener('hashchange', ()=>{
     if(suppressNextHashChange){ suppressNextHashChange = false; return; }
     currentView = hashToView();
-    editMode = false; draftUnit=null; draftSimple=null; draftItem=null; draftOdyssey=null; showingShinyImage=false; addingCharacterCardForUnit=false; newCharacterCardDraft=null; editingOdysseyCardId=null;
+    editMode = false; draftUnit=null; draftSimple=null; draftItem=null; draftOdyssey=null; draftTierlist=null; showingShinyImage=false; addingCharacterCardForUnit=false; newCharacterCardDraft=null; editingOdysseyCardId=null;
     render();
     const mainEl = document.querySelector('.main');
     if(mainEl) mainEl.scrollTop = 0;
@@ -3917,40 +3977,354 @@ function renderOdyssey(){
   });
 }
 
+function readableTextColor(hex){
+  const m = /^#([0-9a-f]{6})$/i.exec(hex||'');
+  if(!m) return '#ffffff';
+  const n = parseInt(m[1],16);
+  const r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  return (0.299*r + 0.587*g + 0.114*b) > 160 ? '#14161f' : '#ffffff';
+}
+function localDateStr(){
+  const d = new Date();
+  const p = n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function tierBuildSnapshot(tiers){
+  const map = {};
+  tiers.forEach(t=>t.entries.forEach(e=>{ map[e.unitId] = t.id; }));
+  return {order: tiers.map(t=>t.id), map};
+}
+// Compares a unit's current tier with the version before the last published update.
+// Returns 'up' | 'down' | 'new' | '' (no previous version, or unchanged).
+function tierChangeFor(unitId, tierIndex){
+  const ps = state.tierlist.prevSnapshot;
+  if(!ps || !ps.map) return '';
+  const prevTierId = ps.map[unitId];
+  if(prevTierId===undefined) return 'new';
+  const prevIdx = (ps.order||[]).indexOf(prevTierId);
+  if(prevIdx<0) return '';
+  if(tierIndex<prevIdx) return 'up';
+  if(tierIndex>prevIdx) return 'down';
+  return '';
+}
+function publishTierlist(tl){
+  tl.prevSnapshot = tl.snapshot || null;
+  tl.snapshot = tierBuildSnapshot(tl.tiers);
+  tl.updatedAt = localDateStr();
+}
+function unitTierChipHtml(unit){
+  const tiers = (state.tierlist && state.tierlist.tiers) || [];
+  const t = tiers.find(x=>x.entries.some(e=>e.unitId===unit.id));
+  if(!t) return '';
+  return `<a href="${viewToHash({type:'tierlist'})}" class="badge" style="background:${escapeHtml(t.color)};color:${readableTextColor(t.color)};font-weight:700;text-decoration:none;cursor:pointer;" title="在分级榜里的位置">📊 分级榜：${escapeHtml(t.label||'?')}</a>`;
+}
+
 function renderTierlist(){
   const container = document.getElementById('mainInner');
+
   if(editMode){
+    if(!draftTierlist) draftTierlist = JSON.parse(JSON.stringify(state.tierlist));
+    const d = draftTierlist;
+    if(!Array.isArray(d.tiers)) d.tiers = [];
+    if(d.content===undefined) d.content = '';
+    const redraw = ()=>{
+      const m = document.querySelector('.main');
+      const st = m ? m.scrollTop : 0;
+      renderTierlist();
+      if(m) m.scrollTop = st;
+    };
+    const usedIds = new Set();
+    d.tiers.forEach(t=>t.entries.forEach(e=>usedIds.add(e.unitId)));
+    const available = state.units.filter(u=>!usedIds.has(u.id));
+    const unitMap = {};
+    state.units.forEach(u=>{ unitMap[u.id] = u; });
+    const tierOptions = sel => d.tiers.map((t,i)=>`<option value="${i}"${i===sel?' selected':''}>${escapeHtml(t.label||'?')}</option>`).join('');
+
+    const blocksHtml = d.tiers.map((t,ti)=>{
+      const color = /^#[0-9a-f]{6}$/i.test(t.color||'') ? t.color : '#8a8a8a';
+      const entriesHtml = t.entries.map((e,ei)=>{
+        const u = unitMap[e.unitId];
+        return `<div class="tier-edit-entry" data-ti="${ti}" data-ei="${ei}">
+          <span class="tier-drag-handle" draggable="true" data-ti="${ti}" data-ei="${ei}" title="拖动排序（手机上用 ◀ ▶ 或右边的下拉）">⠿</span>
+          ${u && u.image ? `<img src="${escapeHtml(String(u.image))}">` : ''}
+          <span class="tier-edit-name">${u ? escapeHtml(u.name) : '（已删除的单位）'}</span>
+          <input class="edit-input tier-note-input" data-role="note" data-ti="${ti}" data-ei="${ei}" value="${escapeHtml(e.note||'')}" placeholder="一句话理由（可选）">
+          <select class="edit-select" data-role="move" data-ti="${ti}" data-ei="${ei}" title="移到其他分级">${tierOptions(ti)}</select>
+          <button type="button" class="btn" data-role="left" data-ti="${ti}" data-ei="${ei}" title="往前移">◀</button>
+          <button type="button" class="btn" data-role="right" data-ti="${ti}" data-ei="${ei}" title="往后移">▶</button>
+          <button type="button" class="btn btn-danger" data-role="remove" data-ti="${ti}" data-ei="${ei}">✕</button>
+        </div>`;
+      }).join('') || '<div class="empty-hint" style="padding-left:0;">还没有单位，可以从下面添加，或把别的分级里的单位拖过来</div>';
+      const key = 'tier-add-'+t.id;
+      const pickerHtml = available.length ? `<details class="entity-picker" data-picker-key="${key}"${openPickerKeys.has(key)?' open':''}>
+        <summary class="btn btn-gold">+ 添加单位</summary>
+        <div class="entity-picker-list">
+          <input type="text" class="entity-picker-search" placeholder="搜索单位名称...">
+          <div class="entity-picker-items">${available.map(u=>`<button type="button" class="entity-picker-item" data-role="add" data-ti="${ti}" data-unit-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${escapeHtml(String(u.image))}">`:''}${escapeHtml(u.name)}</button>`).join('')}</div>
+          <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
+        </div>
+      </details>` : '<div class="hint">所有单位都已经放进分级榜了</div>';
+      return `<div class="tier-edit-block" style="border-left-color:${color};">
+        <div class="tier-edit-head">
+          <input type="color" data-role="tcolor" data-ti="${ti}" value="${color}" title="这一级的颜色">
+          <input class="edit-input" style="width:110px;" data-role="tlabel" data-ti="${ti}" value="${escapeHtml(t.label||'')}" placeholder="比如 S">
+          <button type="button" class="btn" data-role="tup" data-ti="${ti}" ${ti===0?'disabled':''} title="整个分级往上移">↑</button>
+          <button type="button" class="btn" data-role="tdown" data-ti="${ti}" ${ti===d.tiers.length-1?'disabled':''} title="整个分级往下移">↓</button>
+          <button type="button" class="btn btn-danger" data-role="tremove" data-ti="${ti}">删除这一级</button>
+        </div>
+        <div class="tier-edit-entries" data-ti="${ti}">${entriesHtml}</div>
+        ${pickerHtml}
+      </div>`;
+    }).join('');
+
     container.innerHTML = `
       <div class="page-toolbar">
         <div class="crumb">编辑分级榜</div>
         <div class="toolbar-actions">
           <button class="btn" id="cancelBtn">取消</button>
-          <button class="btn btn-gold" id="saveBtn">保存</button>
+          <button class="btn" id="saveBtn">保存</button>
+          <button class="btn btn-gold" id="publishBtn">发布更新</button>
         </div>
       </div>
+      <div class="hint" style="margin:-6px 0 14px;">「保存」只保存内容。「发布更新」会把最后更新日期改成今天，并和上一次发布的版本对比，在单位头像上标出 ↑ ↓ NEW。每个单位只能放在一个分级里。</div>
+      ${blocksHtml || '<div class="empty-hint" style="padding-left:0;">还没有分级</div>'}
+      <button class="btn btn-gold" id="addTierBtn" style="margin-bottom:22px;">+ 新增分级</button>
       <div class="edit-field">
-        <textarea class="edit-textarea tall" id="tierContent" placeholder="整理你的分级榜...">${escapeHtml(state.tierlist.content||'')}</textarea>
+        <span class="edit-label">说明（可选，显示在分级榜下面）</span>
+        <textarea class="edit-textarea tall" id="tierContent" placeholder="写评分标准、备注...">${escapeHtml(d.content||'')}</textarea>
         <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
     `;
-    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; render(); });
-    document.getElementById('saveBtn').addEventListener('click', async ()=>{
-      state.tierlist.content = document.getElementById('tierContent').value;
-      editMode = false;
+
+    const qa = sel => container.querySelectorAll(sel);
+    const moveEntry = (fromTi, fromEi, toTi, toEi)=>{
+      const [moved] = d.tiers[fromTi].entries.splice(fromEi,1);
+      let idx = (toEi===null || toEi===undefined) ? d.tiers[toTi].entries.length : toEi;
+      if(fromTi===toTi && toEi!==null && toEi!==undefined && fromEi<toEi) idx = toEi-1;
+      d.tiers[toTi].entries.splice(idx,0,moved);
+    };
+
+    document.getElementById('tierContent').addEventListener('input', e=>{ d.content = e.target.value; });
+    qa('[data-role="tlabel"]').forEach(inp=> inp.addEventListener('input', ()=>{ d.tiers[+inp.dataset.ti].label = inp.value; }));
+    qa('[data-role="tcolor"]').forEach(inp=> inp.addEventListener('input', ()=>{
+      d.tiers[+inp.dataset.ti].color = inp.value;
+      const b = inp.closest('.tier-edit-block');
+      if(b) b.style.borderLeftColor = inp.value;
+    }));
+    qa('[data-role="tup"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.ti; if(i<=0) return;
+      [d.tiers[i-1], d.tiers[i]] = [d.tiers[i], d.tiers[i-1]]; redraw();
+    }));
+    qa('[data-role="tdown"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.ti; if(i>=d.tiers.length-1) return;
+      [d.tiers[i+1], d.tiers[i]] = [d.tiers[i], d.tiers[i+1]]; redraw();
+    }));
+    qa('[data-role="tremove"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const i = +btn.dataset.ti; const t = d.tiers[i];
+      if(t.entries.length && !confirm(`确定删除「${t.label||'?'}」这一级吗？里面的 ${t.entries.length} 个单位会一起从分级榜移除。`)) return;
+      d.tiers.splice(i,1); redraw();
+    }));
+    qa('[data-role="note"]').forEach(inp=> inp.addEventListener('input', ()=>{
+      d.tiers[+inp.dataset.ti].entries[+inp.dataset.ei].note = inp.value;
+    }));
+    qa('[data-role="move"]').forEach(sel=> sel.addEventListener('change', ()=>{
+      moveEntry(+sel.dataset.ti, +sel.dataset.ei, +sel.value, null); redraw();
+    }));
+    qa('[data-role="left"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const ti = +btn.dataset.ti, ei = +btn.dataset.ei; if(ei<=0) return;
+      const arr = d.tiers[ti].entries; [arr[ei-1], arr[ei]] = [arr[ei], arr[ei-1]]; redraw();
+    }));
+    qa('[data-role="right"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      const ti = +btn.dataset.ti, ei = +btn.dataset.ei; const arr = d.tiers[ti].entries; if(ei>=arr.length-1) return;
+      [arr[ei+1], arr[ei]] = [arr[ei], arr[ei+1]]; redraw();
+    }));
+    qa('[data-role="remove"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      d.tiers[+btn.dataset.ti].entries.splice(+btn.dataset.ei,1); redraw();
+    }));
+    qa('[data-role="add"]').forEach(btn=> btn.addEventListener('click', ()=>{
+      d.tiers[+btn.dataset.ti].entries.push({unitId: btn.dataset.unitId, note:''}); redraw();
+    }));
+    document.getElementById('addTierBtn').addEventListener('click', ()=>{
+      d.tiers.push({id:uid(), label:'新分级', color:'#8a8a8a', entries:[]}); redraw();
+    });
+
+    // Drag and drop (desktop). Touch screens use the ◀ ▶ buttons and the move dropdown instead.
+    let dragSrc = null;
+    const clearDragOver = ()=> container.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
+    qa('.tier-drag-handle').forEach(h=>{
+      h.addEventListener('dragstart', e=>{
+        dragSrc = {ti:+h.dataset.ti, ei:+h.dataset.ei};
+        const row = h.closest('.tier-edit-entry');
+        if(row) row.classList.add('dragging');
+        if(e.dataTransfer){
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain','tier-entry');
+          if(row) e.dataTransfer.setDragImage(row, 10, 10);
+        }
+      });
+      h.addEventListener('dragend', ()=>{
+        const row = h.closest('.tier-edit-entry');
+        if(row) row.classList.remove('dragging');
+        clearDragOver();
+        dragSrc = null;
+      });
+    });
+    qa('.tier-edit-entry').forEach(row=>{
+      row.addEventListener('dragover', e=>{ if(!dragSrc) return; e.preventDefault(); e.stopPropagation(); clearDragOver(); row.classList.add('drag-over'); });
+      row.addEventListener('drop', e=>{
+        if(!dragSrc) return;
+        e.preventDefault(); e.stopPropagation();
+        const src = dragSrc; dragSrc = null;
+        moveEntry(src.ti, src.ei, +row.dataset.ti, +row.dataset.ei);
+        redraw();
+      });
+    });
+    qa('.tier-edit-entries').forEach(zone=>{
+      zone.addEventListener('dragover', e=>{ if(!dragSrc) return; e.preventDefault(); clearDragOver(); zone.classList.add('drag-over'); });
+      zone.addEventListener('drop', e=>{
+        if(!dragSrc) return;
+        e.preventDefault();
+        const src = dragSrc; dragSrc = null;
+        moveEntry(src.ti, src.ei, +zone.dataset.ti, null);
+        redraw();
+      });
+    });
+
+    wirePickerToggles(container);
+
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftTierlist=null; render(); });
+    const commit = async (publish)=>{
+      d.tiers.forEach(t=>{ t.label = (t.label||'').trim(); });
+      state.tierlist.tiers = d.tiers;
+      state.tierlist.content = d.content || '';
+      if(publish) publishTierlist(state.tierlist);
+      editMode = false; draftTierlist = null;
       await saveData(false);
       render();
-    });
+    };
+    document.getElementById('saveBtn').addEventListener('click', ()=> commit(false));
+    document.getElementById('publishBtn').addEventListener('click', ()=> commit(true));
     return;
   }
+
+  // ---- view mode ----
+  const tl = state.tierlist;
+  const unitsById = {};
+  state.units.forEach(u=>{ unitsById[u.id] = u; });
+  const placedUnits = [];
+  tl.tiers.forEach(t=>t.entries.forEach(e=>{ if(unitsById[e.unitId]) placedUnits.push(unitsById[e.unitId]); }));
+
+  const rowsHtml = tl.tiers.map((t,ti)=>{
+    const cards = t.entries.map(e=>{
+      const u = unitsById[e.unitId];
+      if(!u) return '';
+      const ch = tierChangeFor(u.id, ti);
+      const chHtml = ch==='up' ? '<span class="tier-change up" title="比上一版升级">↑</span>'
+        : ch==='down' ? '<span class="tier-change down" title="比上一版降级">↓</span>'
+        : ch==='new' ? '<span class="tier-change new" title="这一版新加入">NEW</span>' : '';
+      const noteBtn = e.note ? `<button type="button" class="tier-note-btn" data-note="${escapeHtml(e.note)}" data-note-name="${escapeHtml(u.name)}" title="${escapeHtml(e.note)}">💬</button>` : '';
+      const search = escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase());
+      return `<div class="tier-card-wrap" data-search="${search}" data-rarity="${escapeHtml(u.rarity||'')}" data-elements="${escapeHtml((Array.isArray(u.elements)?u.elements:[]).join(','))}" data-groups="${escapeHtml((Array.isArray(u.groups)?u.groups:[]).join(','))}">
+        <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
+          <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}${chHtml}</div>
+          <div class="tier-card-name">${escapeHtml(u.name)}</div>
+        </a>${noteBtn}
+      </div>`;
+    }).join('');
+    const color = /^#[0-9a-f]{6}$/i.test(t.color||'') ? t.color : '#8a8a8a';
+    return `<div class="tier-row">
+      <div class="tier-label" style="background:${color};color:${readableTextColor(color)};">${escapeHtml(t.label||'?')}</div>
+      <div class="tier-body">
+        <div class="tier-units">${cards || '<span class="tier-empty">暂无单位</span>'}</div>
+        <div class="tier-note-panel" hidden></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const rarityOpts = state.rarities.filter(r=>placedUnits.some(u=>u.rarity===r.id));
+  const elementOpts = state.elements.filter(el=>placedUnits.some(u=>(u.elements||[]).includes(el.id)));
+  const groupOpts = state.groups.filter(g=>placedUnits.some(u=>(u.groups||[]).includes(g.id)));
+  const selectHtml = (id, label, opts)=> opts.length ? `<select id="${id}" class="edit-select"><option value="">${label}</option>${opts.map(o=>`<option value="${o.id}">${escapeHtml(o.name)}</option>`).join('')}</select>` : '';
+  const filterBarHtml = placedUnits.length ? `<div class="tier-filter-bar">
+    <input type="text" id="tierSearch" class="log-search-input" placeholder="搜索单位名称...">
+    ${selectHtml('tierFilterRarity','全部稀有度',rarityOpts)}
+    ${selectHtml('tierFilterElement','全部元素',elementOpts)}
+    ${selectHtml('tierFilterGroup','全部分组',groupOpts)}
+    <button type="button" class="btn" id="tierFilterClear" style="display:none;">清除筛选</button>
+  </div>` : '';
+  const hasPrev = !!(tl.prevSnapshot && tl.prevSnapshot.map);
+  const metaHtml = (tl.updatedAt || hasPrev) ? `<div class="tier-meta">
+    ${tl.updatedAt ? `<span>🕒 最后更新：${escapeHtml(tl.updatedAt)}</span>` : ''}
+    ${hasPrev ? `<span><b style="color:#3f9e5a;">↑</b> 升级 · <b style="color:#c9534a;">↓</b> 降级 · <b style="color:var(--gold);">NEW</b> 新加入（对比上一版）</span>` : ''}
+  </div>` : '';
+
   container.innerHTML = `
     <div class="page-toolbar">
       <div class="crumb">分级榜</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : '<span class="view-only-note" style="margin:0;padding:6px 12px;">仅查看</span>'}</div>
     </div>
-    <div class="content-body">${renderMarkdownLite(state.tierlist.content)}</div>
+    ${metaHtml}
+    ${filterBarHtml}
+    ${placedUnits.length ? `<div id="tierRows">${rowsHtml}</div><div id="tierNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的单位</div>` : `<div class="empty-hint" style="padding-left:0;">分级榜里还没有单位${isAdmin ? '，点右上角「编辑」添加。' : '。'}</div>`}
+    ${(tl.content||'').trim() ? `<div class="section-label">说明</div><div class="content-body">${renderMarkdownLite(tl.content)}</div>` : ''}
   `;
-  const editBtn = document.getElementById('editBtn'); if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; render(); });
+
+  const editBtn = document.getElementById('editBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftTierlist=null; render(); });
   wireBackButton(container);
+
+  container.querySelectorAll('.tier-note-btn').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.preventDefault(); e.stopPropagation();
+      const panel = btn.closest('.tier-row').querySelector('.tier-note-panel');
+      const sig = btn.dataset.noteName + '|' + btn.dataset.note;
+      if(!panel.hidden && panel.dataset.sig===sig){ panel.hidden = true; return; }
+      panel.textContent = '';
+      const b = document.createElement('b');
+      b.textContent = btn.dataset.noteName;
+      panel.append(b, '：' + btn.dataset.note);
+      panel.dataset.sig = sig;
+      panel.hidden = false;
+    });
+  });
+
+  const searchEl = document.getElementById('tierSearch');
+  const rarityEl = document.getElementById('tierFilterRarity');
+  const elementEl = document.getElementById('tierFilterElement');
+  const groupEl = document.getElementById('tierFilterGroup');
+  const clearEl = document.getElementById('tierFilterClear');
+  const applyTierFilters = ()=>{
+    const q = (searchEl ? searchEl.value : '').trim().toLowerCase();
+    const r = rarityEl ? rarityEl.value : '';
+    const el = elementEl ? elementEl.value : '';
+    const g = groupEl ? groupEl.value : '';
+    const anyFilter = !!(q || r || el || g);
+    let anyVisible = false;
+    container.querySelectorAll('.tier-row').forEach(row=>{
+      let rowVisible = false;
+      row.querySelectorAll('.tier-card-wrap').forEach(card=>{
+        const match = (!q || (card.dataset.search||'').includes(q))
+          && (!r || card.dataset.rarity===r)
+          && (!el || (card.dataset.elements||'').split(',').includes(el))
+          && (!g || (card.dataset.groups||'').split(',').includes(g));
+        card.style.display = match ? '' : 'none';
+        if(match) rowVisible = true;
+      });
+      row.style.display = (anyFilter && !rowVisible) ? 'none' : '';
+      if(rowVisible) anyVisible = true;
+    });
+    const noRes = document.getElementById('tierNoResult');
+    if(noRes) noRes.style.display = (anyFilter && !anyVisible) ? '' : 'none';
+    if(clearEl) clearEl.style.display = anyFilter ? '' : 'none';
+  };
+  [searchEl, rarityEl, elementEl, groupEl].forEach(x=>{ if(x){ x.addEventListener('input', applyTierFilters); x.addEventListener('change', applyTierFilters); } });
+  if(clearEl) clearEl.addEventListener('click', ()=>{
+    if(searchEl) searchEl.value = '';
+    if(rarityEl) rarityEl.value = '';
+    if(elementEl) elementEl.value = '';
+    if(groupEl) groupEl.value = '';
+    applyTierFilters();
+  });
 }
 
 async function duplicateUnit(unitId){
@@ -5342,7 +5716,7 @@ function renderUnit(){
         <div class="page-header">
           <h1 class="page-title"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
-          <div class="meta-row">${rarityBadge(unit.rarity)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
+          <div class="meta-row">${rarityBadge(unit.rarity)}${unitTierChipHtml(unit)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
         </div>
       </div>
