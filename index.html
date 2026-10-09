@@ -4528,10 +4528,14 @@ function handleDraftAction(ds, draft, el){
   const pickerListElForSearch = el ? el.closest('.entity-picker-items') : null;
   const pickerListScrollTopForSearch = pickerListElForSearch ? pickerListElForSearch.scrollTop : 0;
 
+  // For these pickers the search is only a way to find the one item you want — once you've picked
+  // it, the box should go back to empty (full list) instead of keeping the old query.
+  const clearSearchAfterPick = ['selectGroup','selectElement','toggleMark','toggleLevelMechanic','toggleLevelModifier','toggleLevelLootCard'].includes(action);
+
   renderMain();
   if(mainEl) mainEl.scrollTop = preservedScrollTop;
 
-  if(pickerKeyForSearch && searchValue){
+  if(pickerKeyForSearch && searchValue && !clearSearchAfterPick){
     const newPickerDetails = document.querySelector(`details[data-picker-key="${CSS.escape(pickerKeyForSearch)}"]`);
     const newSearchInput = newPickerDetails ? newPickerDetails.querySelector('.entity-picker-search') : null;
     if(newSearchInput){
