@@ -359,6 +359,9 @@
   .tier-change.new{background:var(--gold);color:#14161f;}
   .tier-note-btn{position:absolute;left:-5px;top:-5px;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--card-hover);font-size:11px;cursor:pointer;padding:0;line-height:20px;}
   .tier-note-btn:hover{border-color:var(--gold-dim);}
+  .tier-remove-btn{position:absolute;right:-5px;top:-5px;width:22px;height:22px;border-radius:50%;border:1px solid var(--danger);background:var(--card-hover);color:var(--danger);font-size:11px;cursor:pointer;padding:0;line-height:20px;}
+  .tier-remove-btn:hover{background:var(--danger);color:#fff;}
+  .tier-edit-entry .tier-remove{border-color:var(--danger);}
   .tier-note-panel{margin-top:10px;padding:8px 12px;border-radius:8px;background:var(--card-hover);border:1px solid var(--border);font-size:13px;color:var(--text-dim);line-height:1.6;}
   .tier-note-panel[hidden]{display:none;}
   .tier-edit-block{border:1px solid var(--border);border-left-width:6px;border-radius:10px;padding:12px;margin-bottom:14px;background:var(--card);}
@@ -4048,11 +4051,11 @@ function renderTierlist(){
           <span class="tier-drag-handle" draggable="true" data-ti="${ti}" data-ei="${ei}" title="拖动排序（手机上用 ◀ ▶ 或右边的下拉）">⠿</span>
           ${u && u.image ? `<img src="${escapeHtml(String(u.image))}">` : ''}
           <span class="tier-edit-name">${u ? escapeHtml(u.name) : '（已删除的单位）'}</span>
+          <button type="button" class="btn btn-danger tier-remove" data-role="remove" data-ti="${ti}" data-ei="${ei}" title="把这个单位从分级榜移除">🗑 移除</button>
           <input class="edit-input tier-note-input" data-role="note" data-ti="${ti}" data-ei="${ei}" value="${escapeHtml(e.note||'')}" placeholder="一句话理由（可选）">
           <select class="edit-select" data-role="move" data-ti="${ti}" data-ei="${ei}" title="移到其他分级">${tierOptions(ti)}</select>
           <button type="button" class="btn" data-role="left" data-ti="${ti}" data-ei="${ei}" title="往前移">◀</button>
           <button type="button" class="btn" data-role="right" data-ti="${ti}" data-ei="${ei}" title="往后移">▶</button>
-          <button type="button" class="btn btn-danger" data-role="remove" data-ti="${ti}" data-ei="${ei}">✕</button>
         </div>`;
       }).join('') || '<div class="empty-hint" style="padding-left:0;">还没有单位，可以从下面添加，或把别的分级里的单位拖过来</div>';
       const key = 'tier-add-'+t.id;
@@ -4223,12 +4226,13 @@ function renderTierlist(){
         : ch==='down' ? '<span class="tier-change down" title="比上一版降级">↓</span>'
         : ch==='new' ? '<span class="tier-change new" title="这一版新加入">NEW</span>' : '';
       const noteBtn = e.note ? `<button type="button" class="tier-note-btn" data-note="${escapeHtml(e.note)}" data-note-name="${escapeHtml(u.name)}" title="${escapeHtml(e.note)}">💬</button>` : '';
+      const removeBtn = isAdmin ? `<button type="button" class="tier-remove-btn" data-tier="${ti}" data-unit="${u.id}" title="把「${escapeHtml(u.name)}」从分级榜移除">✕</button>` : '';
       const search = escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase());
       return `<div class="tier-card-wrap" data-search="${search}" data-rarity="${escapeHtml(u.rarity||'')}" data-elements="${escapeHtml((Array.isArray(u.elements)?u.elements:[]).join(','))}" data-groups="${escapeHtml((Array.isArray(u.groups)?u.groups:[]).join(','))}">
         <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
           <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}${chHtml}</div>
           <div class="tier-card-name">${escapeHtml(u.name)}</div>
-        </a>${noteBtn}
+        </a>${noteBtn}${removeBtn}
       </div>`;
     }).join('');
     const color = /^#[0-9a-f]{6}$/i.test(t.color||'') ? t.color : '#8a8a8a';
@@ -4272,6 +4276,23 @@ function renderTierlist(){
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftTierlist=null; render(); });
   wireBackButton(container);
+
+  container.querySelectorAll('.tier-remove-btn').forEach(btn=>{
+    btn.addEventListener('click', async e=>{
+      e.preventDefault(); e.stopPropagation();
+      if(!requireAdmin()) return;
+      const tier = state.tierlist.tiers[+btn.dataset.tier];
+      const u = state.units.find(x=>x.id===btn.dataset.unit);
+      if(!tier) return;
+      if(!confirm(`确定把「${u ? u.name : '这个单位'}」从分级榜移除吗？`)) return;
+      tier.entries = tier.entries.filter(en=>en.unitId!==btn.dataset.unit);
+      const m = document.querySelector('.main');
+      const st = m ? m.scrollTop : 0;
+      await saveData(false);
+      renderTierlist();
+      if(m) m.scrollTop = st;
+    });
+  });
 
   container.querySelectorAll('.tier-note-btn').forEach(btn=>{
     btn.addEventListener('click', e=>{
