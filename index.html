@@ -1168,6 +1168,7 @@ function migrateState(){
     if(!Array.isArray(l.linkedUnits)) l.linkedUnits = [];
     if(!Array.isArray(l.linkedMemories)) l.linkedMemories = [];
     if(!Array.isArray(l.linkedFamilies)) l.linkedFamilies = [];
+    if(!Array.isArray(l.linkedEvolutions)) l.linkedEvolutions = [];
     if(l.isLimitedReturn===undefined) l.isLimitedReturn = false;
   });
   if(!Array.isArray(state.families)) state.families = [];
@@ -3048,6 +3049,19 @@ function logEntityPickerHtml(label, allEntities, selectedIds, action, idAttr, he
   </div>`;
 }
 
+// An evolution belongs to a unit (evolved name / evolved image), so the update log links to the unit.
+// These stand-in entities let the shared picker and chip helpers show "旧名 → 进化后名" with the evolved picture.
+function logEvolutionEntities(){
+  return state.units.map(u=>({
+    id: u.id,
+    name: u.evolvedName ? (u.name+' → '+u.evolvedName) : u.name,
+    englishName: u.englishName || '',
+    image: (u.evolvedImage && !isVideoUrl(u.evolvedImage)) ? u.evolvedImage : u.image,
+    rarity: u.rarity,
+    isLimitedReturn: u.isLimitedReturn
+  }));
+}
+
 function logEntityChipsHtml(allEntities, selectedIds, viewType, label){
   if(!selectedIds || !selectedIds.length) return '';
   return `<div class="edit-field" style="margin-top:10px;margin-bottom:0;">
@@ -3100,6 +3114,7 @@ function renderHome(){
         ${logEntityPickerHtml('单位', state.units, draftLogEntry.linkedUnits, 'toggleLogUnit', 'unit-id', '新单位', 'log-units')}
         ${logEntityPickerHtml('记忆', state.memories, draftLogEntry.linkedMemories, 'toggleLogMemory', 'memory-id', '新记忆', 'log-memories')}
         ${logEntityPickerHtml('使魔', state.families, draftLogEntry.linkedFamilies, 'toggleLogFamily', 'family-id', '新使魔', 'log-families')}
+    ${logEntityPickerHtml('进化', logEvolutionEntities(), draftLogEntry.linkedEvolutions||[], 'toggleLogEvolution', 'evolution-id', '新进化', 'log-evolutions')}
         <div class="save-bar">
           <button class="btn" id="cancelLogBtn">取消</button>
           <button class="btn btn-gold" id="saveLogBtn">保存日志</button>
@@ -3177,6 +3192,7 @@ function renderHome(){
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
           ${logEntityChipsHtml(state.families, l.linkedFamilies, 'family', '新使魔')}
+          ${logEntityChipsHtml(logEvolutionEntities(), l.linkedEvolutions, 'unit', '新进化')}
         </div>`;
         }).join('');
       })() : `<div class="empty-hint" style="padding-left:0;">暂无更新记录</div>`}
@@ -3212,7 +3228,7 @@ function renderHome(){
   const addLogBtn = document.getElementById('addLogBtn');
   if(addLogBtn) addLogBtn.addEventListener('click', ()=>{
     if(!requireAdmin()) return;
-    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', isLimitedReturn:false, linkedUnits:[], linkedMemories:[], linkedFamilies:[]};
+    draftLogEntry = {id:null, date: todayStr(), title:'', content:'', image:'', isLimitedReturn:false, linkedUnits:[], linkedMemories:[], linkedFamilies:[], linkedEvolutions:[]};
     addingLog = true;
     renderHome();
   });
@@ -3235,12 +3251,13 @@ function renderHome(){
         existing.linkedUnits = draftLogEntry.linkedUnits || [];
         existing.linkedMemories = draftLogEntry.linkedMemories || [];
         existing.linkedFamilies = draftLogEntry.linkedFamilies || [];
+        existing.linkedEvolutions = draftLogEntry.linkedEvolutions || [];
         existing.updatedAt = Date.now();
       }
     } else {
       state.updateLog.unshift({
         id:uid(), date, title, content, image: draftLogEntry.image||'', isLimitedReturn: !!draftLogEntry.isLimitedReturn,
-        linkedUnits: draftLogEntry.linkedUnits||[], linkedMemories: draftLogEntry.linkedMemories||[], linkedFamilies: draftLogEntry.linkedFamilies||[],
+        linkedUnits: draftLogEntry.linkedUnits||[], linkedMemories: draftLogEntry.linkedMemories||[], linkedFamilies: draftLogEntry.linkedFamilies||[], linkedEvolutions: draftLogEntry.linkedEvolutions||[],
         updatedAt:Date.now()
       });
     }
@@ -3257,7 +3274,7 @@ function renderHome(){
       if(!existing) return;
       draftLogEntry = {
         id: existing.id, date: existing.date, title: existing.title, content: existing.content, image: existing.image||'', isLimitedReturn: !!existing.isLimitedReturn,
-        linkedUnits: [...(existing.linkedUnits||[])], linkedMemories: [...(existing.linkedMemories||[])], linkedFamilies: [...(existing.linkedFamilies||[])]
+        linkedUnits: [...(existing.linkedUnits||[])], linkedMemories: [...(existing.linkedMemories||[])], linkedFamilies: [...(existing.linkedFamilies||[])], linkedEvolutions: [...(existing.linkedEvolutions||[])]
       };
       addingLog = true;
       renderHome();
@@ -4871,6 +4888,12 @@ function handleDraftAction(ds, draft, el){
     if(!Array.isArray(draft.linkedFamilies)) draft.linkedFamilies = [];
     const i = draft.linkedFamilies.indexOf(id);
     if(i>=0) draft.linkedFamilies.splice(i,1); else draft.linkedFamilies.push(id);
+  }
+  else if(action==='toggleLogEvolution'){
+    const id = ds.evolutionId;
+    if(!Array.isArray(draft.linkedEvolutions)) draft.linkedEvolutions = [];
+    const i = draft.linkedEvolutions.indexOf(id);
+    if(i>=0) draft.linkedEvolutions.splice(i,1); else draft.linkedEvolutions.push(id);
   }
   else if(action==='insertMarkToken'){
     const field = ds.field;
