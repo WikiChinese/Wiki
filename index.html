@@ -3112,9 +3112,9 @@ function renderHome(){
           <label class="checkbox-field"><input type="checkbox" data-bind="isLimitedReturn" ${draftLogEntry.isLimitedReturn?'checked':''}><span>🔄 限定复刻单位</span></label>
         </div>
         ${logEntityPickerHtml('单位', state.units, draftLogEntry.linkedUnits, 'toggleLogUnit', 'unit-id', '新单位', 'log-units')}
+    ${logEntityPickerHtml('进化', logEvolutionEntities(), draftLogEntry.linkedEvolutions||[], 'toggleLogEvolution', 'evolution-id', '新进化', 'log-evolutions')}
         ${logEntityPickerHtml('记忆', state.memories, draftLogEntry.linkedMemories, 'toggleLogMemory', 'memory-id', '新记忆', 'log-memories')}
         ${logEntityPickerHtml('使魔', state.families, draftLogEntry.linkedFamilies, 'toggleLogFamily', 'family-id', '新使魔', 'log-families')}
-    ${logEntityPickerHtml('进化', logEvolutionEntities(), draftLogEntry.linkedEvolutions||[], 'toggleLogEvolution', 'evolution-id', '新进化', 'log-evolutions')}
         <div class="save-bar">
           <button class="btn" id="cancelLogBtn">取消</button>
           <button class="btn btn-gold" id="saveLogBtn">保存日志</button>
@@ -3190,9 +3190,9 @@ function renderHome(){
           ${l.image ? `<img class="log-image zoomable" src="${escapeHtml(String(l.image))}">` : ''}
           <div class="log-content">${renderMarkdownLite(l.content)}</div>
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
+          ${logEntityChipsHtml(logEvolutionEntities(), l.linkedEvolutions, 'unit', '新进化')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
           ${logEntityChipsHtml(state.families, l.linkedFamilies, 'family', '新使魔')}
-          ${logEntityChipsHtml(logEvolutionEntities(), l.linkedEvolutions, 'unit', '新进化')}
         </div>`;
         }).join('');
       })() : `<div class="empty-hint" style="padding-left:0;">暂无更新记录</div>`}
