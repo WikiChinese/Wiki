@@ -362,7 +362,13 @@
   .group-block{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px;margin-bottom:12px;scroll-margin-top:12px;}
   .group-block.group-focus{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim);}
   .group-block.is-empty{opacity:.65;}
-  .group-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .group-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none;}
+  .group-head::-webkit-details-marker{display:none;}
+  .group-caret{width:0;height:0;border-left:7px solid var(--text-faint);border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .15s;flex-shrink:0;}
+  .group-block[open] > .group-head .group-caret{transform:rotate(90deg);}
+  .group-units{margin-top:14px;}
+  .group-bulk{display:flex;gap:6px;margin-left:auto;}
+  .group-bulk .btn{padding:5px 10px;font-size:12px;}
   .group-head .mark-chip{font-size:14px;margin:0;}
   .group-count{font-size:12px;color:var(--text-faint);}
   .tier-remove-btn{position:absolute;right:-5px;top:-5px;width:22px;height:22px;border-radius:50%;border:1px solid var(--danger);background:var(--card-hover);color:var(--danger);font-size:11px;cursor:pointer;padding:0;line-height:20px;}
@@ -651,6 +657,24 @@ let viewHistory = [];
 let traitPreviewOverrides = {};
 let openPickerKeys = new Set();
 let openRaritySections = new Set();
+let openGroupSections = new Set();
+let groupFocusApplied = '';
+
+// Open/close a <details> from code without it counting as the person's own choice.
+// The browser fires the "toggle" event a moment AFTER .open changes, so a plain on/off flag around the
+// assignment is already switched off by then — instead we leave a note on the element saying what
+// state the code asked for, and the toggle listener checks it with isSilentToggle().
+function setDetailsOpenSilently(d, open){
+  if(d.open === open) return;
+  d.dataset.silentToggle = open ? 'open' : 'closed';
+  d.open = open;
+}
+function isSilentToggle(d){
+  const expected = d.dataset.silentToggle;
+  if(!expected) return false;
+  delete d.dataset.silentToggle;
+  return expected === (d.open ? 'open' : 'closed');
+}
 // Which extra attribute chips (element/group/marks/obtainMethods for units, marks for
 // familiars/memories) are currently toggled on, per gallery type. Kept at module scope so the
 // selection survives re-renders (toggling a rarity section open, etc.) within the same session.
@@ -3418,13 +3442,17 @@ function renderAttackTypes(){
 function renderGroupGallery(){
   const container = document.getElementById('mainInner');
   const focusId = currentView.id || '';
+  // Arriving from a group chip on a unit page: open that group once (not on every re-render).
+  let justFocused = false;
+  if(focusId && groupFocusApplied!==focusId){ openGroupSections.add(focusId); groupFocusApplied = focusId; justFocused = true; }
+  if(!focusId) groupFocusApplied = '';
+
+  // same order as the 分组 list in 设置
   const groupsWithUnits = state.groups.map(g=>({g, units: state.units.filter(u=>(u.groups||[]).includes(g.id))}));
-  // groups that actually have units first, empty ones last (stable order otherwise)
-  const ordered = groupsWithUnits.filter(x=>x.units.length).concat(groupsWithUnits.filter(x=>!x.units.length));
   const totalUnits = new Set();
   groupsWithUnits.forEach(x=>x.units.forEach(u=>totalUnits.add(u.id)));
 
-  const blocksHtml = ordered.map(({g, units})=>{
+  const blocksHtml = groupsWithUnits.map(({g, units})=>{
     const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : '';
     const cards = units.map(u=>`<div class="tier-card-wrap" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
         <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
@@ -3432,13 +3460,14 @@ function renderGroupGallery(){
           <div class="tier-card-name">${escapeHtml(u.name)}</div>
         </a>
       </div>`).join('');
-    return `<section class="group-block${units.length?'':' is-empty'}${g.id===focusId?' group-focus':''}" id="group-${g.id}" data-group-name="${escapeHtml((g.name||'').toLowerCase())}">
-      <div class="group-head">
+    return `<details class="group-block${units.length?'':' is-empty'}${g.id===focusId?' group-focus':''}" id="group-${g.id}" data-group-id="${g.id}" data-group-name="${escapeHtml((g.name||'').toLowerCase())}"${openGroupSections.has(g.id)?' open':''}>
+      <summary class="group-head">
+        <span class="group-caret"></span>
         <span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>
         <span class="group-count">${units.length} 个单位</span>
-      </div>
-      <div class="tier-units">${cards || '<span class="tier-empty">还没有单位标记这个分组（在单位编辑页的「分组」里选择）</span>'}</div>
-    </section>`;
+      </summary>
+      <div class="tier-units group-units">${cards || '<span class="tier-empty">还没有单位标记这个分组（在单位编辑页的「分组」里选择）</span>'}</div>
+    </details>`;
   }).join('');
 
   container.innerHTML = `
@@ -3446,10 +3475,11 @@ function renderGroupGallery(){
       <h1 class="page-title" style="margin:0;">分组 (Group)</h1>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToGroupSettingsBtn">去设置页管理分组</button>' : ''}</div>
     </div>
-    <div class="hint" style="margin:-6px 0 14px;">这里列出每个分组，以及在单位页面标记了这个分组的单位。点单位头像可以跳到单位页面。</div>
+    <div class="hint" style="margin:-6px 0 14px;">这里列出每个分组，以及在单位页面标记了这个分组的单位。点分组标题可以展开或收起，点单位头像可以跳到单位页面。</div>
     ${state.groups.length ? `<div class="log-meta-bar" style="padding-left:0;">
       <span class="log-count">共 ${state.groups.length} 个分组 · ${totalUnits.size} 个单位已分组</span>
       <input type="text" id="groupSearchInput" class="log-search-input" placeholder="搜索分组或单位名称...">
+      <span class="group-bulk"><button type="button" class="btn" id="groupExpandAll">全部展开</button><button type="button" class="btn" id="groupCollapseAll">全部收起</button></span>
     </div>
     <div id="groupBlocks">${blocksHtml}</div>
     <div id="groupNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的分组或单位</div>` : `<div class="empty-hint" style="padding-left:0;">还没有任何分组${isAdmin ? '，可以到「设置」页面新增，比如 Demon Hunter、忍者、骑士。' : '。'}</div>`}
@@ -3459,11 +3489,29 @@ function renderGroupGallery(){
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
   wireBackButton(container);
 
+  const blocks = ()=> [...container.querySelectorAll('details.group-block')];
+  blocks().forEach(d=>{
+    d.addEventListener('toggle', ()=>{
+      if(isSilentToggle(d)) return;   // opened/closed by the search, not by the person
+      if(d.open) openGroupSections.add(d.dataset.groupId);
+      else openGroupSections.delete(d.dataset.groupId);
+    });
+  });
+
+  const expandAll = document.getElementById('groupExpandAll');
+  if(expandAll) expandAll.addEventListener('click', ()=>{
+    blocks().forEach(d=>{ openGroupSections.add(d.dataset.groupId); d.open = true; });
+  });
+  const collapseAll = document.getElementById('groupCollapseAll');
+  if(collapseAll) collapseAll.addEventListener('click', ()=>{
+    blocks().forEach(d=>{ openGroupSections.delete(d.dataset.groupId); d.open = false; });
+  });
+
   const input = document.getElementById('groupSearchInput');
   if(input) input.addEventListener('input', ()=>{
     const q = input.value.trim().toLowerCase();
     let anyVisible = false;
-    container.querySelectorAll('.group-block').forEach(block=>{
+    blocks().forEach(block=>{
       const nameMatch = !q || (block.dataset.groupName||'').includes(q);
       let anyUnit = false;
       block.querySelectorAll('.tier-card-wrap').forEach(card=>{
@@ -3475,12 +3523,15 @@ function renderGroupGallery(){
       const visible = nameMatch || anyUnit;
       block.style.display = visible ? '' : 'none';
       if(visible) anyVisible = true;
+      // while searching, open what matched so you can see it; once the box is cleared, go back to
+      // exactly what you had opened/closed yourself
+      setDetailsOpenSilently(block, q ? visible : openGroupSections.has(block.dataset.groupId));
     });
     const noRes = document.getElementById('groupNoResult');
     if(noRes) noRes.style.display = anyVisible ? 'none' : '';
   });
 
-  if(focusId){
+  if(justFocused){
     const target = document.getElementById('group-'+focusId);
     if(target) target.scrollIntoView({block:'start'});
   }
@@ -6367,10 +6418,9 @@ function renderGallery(type){
   wireBackButton(container);
   wirePickerToggles(container);
 
-  let suppressRarityToggleTracking = false;
   container.querySelectorAll('details.rarity-section[data-rarity-key]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
-      if(suppressRarityToggleTracking) return;
+      if(isSilentToggle(d)) return;
       if(d.open) openRaritySections.add(d.dataset.rarityKey);
       else openRaritySections.delete(d.dataset.rarityKey);
     });
@@ -6395,7 +6445,6 @@ function renderGallery(type){
       return searchOk && catOk && attrOk;
     };
     if(sections.length){
-      suppressRarityToggleTracking = true;
       sections.forEach(section=>{
         let anyVisible = false;
         section.querySelectorAll('.gallery-card').forEach(card=>{
@@ -6404,9 +6453,8 @@ function renderGallery(type){
           if(match) anyVisible = true;
         });
         section.style.display = anyVisible ? '' : 'none';
-        section.open = (q || activeCategoryFilter || anyAttrFilterActive) ? true : openRaritySections.has(section.dataset.rarityKey);
+        setDetailsOpenSilently(section, !!((q || activeCategoryFilter || anyAttrFilterActive) ? true : openRaritySections.has(section.dataset.rarityKey)));
       });
-      suppressRarityToggleTracking = false;
     } else {
       container.querySelectorAll('.gallery-card').forEach(card=>{
         card.style.display = matchCard(card) ? '' : 'none';
@@ -6967,11 +7015,16 @@ function markEditRowHtml(mark, i, total){
   </div>`;
 }
 
-function groupEditRowHtml(group, i){
+function groupEditRowHtml(group, i, arr){
+  const total = Array.isArray(arr) ? arr.length : state.groups.length;
   const iconHtml = group.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(group.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(group.color||'');
   const colorPickerVal = isGradient ? '#4a8b7c' : (group.color||'#4a8b7c');
   return `<div class="mark-edit-row">
+    <div class="reorder-btns">
+      <button class="btn-icon-sm" data-settings-action="moveGroupUp" data-index="${i}" ${i===0?'disabled':''} title="上移">▲</button>
+      <button class="btn-icon-sm" data-settings-action="moveGroupDown" data-index="${i}" ${i===total-1?'disabled':''} title="下移">▼</button>
+    </div>
     ${iconHtml}
     <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="groups.${i}.image" style="display:none;"></label>
     <input class="edit-input" data-settings-bind="groups.${i}.name" value="${escapeHtml(group.name)}" placeholder="分组名称，如：忍者">
@@ -7237,6 +7290,8 @@ function wireSettingsBindElements(container, rerenderFn){
         if(!confirm(`确定删除这个${label}${name}吗？如果有单位/物品正在引用它，这些引用不会自动清掉，只是会指向一个已经不存在的项。`)) return;
         arr.splice(idx,1);
       }
+      else if(action==='moveGroupUp') moveArrayItem(state.groups, idx, -1);
+      else if(action==='moveGroupDown') moveArrayItem(state.groups, idx, 1);
       else if(action==='moveMarkUp') moveArrayItem(state.marks, idx, -1);
       else if(action==='moveMarkDown') moveArrayItem(state.marks, idx, 1);
       else if(action==='moveRarityUp'){
