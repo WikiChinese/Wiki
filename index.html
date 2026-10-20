@@ -359,6 +359,12 @@
   .tier-change.new{background:var(--gold);color:#14161f;}
   .tier-note-btn{position:absolute;left:-5px;top:-5px;width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--card-hover);font-size:11px;cursor:pointer;padding:0;line-height:20px;}
   .tier-note-btn:hover{border-color:var(--gold-dim);}
+  .group-block{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px;margin-bottom:12px;scroll-margin-top:12px;}
+  .group-block.group-focus{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim);}
+  .group-block.is-empty{opacity:.65;}
+  .group-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+  .group-head .mark-chip{font-size:14px;margin:0;}
+  .group-count{font-size:12px;color:var(--text-faint);}
   .tier-remove-btn{position:absolute;right:-5px;top:-5px;width:22px;height:22px;border-radius:50%;border:1px solid var(--danger);background:var(--card-hover);color:var(--danger);font-size:11px;cursor:pointer;padding:0;line-height:20px;}
   .tier-remove-btn:hover{background:var(--danger);color:#fff;}
   .tier-edit-entry .tier-remove{border-color:var(--danger);}
@@ -735,7 +741,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -2662,6 +2668,7 @@ function renderSidebar(){
     <div class="cat-group"><div class="cat-head"><a href="#/itemGallery" class="cat-label-btn ${currentView.type==='itemGallery'?'active':''}" data-view="itemGallery"><span class="nav-icon">🎒</span>物品<span class="cat-count">${state.items.length}</span></a>${isAdmin ? '<button class="cat-add" id="addItemBtn" title="新增物品">+</button>' : ''}</div></div>
     <div class="cat-group"><div class="cat-head"><a href="#/familyGallery" class="cat-label-btn ${currentView.type==='familyGallery'?'active':''}" data-view="familyGallery"><span class="nav-icon">👹</span>使魔<span class="cat-count">${state.families.length}</span></a>${isAdmin ? '<button class="cat-add" id="addFamilyBtn" title="新增使魔">+</button>' : ''}</div></div>
     <div class="cat-group"><div class="cat-head"><a href="#/memoryGallery" class="cat-label-btn ${currentView.type==='memoryGallery'?'active':''}" data-view="memoryGallery"><span class="nav-icon">💭</span>记忆<span class="cat-count">${state.memories.length}</span></a>${isAdmin ? '<button class="cat-add" id="addMemoryBtn" title="新增记忆">+</button>' : ''}</div></div>
+    <div class="cat-group"><div class="cat-head"><a href="#/groupGallery" class="cat-label-btn ${currentView.type==='groupGallery'?'active':''}" data-view="groupGallery"><span class="nav-icon">👥</span>分组<span class="cat-count">${state.groups.length}</span></a></div></div>
   </div>
 
   <div class="nav-section">
@@ -3406,6 +3413,77 @@ function renderAttackTypes(){
   if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
   wireStatusListSearch(container, 'attackTypeSearchInput', null);
   wireBackButton(container);
+}
+
+function renderGroupGallery(){
+  const container = document.getElementById('mainInner');
+  const focusId = currentView.id || '';
+  const groupsWithUnits = state.groups.map(g=>({g, units: state.units.filter(u=>(u.groups||[]).includes(g.id))}));
+  // groups that actually have units first, empty ones last (stable order otherwise)
+  const ordered = groupsWithUnits.filter(x=>x.units.length).concat(groupsWithUnits.filter(x=>!x.units.length));
+  const totalUnits = new Set();
+  groupsWithUnits.forEach(x=>x.units.forEach(u=>totalUnits.add(u.id)));
+
+  const blocksHtml = ordered.map(({g, units})=>{
+    const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : '';
+    const cards = units.map(u=>`<div class="tier-card-wrap" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
+        <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
+          <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}</div>
+          <div class="tier-card-name">${escapeHtml(u.name)}</div>
+        </a>
+      </div>`).join('');
+    return `<section class="group-block${units.length?'':' is-empty'}${g.id===focusId?' group-focus':''}" id="group-${g.id}" data-group-name="${escapeHtml((g.name||'').toLowerCase())}">
+      <div class="group-head">
+        <span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>
+        <span class="group-count">${units.length} 个单位</span>
+      </div>
+      <div class="tier-units">${cards || '<span class="tier-empty">还没有单位标记这个分组（在单位编辑页的「分组」里选择）</span>'}</div>
+    </section>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">分组 (Group)</h1>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToGroupSettingsBtn">去设置页管理分组</button>' : ''}</div>
+    </div>
+    <div class="hint" style="margin:-6px 0 14px;">这里列出每个分组，以及在单位页面标记了这个分组的单位。点单位头像可以跳到单位页面。</div>
+    ${state.groups.length ? `<div class="log-meta-bar" style="padding-left:0;">
+      <span class="log-count">共 ${state.groups.length} 个分组 · ${totalUnits.size} 个单位已分组</span>
+      <input type="text" id="groupSearchInput" class="log-search-input" placeholder="搜索分组或单位名称...">
+    </div>
+    <div id="groupBlocks">${blocksHtml}</div>
+    <div id="groupNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的分组或单位</div>` : `<div class="empty-hint" style="padding-left:0;">还没有任何分组${isAdmin ? '，可以到「设置」页面新增，比如 Demon Hunter、忍者、骑士。' : '。'}</div>`}
+  `;
+
+  const goBtn = document.getElementById('goToGroupSettingsBtn');
+  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  wireBackButton(container);
+
+  const input = document.getElementById('groupSearchInput');
+  if(input) input.addEventListener('input', ()=>{
+    const q = input.value.trim().toLowerCase();
+    let anyVisible = false;
+    container.querySelectorAll('.group-block').forEach(block=>{
+      const nameMatch = !q || (block.dataset.groupName||'').includes(q);
+      let anyUnit = false;
+      block.querySelectorAll('.tier-card-wrap').forEach(card=>{
+        // a matching group name shows all of its units; otherwise only the units whose name matches
+        const show = nameMatch || (card.dataset.search||'').includes(q);
+        card.style.display = show ? '' : 'none';
+        if(show) anyUnit = true;
+      });
+      const visible = nameMatch || anyUnit;
+      block.style.display = visible ? '' : 'none';
+      if(visible) anyVisible = true;
+    });
+    const noRes = document.getElementById('groupNoResult');
+    if(noRes) noRes.style.display = anyVisible ? 'none' : '';
+  });
+
+  if(focusId){
+    const target = document.getElementById('group-'+focusId);
+    if(target) target.scrollIntoView({block:'start'});
+  }
 }
 
 function renderModifiers(){
@@ -5489,7 +5567,7 @@ function renderUnit(){
   const tagsHtml = (unit.tags||[]).map(t=>`<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${escapeHtml(t)}</span>`).join('');
   const unitGroups = (unit.groups||[]).map(gid=>state.groups.find(g=>g.id===gid)).filter(Boolean);
   const groupObj = unitGroups[0] || null;
-  const groupChipHtml = unitGroups.map(g=>{ const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : ''; return `<span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>`; }).join('');
+  const groupChipHtml = unitGroups.map(g=>{ const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : ''; return `<a href="${viewToHash({type:'groupGallery', id:g.id})}" class="mark-chip" style="${coloredChipStyle(g.color)}text-decoration:none;cursor:pointer;" title="查看这个分组里的所有单位">${icon}${escapeHtml(g.name)}</a>`; }).join('');
   const elementChipHtml = (unit.elements && unit.elements.length) ? unit.elements.map(eid=>{
     const eObj = state.elements.find(e=>e.id===eid);
     if(!eObj) return '';
@@ -6144,6 +6222,7 @@ function renderMain(){
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
   else if(currentView.type==='enemyMechanics') renderEnemyMechanics();
+  else if(currentView.type==='groupGallery') renderGroupGallery();
   else if(currentView.type==='modifiers') renderModifiers();
   else if(currentView.type==='lootCards') renderLootCards();
   else if(currentView.type==='traits') renderTraitsPage();
