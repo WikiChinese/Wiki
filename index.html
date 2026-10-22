@@ -106,6 +106,8 @@
   .gallery-card-img-wrap.animated-border .gallery-card-img,.gallery-card-img-wrap.animated-border .gallery-card-placeholder{border:none;border-radius:10px;}
   @keyframes galleryBorderPulse{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
   @media (prefers-reduced-motion: reduce){ .gallery-card-img-wrap.animated-border{animation:none;} }
+  .gallery-card-img-wrap.rarity-border{padding:2px;border-radius:12px;}
+  .gallery-card-img-wrap.rarity-border .gallery-card-img,.gallery-card-img-wrap.rarity-border .gallery-card-placeholder{border:none;border-radius:10px;}
   .rarity-section{margin-bottom:32px;}
   .rarity-section-head{display:flex;align-items:center;gap:10px;margin-bottom:14px;cursor:pointer;list-style:none;user-select:none;}
   .rarity-section-head::-webkit-details-marker{display:none;}
@@ -2622,6 +2624,31 @@ function unitBorderGradientStyle(value){
   const safe = v.replace(/[<>"']/g, '');
   return ` style="padding:3px;border-radius:13px;background:${safe};background-size:300% 300%;animation:galleryBorderPulse 4s ease-in-out infinite;"`;
 }
+// A unit follows its rarity's colour (the one set for that rarity in 设置) — but always STATIC, even if
+// that colour is a gradient. A colour typed into the unit's own 专属颜色 box still wins over it, and that
+// one keeps its breathing animation when it is a gradient.
+function unitRarityColor(u){
+  const r = (u && u.rarity) ? state.rarities.find(x=>x.id===u.rarity) : null;
+  return (r && r.color) ? String(r.color).replace(/[<>"']/g,'') : '';
+}
+function staticNameColorStyle(value){
+  const safe = String(value||'').trim().replace(/[<>"']/g,'');
+  if(!safe) return '';
+  if(/gradient/i.test(safe)){
+    return ` style="background:${safe};-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;"`;
+  }
+  return ` style="color:${safe};"`;
+}
+function unitColorAttrs(u){
+  const own = u.personalColor || '';
+  const rc = unitRarityColor(u);
+  const ownGradient = /gradient/i.test(own);
+  return {
+    wrapClass: ownGradient ? ' animated-border' : (rc ? ' rarity-border' : ''),
+    wrapStyle: ownGradient ? unitBorderGradientStyle(own) : (rc ? ` style="background:${rc};"` : ''),
+    nameStyle: own ? unitNameColorStyle(own) : staticNameColorStyle(rc)
+  };
+}
 function unitNameColorStyle(value){
   if(!value) return '';
   const v = String(value).trim();
@@ -4093,14 +4120,14 @@ function renderOdyssey(){
 
   const selectedUnits = (od.unitIds||[]).map(id=>state.units.find(u=>u.id===id)).filter(Boolean);
   const unassignedCharacterCards = od.characterCards.filter(c=>!c.unitId);
-  const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>`
+  const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>{ const ca = unitColorAttrs(u); return `
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
-      <div class="gallery-card-img-wrap${/gradient/i.test(u.personalColor||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(u.personalColor)}>
+      <div class="gallery-card-img-wrap${ca.wrapClass}"${ca.wrapStyle}>
         ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${unitNameColorStyle(u.personalColor)}>${escapeHtml(u.name)}</div>
-    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
+      <div class="gallery-card-name"${ca.nameStyle}>${escapeHtml(u.name)}</div>
+    </a>`; }).join('') : '<div class="empty-hint" style="padding-left:0;">管理员还没有选择可用单位</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -5912,7 +5939,7 @@ function renderUnit(){
       ${mainImageHtml ? `<div class="unit-hero-image">${mainImageHtml}</div>` : ''}
       <div class="unit-hero-info">
         <div class="page-header">
-          <h1 class="page-title"${unitNameColorStyle(unit.personalColor)}>${escapeHtml(unit.name)}</h1>
+          <h1 class="page-title"${unitColorAttrs(unit).nameStyle}>${escapeHtml(unit.name)}</h1>
           ${unit.englishName ? `<div class="unit-english-name">${escapeHtml(unit.englishName)}</div>` : ''}
           <div class="meta-row">${rarityBadge(unit.rarity)}${unitTierChipHtml(unit)}${unit.unitType==='farm' ? `<span class="badge badge-common" style="background:#3f6b4a;color:#fff;">💰 农场单位</span>` : ''}${unit.isLimitedReturn ? `<span class="badge-limited-return">🔄 限定复刻</span>` : ''}${elementChipHtml}${groupChipHtml}${obtainMethodsChipsHtml}${tagsHtml}${marksHtml}</div>
           ${statPlateHtml ? `<div class="stat-plate">${statPlateHtml}</div>` : ''}
@@ -6334,17 +6361,22 @@ function renderGallery(type){
 
   function cardHtml(entity){
     const searchText = escapeHtml(((entity.name||'')+' '+(entity.englishName||'')).toLowerCase());
+    const ca = type==='unit' ? unitColorAttrs(entity) : {
+      wrapClass: /gradient/i.test(entity.personalColor||'') ? ' animated-border' : '',
+      wrapStyle: unitBorderGradientStyle(entity.personalColor),
+      nameStyle: unitNameColorStyle(entity.personalColor)
+    };
     const filterAttrs = galleryFilterConfig(type).map(f=>{
       const vals = (type==='unit' && f.key==='groups') ? unitEffectiveGroupIds(entity)
         : (Array.isArray(entity[f.key]) ? entity[f.key] : (entity[f.key] ? [entity[f.key]] : []));
       return ` data-filter-${f.key.toLowerCase()}="${vals.join(',')}"`;
     }).join('');
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
-      <div class="gallery-card-img-wrap${/gradient/i.test(entity.personalColor||'') ? ' animated-border' : ''}"${unitBorderGradientStyle(entity.personalColor)}>
+      <div class="gallery-card-img-wrap${ca.wrapClass}"${ca.wrapStyle}>
         ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
-      <div class="gallery-card-name"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
+      <div class="gallery-card-name"${ca.nameStyle}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
     </a>`;
   }
   const categoryFilterHtml = (type==='item' && list.length && state.itemCategories.length) ? `<div class="gallery-category-filter">
