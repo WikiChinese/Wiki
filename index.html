@@ -680,13 +680,15 @@ function isSilentToggle(d){
 }
 // A group can be a special "Every Group": any unit marked with it counts as being in ALL groups.
 // It is recognised by the 类型 switch on the group's row in 设置, or automatically by its name
-// (Every Group / 所有分组 / 全部分组 / 每个分组 / 全分组) until you change that switch.
+// (全类型 (Every Group) / Every Group / 所有分组 / 全部分组 / 每个分组 / 全分组) until you change that switch.
 function isEveryGroup(g){
   if(!g) return false;
   if(g.everyGroup==='1' || g.everyGroup===true) return true;
   if(g.everyGroup==='0') return false;
   const n = String(g.name||'').toLowerCase().replace(/[\s_\-]+/g,'');
-  return ['everygroup','所有分组','全部分组','每个分组','全分组'].includes(n);
+  // "全类型 (Every Group)", "Every Group", "Every Group (全部)" ... anything with these words in it counts
+  if(n.includes('everygroup') || n.includes('全类型')) return true;
+  return ['所有分组','全部分组','每个分组','全分组'].includes(n);
 }
 function unitEffectiveGroupIds(u){
   const own = Array.isArray(u.groups) ? u.groups : [];
