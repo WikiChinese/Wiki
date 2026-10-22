@@ -367,6 +367,9 @@
   .group-caret{width:0;height:0;border-left:7px solid var(--text-faint);border-top:5px solid transparent;border-bottom:5px solid transparent;transition:transform .15s;flex-shrink:0;}
   .group-block[open] > .group-head .group-caret{transform:rotate(90deg);}
   .group-units{margin-top:14px;}
+  .group-via-every{position:absolute;right:-4px;bottom:-4px;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;line-height:1.4;color:var(--gold);background:var(--card-hover);border:1px dashed var(--gold-dim);}
+  .group-scope-row{display:flex;align-items:center;gap:8px;margin:-4px 0 16px 4px;font-size:12px;color:var(--text-faint);flex-wrap:wrap;}
+  .group-scope-row .edit-select{width:auto;padding:5px 8px;font-size:12px;}
   .group-bulk{display:flex;gap:6px;margin-left:auto;}
   .group-bulk .btn{padding:5px 10px;font-size:12px;}
   .group-head .mark-chip{font-size:14px;margin:0;}
@@ -674,6 +677,22 @@ function isSilentToggle(d){
   if(!expected) return false;
   delete d.dataset.silentToggle;
   return expected === (d.open ? 'open' : 'closed');
+}
+// A group can be a special "Every Group": any unit marked with it counts as being in ALL groups.
+// It is recognised by the 类型 switch on the group's row in 设置, or automatically by its name
+// (Every Group / 所有分组 / 全部分组 / 每个分组 / 全分组) until you change that switch.
+function isEveryGroup(g){
+  if(!g) return false;
+  if(g.everyGroup==='1' || g.everyGroup===true) return true;
+  if(g.everyGroup==='0') return false;
+  const n = String(g.name||'').toLowerCase().replace(/[\s_\-]+/g,'');
+  return ['everygroup','所有分组','全部分组','每个分组','全分组'].includes(n);
+}
+function unitEffectiveGroupIds(u){
+  const own = Array.isArray(u.groups) ? u.groups : [];
+  const everyIds = state.groups.filter(isEveryGroup).map(g=>g.id);
+  if(own.some(id=>everyIds.includes(id))) return state.groups.map(g=>g.id);
+  return own;
 }
 // Which extra attribute chips (element/group/marks/obtainMethods for units, marks for
 // familiars/memories) are currently toggled on, per gallery type. Kept at module scope so the
@@ -3448,23 +3467,27 @@ function renderGroupGallery(){
   if(!focusId) groupFocusApplied = '';
 
   // same order as the 分组 list in 设置
-  const groupsWithUnits = state.groups.map(g=>({g, units: state.units.filter(u=>(u.groups||[]).includes(g.id))}));
+  const groupsWithUnits = state.groups.map(g=>({g, units: state.units.filter(u=>unitEffectiveGroupIds(u).includes(g.id))}));
+  const everyGroupNames = state.groups.filter(isEveryGroup).map(g=>g.name);
   const totalUnits = new Set();
   groupsWithUnits.forEach(x=>x.units.forEach(u=>totalUnits.add(u.id)));
 
   const blocksHtml = groupsWithUnits.map(({g, units})=>{
     const icon = g.image ? `<img src="${escapeHtml(String(g.image))}">` : '';
-    const cards = units.map(u=>`<div class="tier-card-wrap" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
+    const cards = units.map(u=>{
+      const viaEvery = !(u.groups||[]).includes(g.id);   // shown here only because it is marked with the "Every Group"
+      return `<div class="tier-card-wrap" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
         <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
-          <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}</div>
+          <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}${viaEvery ? `<span class="group-via-every" title="这个单位标了「${escapeHtml(everyGroupNames.join(' / '))}」，所以所有分组里都会显示">全</span>` : ''}</div>
           <div class="tier-card-name">${escapeHtml(u.name)}</div>
         </a>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     return `<details class="group-block${units.length?'':' is-empty'}${g.id===focusId?' group-focus':''}" id="group-${g.id}" data-group-id="${g.id}" data-group-name="${escapeHtml((g.name||'').toLowerCase())}"${openGroupSections.has(g.id)?' open':''}>
       <summary class="group-head">
         <span class="group-caret"></span>
         <span class="mark-chip" style="${coloredChipStyle(g.color)}">${icon}${escapeHtml(g.name)}</span>
-        <span class="group-count">${units.length} 个单位</span>
+        <span class="group-count">${units.length} 个单位${isEveryGroup(g) ? ' · 标了这个分组的单位会出现在每一个分组里' : ''}</span>
       </summary>
       <div class="tier-units group-units">${cards || '<span class="tier-empty">还没有单位标记这个分组（在单位编辑页的「分组」里选择）</span>'}</div>
     </details>`;
@@ -4374,7 +4397,7 @@ function renderTierlist(){
       const noteBtn = e.note ? `<button type="button" class="tier-note-btn" data-note="${escapeHtml(e.note)}" data-note-name="${escapeHtml(u.name)}" title="${escapeHtml(e.note)}">💬</button>` : '';
       const removeBtn = isAdmin ? `<button type="button" class="tier-remove-btn" data-tier="${ti}" data-unit="${u.id}" title="把「${escapeHtml(u.name)}」从分级榜移除">✕</button>` : '';
       const search = escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase());
-      return `<div class="tier-card-wrap" data-search="${search}" data-rarity="${escapeHtml(u.rarity||'')}" data-elements="${escapeHtml((Array.isArray(u.elements)?u.elements:[]).join(','))}" data-groups="${escapeHtml((Array.isArray(u.groups)?u.groups:[]).join(','))}">
+      return `<div class="tier-card-wrap" data-search="${search}" data-rarity="${escapeHtml(u.rarity||'')}" data-elements="${escapeHtml((Array.isArray(u.elements)?u.elements:[]).join(','))}" data-groups="${escapeHtml(unitEffectiveGroupIds(u).join(','))}">
         <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
           <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}${chHtml}</div>
           <div class="tier-card-name">${escapeHtml(u.name)}</div>
@@ -4393,7 +4416,7 @@ function renderTierlist(){
 
   const rarityOpts = state.rarities.filter(r=>placedUnits.some(u=>u.rarity===r.id));
   const elementOpts = state.elements.filter(el=>placedUnits.some(u=>(u.elements||[]).includes(el.id)));
-  const groupOpts = state.groups.filter(g=>placedUnits.some(u=>(u.groups||[]).includes(g.id)));
+  const groupOpts = state.groups.filter(g=>placedUnits.some(u=>unitEffectiveGroupIds(u).includes(g.id)));
   const selectHtml = (id, label, opts)=> opts.length ? `<select id="${id}" class="edit-select"><option value="">${label}</option>${opts.map(o=>`<option value="${o.id}">${escapeHtml(o.name)}</option>`).join('')}</select>` : '';
   const filterBarHtml = placedUnits.length ? `<div class="tier-filter-bar">
     <input type="text" id="tierSearch" class="log-search-input" placeholder="搜索单位名称...">
@@ -6310,7 +6333,8 @@ function renderGallery(type){
   function cardHtml(entity){
     const searchText = escapeHtml(((entity.name||'')+' '+(entity.englishName||'')).toLowerCase());
     const filterAttrs = galleryFilterConfig(type).map(f=>{
-      const vals = Array.isArray(entity[f.key]) ? entity[f.key] : (entity[f.key] ? [entity[f.key]] : []);
+      const vals = (type==='unit' && f.key==='groups') ? unitEffectiveGroupIds(entity)
+        : (Array.isArray(entity[f.key]) ? entity[f.key] : (entity[f.key] ? [entity[f.key]] : []));
       return ` data-filter-${f.key.toLowerCase()}="${vals.join(',')}"`;
     }).join('');
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
@@ -7020,7 +7044,7 @@ function groupEditRowHtml(group, i, arr){
   const iconHtml = group.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(group.image))}">` : `<div class="mark-icon-placeholder"></div>`;
   const isGradient = /gradient/.test(group.color||'');
   const colorPickerVal = isGradient ? '#4a8b7c' : (group.color||'#4a8b7c');
-  return `<div class="mark-edit-row">
+  return `<div class="group-edit-wrap"><div class="mark-edit-row">
     <div class="reorder-btns">
       <button class="btn-icon-sm" data-settings-action="moveGroupUp" data-index="${i}" ${i===0?'disabled':''} title="上移">▲</button>
       <button class="btn-icon-sm" data-settings-action="moveGroupDown" data-index="${i}" ${i===total-1?'disabled':''} title="下移">▼</button>
@@ -7031,7 +7055,14 @@ function groupEditRowHtml(group, i, arr){
     <input type="color" data-settings-bind="groups.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
     ${colorFormulaInputHtml('groups', i, group.color)}
     <button class="btn btn-danger" data-settings-action="removeGroup" data-index="${i}">删除</button>
-  </div>`;
+  </div>
+  <div class="group-scope-row">
+    <span>类型</span>
+    <select class="edit-select" data-settings-bind="groups.${i}.everyGroup">
+      <option value="0"${isEveryGroup(group)?'':' selected'}>普通分组</option>
+      <option value="1"${isEveryGroup(group)?' selected':''}>全分组（标了它的单位会出现在每一个分组里）</option>
+    </select>
+  </div></div>`;
 }
 
 function elementEditRowHtml(element, i){
