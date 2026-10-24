@@ -1392,10 +1392,11 @@ const firebaseConfig = {
   appId: "1:106875785061:web:1a7c6ca535a6aac5e4db8c"
 };
 
-// Image/video hosting via Cloudinary (free tier, no billing card required)
-const cloudinaryConfig = {
-  cloudName: "zgadgl4g",
-  uploadPreset: "Chinese Wiki"
+// Image/video hosting via the GitHub repo itself (images are committed to the images/ folder and served by GitHub Pages)
+const githubImageConfig = {
+  owner: "WikiChinese",
+  repo: "Wiki",
+  folder: "images"
 };
 
 let db = null;
@@ -2473,7 +2474,7 @@ function runSaveData(silent){
         });
 
         if(oversizedEntity){
-          showToast(`保存失败：「${escapeHtml(oversizedEntity.entity.name||'未命名')}」这一条数据超过了1MB上限（约${(oversizedEntity.bytes/1024/1024).toFixed(2)}MB），可能是图片/视频没有走Cloudinary而是直接存了进去。请检查它的图片设置。`, 12000);
+          showToast(`保存失败：「${escapeHtml(oversizedEntity.entity.name||'未命名')}」这一条数据超过了1MB上限（约${(oversizedEntity.bytes/1024/1024).toFixed(2)}MB），可能是图片/视频没有上传到 GitHub 而是直接存了进去。请检查它的图片设置。`, 12000);
           pendingLocalSave = false; resolve(); return;
         }
 
@@ -2983,50 +2984,127 @@ function isVideoUrl(url){
   return !!url && (/\/video\/upload\//.test(url) || /\.(mp4|webm|mov|ogg)(\?|$)/i.test(url));
 }
 
-function handleImageUpload(inputEl, onDone){
+function getGithubToken(forcePrompt){
+  let t = '';
+  try{ t = localStorage.getItem('ghUploadToken') || ''; }catch(e){}
+  if(!t || forcePrompt){
+    t = (prompt('请输入 GitHub Token（只需要输入一次，只会保存在你这个浏览器里，不会写进网站代码）：') || '').trim();
+    if(t){ try{ localStorage.setItem('ghUploadToken', t); }catch(e){} }
+  }
+  return t;
+}
+
+function clearGithubToken(){
+  try{ localStorage.removeItem('ghUploadToken'); }catch(e){}
+}
+
+function compressImageFile(file){
+  return new Promise((resolve)=>{
+    // GIF (may be animated) and SVG are uploaded untouched
+    if(/^image\/(gif|svg\+xml)$/.test(file.type)){ resolve({blob:file, ext: file.type==='image/gif' ? 'gif' : 'svg'}); return; }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = ()=>{
+      const maxDim = 1600;
+      let w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(1, maxDim / Math.max(w, h));
+      w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob)=>{
+        if(blob && blob.type === 'image/webp') resolve({blob, ext:'webp'});
+        else resolve({blob:file, ext:(file.name.split('.').pop() || 'png').toLowerCase()});
+      }, 'image/webp', 0.85);
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); resolve({blob:file, ext:(file.name.split('.').pop() || 'png').toLowerCase()}); };
+    img.src = url;
+  });
+}
+
+function blobToBase64(blob){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=> resolve(String(reader.result).split(',')[1]);
+    reader.onerror = ()=> reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function githubPutFile(path, base64, token, attempt){
+  const cfg = githubImageConfig;
+  const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${path}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message: 'Upload ' + path, content: base64 })
+  });
+  // 409 = another commit landed at the same moment; wait and retry once or twice
+  if(res.status === 409 && (attempt||0) < 2){
+    await new Promise(r=>setTimeout(r, 1200));
+    return githubPutFile(path, base64, token, (attempt||0)+1);
+  }
+  return res;
+}
+
+async function handleImageUpload(inputEl, onDone){
   const file = inputEl.files[0];
   if(!file) return;
   const isVideo = file.type.startsWith('video/');
-  const maxSize = 10*1024*1024;
-  if(file.size > maxSize){ showToast(isVideo ? '视频过大，你的 Cloudinary 账号限制单个文件最大10MB，请先压缩视频' : '图片过大，你的 Cloudinary 账号限制单个文件最大10MB，请先压缩图片'); return; }
-  if(cloudinaryConfig.cloudName === "YOUR_CLOUD_NAME"){
-    // Cloudinary not configured — fall back to embedding the file directly (only safe for very small icons, not for video)
-    const reader = new FileReader();
-    reader.onload = (e) => onDone(e.target.result);
-    reader.readAsDataURL(file);
-    return;
+  const maxSize = isVideo ? 25*1024*1024 : 20*1024*1024;
+  if(file.size > maxSize){ showToast(isVideo ? '视频过大，上传到 GitHub 建议单个视频不超过25MB，请先压缩视频' : '图片过大（超过20MB），请先压缩图片'); return; }
+
+  let token = getGithubToken(false);
+  if(!token){ showToast('没有输入 GitHub Token，已取消上传', 5000); return; }
+
+  try{
+    showToast(isVideo ? '视频上传中...' : '图片处理中...', 120000);
+    let blob = file, ext = (file.name.split('.').pop() || (isVideo ? 'mp4' : 'png')).toLowerCase();
+    if(!isVideo){
+      const r = await compressImageFile(file);
+      blob = r.blob; ext = r.ext;
+    }
+    ext = ext.replace(/[^a-z0-9]/g, '') || 'bin';
+    const name = Date.now().toString(36) + Math.random().toString(36).slice(2, 7) + '.' + ext;
+    const path = `${githubImageConfig.folder}/${name}`;
+    showToast('上传到 GitHub 中...', 120000);
+    const base64 = await blobToBase64(blob);
+    const res = await githubPutFile(path, base64, token, 0);
+    if(res.status === 401 || res.status === 403 || res.status === 404){
+      clearGithubToken();
+      showToast('上传失败：Token 无效、已过期，或没有这个仓库的写入权限。请重新上传并输入新的 Token。', 9000);
+      return;
+    }
+    if(!res.ok){
+      let reason = '';
+      try{ reason = (await res.json()).message || ''; }catch(e){}
+      showToast(`上传失败：${reason || res.status}`, 7000);
+      return;
+    }
+    // Stored as a relative path: GitHub Pages serves it from the same site (may take ~1 minute to appear after upload)
+    showToast('上传完成（GitHub Pages 约需1分钟更新，图片会自动重试显示）', 5000);
+    onDone(path);
+  }catch(err){
+    console.error('GitHub upload error:', err);
+    showToast('上传失败，请检查网络', 6000);
   }
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('upload_preset', cloudinaryConfig.uploadPreset);
-  const endpoint = isVideo ? 'video' : 'image';
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/${endpoint}/upload`);
-  showToast(isVideo ? '视频上传中... 0%' : '图片上传中... 0%', 120000);
-  xhr.upload.onprogress = (e)=>{
-    if(e.lengthComputable){
-      const pct = Math.round((e.loaded / e.total) * 100);
-      showToast((isVideo ? '视频上传中... ' : '图片上传中... ') + pct + '%', 120000);
-    }
-  };
-  xhr.onload = ()=>{
-    let data;
-    try{ data = JSON.parse(xhr.responseText); }
-    catch(e){ showToast('上传失败：无法解析服务器响应', 6000); return; }
-    if(data.secure_url){
-      showToast('上传完成');
-      onDone(data.secure_url);
-    } else {
-      const reason = (data.error && data.error.message) ? data.error.message : '未知错误';
-      showToast(`上传失败：${reason}`, 6000);
-      console.error('Cloudinary upload error:', data);
-    }
-  };
-  xhr.onerror = ()=>{
-    showToast('上传失败，请检查网络或 Cloudinary 设置', 6000);
-  };
-  xhr.send(formData);
 }
+
+// Newly uploaded images are not live until GitHub Pages finishes rebuilding; retry loading them automatically
+document.addEventListener('error', (e)=>{
+  const t = e.target;
+  if(!t || t.tagName !== 'IMG') return;
+  const src = t.getAttribute('src') || '';
+  if(!/^images\//.test(src)) return;
+  const n = +(t.dataset.ghRetry || 0);
+  if(n >= 15) return;
+  t.dataset.ghRetry = n + 1;
+  setTimeout(()=>{ t.src = src.split('?')[0] + '?r=' + Date.now(); }, 5000);
+}, true);
 
 function rarityOptionsHtml(selected){
   return ['<option value="">无</option>'].concat(
@@ -7230,7 +7308,7 @@ function dbSizeReportHtml(){
     <div style="font-size:12px;color:var(--text-faint);margin-bottom:12px;">
       占用最多的设置类文档：${biggestMeta.key||'（暂无）'} ${biggestMeta.bytes?`(${(biggestMeta.bytes/1024).toFixed(1)} KB)`:''}　|　占用最多的单条数据：${biggest.label?`${escapeHtml(biggest.label)}「${escapeHtml(biggest.name)}」`:'（暂无）'} ${biggest.bytes?`(${(biggest.bytes/1024).toFixed(1)} KB)`:''}
     </div>
-    ${pct>=85 ? `<div class="hint" style="color:#e05555;margin-bottom:12px;">⚠️ 上面提到的这份文档快满了，去检查一下它是不是有图片/视频没走Cloudinary直接存进来了。</div>` : ''}
+    ${pct>=85 ? `<div class="hint" style="color:#e05555;margin-bottom:12px;">⚠️ 上面提到的这份文档快满了，去检查一下它是不是有图片/视频没有上传到 GitHub 直接存进来了。</div>` : ''}
   </details>`;
 }
 
