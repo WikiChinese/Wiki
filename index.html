@@ -7449,6 +7449,140 @@ function wireSettingsBindElements(container, rerenderFn){
   });
 }
 
+// ===== Cleanup of unused images stored in the GitHub repo =====
+let unusedImagesState = { loading:false, files:null, totalCount:0, usedCount:0, error:'' };
+
+function ghHeaders(token){
+  const h = { 'Accept':'application/vnd.github+json' };
+  if(token) h['Authorization'] = 'Bearer ' + token;
+  return h;
+}
+
+async function scanUnusedImages(){
+  if(unusedImagesState.loading) return;
+  if(!state || !((state.units||[]).length || (state.items||[]).length)){
+    showToast('数据还没载入完成，请稍后再试', 4000);
+    return;
+  }
+  unusedImagesState = { loading:true, files:null, totalCount:0, usedCount:0, error:'' };
+  refreshUnusedImagesUi();
+  try{
+    // 1) every image name referenced anywhere in the wiki data (and in this page's own HTML)
+    const used = new Set();
+    const collect = (text)=>{
+      const re = /images\/([A-Za-z0-9._%-]+)/g;
+      let m;
+      while((m = re.exec(text))){
+        let n = m[1];
+        try{ n = decodeURIComponent(n); }catch(e){}
+        used.add(n);
+      }
+    };
+    collect(JSON.stringify(state));
+    try{
+      const pageRes = await fetch(location.href.split('#')[0].split('?')[0], {cache:'no-store'});
+      if(pageRes.ok) collect(await pageRes.text());
+    }catch(e){}
+
+    // 2) every file currently in the repo's images folder
+    const cfg = githubImageConfig;
+    const token = getGithubToken(false);
+    const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${cfg.folder}?t=${Date.now()}`, { headers: ghHeaders(token) });
+    if(res.status === 404){
+      unusedImagesState = { loading:false, files:[], totalCount:0, usedCount:0, error:'' };
+      refreshUnusedImagesUi();
+      return;
+    }
+    if(!res.ok){
+      if(res.status === 401 || res.status === 403) clearGithubToken();
+      throw new Error('读取仓库失败（' + res.status + '），Token 可能无效或没有权限');
+    }
+    const list = await res.json();
+    const media = (Array.isArray(list) ? list : []).filter(f=>f.type === 'file' && /\.(png|jpe?g|gif|webp|svg|avif|mp4|webm|mov|ogg)$/i.test(f.name));
+    const unused = media.filter(f=>!used.has(f.name));
+    unusedImagesState = { loading:false, files:unused.map(f=>({name:f.name, path:f.path, sha:f.sha, size:f.size, checked:true})), totalCount:media.length, usedCount:media.length - unused.length, error:'' };
+  }catch(err){
+    console.error(err);
+    unusedImagesState = { loading:false, files:null, totalCount:0, usedCount:0, error:String(err.message || err) };
+  }
+  refreshUnusedImagesUi();
+}
+
+async function deleteSelectedUnusedImages(){
+  const st = unusedImagesState;
+  if(!st.files) return;
+  const targets = st.files.filter(f=>f.checked);
+  if(!targets.length){ showToast('没有勾选任何图片'); return; }
+  if(!confirm(`确定要从 GitHub 仓库删除这 ${targets.length} 张图片吗？\n删除后无法在网站里恢复。`)) return;
+  const token = getGithubToken(false);
+  if(!token){ showToast('没有输入 GitHub Token，已取消', 4000); return; }
+  const cfg = githubImageConfig;
+  let ok = 0, fail = 0, stop = false;
+  const deleted = new Set();
+  for(let i = 0; i < targets.length && !stop; i++){
+    const f = targets[i];
+    showToast(`删除中... ${i+1}/${targets.length}`, 120000);
+    let attempt = 0, done = false;
+    while(!done){
+      const res = await fetch(`https://api.github.com/repos/${cfg.owner}/${cfg.repo}/contents/${f.path}`, {
+        method:'DELETE',
+        headers: Object.assign({'Content-Type':'application/json'}, ghHeaders(token)),
+        body: JSON.stringify({ message: 'Delete ' + f.path, sha: f.sha })
+      });
+      if(res.status === 409 && attempt < 3){ attempt++; await new Promise(r=>setTimeout(r, 1200)); continue; }
+      if(res.ok || res.status === 404){ ok++; deleted.add(f.path); }
+      else if(res.status === 401 || res.status === 403){ clearGithubToken(); stop = true; fail++; }
+      else { fail++; }
+      done = true;
+    }
+  }
+  unusedImagesState.files = st.files.filter(f=>!deleted.has(f.path));
+  unusedImagesState.totalCount = Math.max(0, st.totalCount - deleted.size);
+  showToast(stop ? `已删除 ${ok} 张，之后因 Token 无效或没有权限而停止，请重新输入 Token 再试` : `已删除 ${ok} 张${fail ? '，失败 ' + fail + ' 张' : ''}`, 7000);
+  refreshUnusedImagesUi();
+}
+
+function refreshUnusedImagesUi(){
+  const wrap = document.getElementById('unusedImagesWrap');
+  if(!wrap) return;
+  const st = unusedImagesState;
+  const fmt = (b)=> b >= 1048576 ? (b/1048576).toFixed(2) + ' MB' : (b/1024).toFixed(1) + ' KB';
+  let html = `<button class="btn btn-gold" id="scanUnusedImagesBtn" ${st.loading ? 'disabled' : ''}>${st.loading ? '扫描中...' : '🔍 扫描未使用的图片'}</button>`;
+  if(st.error) html += `<div class="hint" style="color:#e05555;margin-top:10px;">${escapeHtml(st.error)}</div>`;
+  if(st.files){
+    if(!st.files.length){
+      html += `<div class="hint" style="margin-top:10px;">✅ 没有发现未使用的图片（仓库里共 ${st.totalCount} 个文件，全部都有被使用）。</div>`;
+    } else {
+      const total = st.files.reduce((a,f)=>a+(f.size||0), 0);
+      const selCount = st.files.filter(f=>f.checked).length;
+      html += `<div class="hint" style="margin:10px 0;">仓库里共 ${st.totalCount} 个文件，其中 <b>${st.files.length}</b> 个没有被任何条目使用（约 ${fmt(total)}）。勾选想删除的，再点下面的删除按钮。</div>`;
+      html += `<div style="margin-bottom:10px;"><button class="btn" id="unusedSelectAllBtn">全选</button> <button class="btn" id="unusedSelectNoneBtn" style="margin-left:6px;">全不选</button> <button class="btn" id="deleteUnusedBtn" style="margin-left:6px;background:#c0392b;color:#fff;" ${selCount ? '' : 'disabled'}>🗑 删除已勾选（${selCount}）</button></div>`;
+      html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">` + st.files.map((f,i)=>{
+        const isVid = /\.(mp4|webm|mov|ogg)$/i.test(f.name);
+        const thumb = isVid ? `<div style="height:90px;display:flex;align-items:center;justify-content:center;font-size:28px;">🎬</div>` : `<img src="${escapeHtml(f.path)}" loading="lazy" style="width:100%;height:90px;object-fit:contain;background:rgba(128,128,128,.12);border-radius:4px;">`;
+        return `<label style="display:block;border:1px solid var(--border);border-radius:8px;padding:6px;cursor:pointer;background:var(--card);">${thumb}<div style="display:flex;align-items:center;gap:6px;margin-top:4px;"><input type="checkbox" data-unused-idx="${i}" ${f.checked ? 'checked' : ''}><span style="font-size:11px;word-break:break-all;">${fmt(f.size||0)}</span></div></label>`;
+      }).join('') + `</div>`;
+    }
+  }
+  wrap.innerHTML = html;
+  const scanBtn = document.getElementById('scanUnusedImagesBtn');
+  if(scanBtn) scanBtn.addEventListener('click', scanUnusedImages);
+  const delBtn = document.getElementById('deleteUnusedBtn');
+  if(delBtn) delBtn.addEventListener('click', deleteSelectedUnusedImages);
+  const allBtn = document.getElementById('unusedSelectAllBtn');
+  if(allBtn) allBtn.addEventListener('click', ()=>{ st.files.forEach(f=>f.checked = true); refreshUnusedImagesUi(); });
+  const noneBtn = document.getElementById('unusedSelectNoneBtn');
+  if(noneBtn) noneBtn.addEventListener('click', ()=>{ st.files.forEach(f=>f.checked = false); refreshUnusedImagesUi(); });
+  wrap.querySelectorAll('input[data-unused-idx]').forEach(cb=>{
+    cb.addEventListener('change', ()=>{
+      st.files[+cb.dataset.unusedIdx].checked = cb.checked;
+      const n = st.files.filter(f=>f.checked).length;
+      const b = document.getElementById('deleteUnusedBtn');
+      if(b){ b.disabled = !n; b.textContent = `🗑 删除已勾选（${n}）`; }
+    });
+  });
+}
+
 function renderSettings(){
   const container = document.getElementById('mainInner');
   const prevSettingsBlockOpenStates = Array.from(container.querySelectorAll('details.settings-block')).map(d=>d.open);
@@ -7531,6 +7665,15 @@ function renderSettings(){
       <button class="btn" id="createBackupNowBtn">📸 立即创建一份备份</button>
       <button class="btn" id="refreshBackupsBtn" style="margin-left:8px;">🔄 刷新备份列表</button>
       <div id="backupsListWrap" style="margin-top:14px;">${backupsListHtml()}</div>
+    </details>
+
+    <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">清理未使用图片</summary>
+      <div class="hint" style="margin-bottom:14px;">
+        图片一选好就会立刻上传到 GitHub 仓库，就算之后没有保存、或把条目里的图片删掉，仓库里的图片文件也不会自动消失。这里会把仓库 <code>images/</code> 文件夹里的图片，和整个 wiki 数据里用到的图片逐一比对，列出<b>没有被任何条目使用</b>的图片，由你确认后再删除。<br>
+        <b>⚠️ 扫描前请先保存所有正在编辑的内容</b>（没保存的图片会被当成未使用）。另外，只被旧备份用到的图片也会被列出来；删除后，恢复那份旧备份时那些图片会显示不出来。
+      </div>
+      <div id="unusedImagesWrap"></div>
     </details>
 
     <details class="settings-block">
@@ -7632,6 +7775,7 @@ function renderSettings(){
   }
 
   wireSettingsBindElements(container, renderSettings);
+  refreshUnusedImagesUi();
   const addBtn = document.getElementById('addMarkBtn');
   if(addBtn) addBtn.addEventListener('click', async ()=>{
     state.marks.push({id:uid(), name:'新标记', image:'', color:'#c9a24b', categoryId:'', description:''});
