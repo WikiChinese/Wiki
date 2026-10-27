@@ -2035,13 +2035,13 @@ function renderStageLevelPage(){
 function renderUpgradePage(){
   const container = document.getElementById('mainInner');
   const upgrade = state.upgrades.find(s=>s.id===currentView.id);
-  if(!upgrade){ container.innerHTML = `<div class="empty-state"><h2>未找到该升级分类</h2></div>`; return; }
+  if(!upgrade){ container.innerHTML = `<div class="empty-state"><h2>未找到该区域</h2></div>`; return; }
 
   if(editMode){
     if(!draftUpgrade) draftUpgrade = JSON.parse(JSON.stringify(upgrade));
     container.innerHTML = `
       <div class="page-toolbar">
-        <div class="crumb">编辑升级分类</div>
+        <div class="crumb">编辑区域</div>
         <div class="toolbar-actions">
           <button class="btn btn-danger" id="deleteUpgradeBtn">删除</button>
           <button class="btn" id="cancelBtn">取消</button>
@@ -2050,7 +2050,7 @@ function renderUpgradePage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">名称</span>
-        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgrade.name)}" placeholder="升级分类名称">
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgrade.name)}" placeholder="区域名称">
       </div>
       <div class="image-upload-box" style="margin-bottom:18px;">
         ${draftUpgrade.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUpgrade.image))}">` : `<div class="image-placeholder">无图片</div>`}
@@ -2061,14 +2061,14 @@ function renderUpgradePage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">说明</span>
-        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个升级类型的规则、玩法、消耗、注意事项...">${escapeHtml(draftUpgrade.description||'')}</textarea>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个区域的规则、玩法、注意事项...">${escapeHtml(draftUpgrade.description||'')}</textarea>
         <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
     `;
     wireDraftForm(container, draftUpgrade);
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftUpgrade=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
-      upgrade.name = (draftUpgrade.name||'').trim() || '未命名升级';
+      upgrade.name = (draftUpgrade.name||'').trim() || '未命名区域';
       upgrade.image = draftUpgrade.image || '';
       upgrade.description = draftUpgrade.description || '';
       editMode = false; draftUpgrade = null;
@@ -2076,7 +2076,7 @@ function renderUpgradePage(){
       render();
     });
     document.getElementById('deleteUpgradeBtn').addEventListener('click', async ()=>{
-      if(!confirm(`确定删除「${upgrade.name}」这个升级分类？`)) return;
+      if(!confirm(`确定删除「${upgrade.name}」这个区域？`)) return;
       state.upgrades = state.upgrades.filter(s=>s.id!==upgrade.id);
       editMode = false; draftUpgrade = null;
       currentView = {type:'home'}; setHash(currentView);
@@ -2092,20 +2092,20 @@ function renderUpgradePage(){
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
       </div>
-    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无升级项目</div>';
+    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无区域项目</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
-      <div class="crumb">升级</div>
+      <div class="crumb">区域</div>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
     ${upgrade.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(upgrade.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(upgrade.name)}</h1>
     <div class="content-body">${renderMarkdownLite(upgrade.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
-    <div class="section-label">升级列表</div>
+    <div class="section-label">区域列表</div>
     ${isAdmin && upgrade.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 按住卡片拖动，可以调整顺序。</div>` : ''}
     <div class="floor-list" id="upgradeLevelsList">${levelsHtml}</div>
-    ${isAdmin ? '<div style="margin-top:14px;"><button class="btn btn-gold" id="addUpgradeLevelBtn">+ 添加升级项目</button></div>' : ''}
+    ${isAdmin ? '<div style="margin-top:14px;"><button class="btn btn-gold" id="addUpgradeLevelBtn">+ 添加区域项目</button></div>' : ''}
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftUpgrade=null; render(); });
@@ -2114,7 +2114,7 @@ function renderUpgradePage(){
   const addUpgradeLevelBtn = document.getElementById('addUpgradeLevelBtn');
   if(addUpgradeLevelBtn) addUpgradeLevelBtn.addEventListener('click', async ()=>{
     if(!requireAdmin()) return;
-    const name = (window.prompt('新升级项目的名称？', '') || '').trim();
+    const name = (window.prompt('新区域项目的名称？', '') || '').trim();
     if(!name) return;
     const lv = {id: uid(), name, image:'', description:''};
     upgrade.levels.push(lv);
@@ -2177,13 +2177,13 @@ function renderUpgradeLevelPage(){
   const [upgradeId, levelId] = (currentView.id || '').split('__');
   const upgrade = state.upgrades.find(s=>s.id===upgradeId);
   const level = upgrade ? upgrade.levels.find(lv=>lv.id===levelId) : null;
-  if(!upgrade || !level){ container.innerHTML = `<div class="empty-state"><h2>未找到该升级项目</h2></div>`; return; }
+  if(!upgrade || !level){ container.innerHTML = `<div class="empty-state"><h2>未找到该区域项目</h2></div>`; return; }
 
   if(editMode){
     if(!draftUpgradeLevel || draftUpgradeLevel.id !== level.id) draftUpgradeLevel = JSON.parse(JSON.stringify(level));
     container.innerHTML = `
       <div class="page-toolbar">
-        <div class="crumb">编辑升级项目 · ${escapeHtml(upgrade.name)}</div>
+        <div class="crumb">编辑区域项目 · ${escapeHtml(upgrade.name)}</div>
         <div class="toolbar-actions">
           <button class="btn btn-danger" id="deleteUpgradeLevelBtn">删除</button>
           <button class="btn" id="cancelBtn">取消</button>
@@ -2192,7 +2192,7 @@ function renderUpgradeLevelPage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">名称</span>
-        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgradeLevel.name)}" placeholder="升级项目名称">
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgradeLevel.name)}" placeholder="区域项目名称">
       </div>
       <div class="image-upload-box" style="margin-bottom:18px;">
         ${draftUpgradeLevel.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUpgradeLevel.image))}">` : `<div class="image-placeholder">无图片</div>`}
@@ -2203,14 +2203,14 @@ function renderUpgradeLevelPage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">说明</span>
-        <textarea class="edit-textarea tall" data-bind="description" placeholder="这个升级项目的效果、消耗、注意事项...">${escapeHtml(draftUpgradeLevel.description||'')}</textarea>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="这个区域项目的介绍、效果、注意事项...">${escapeHtml(draftUpgradeLevel.description||'')}</textarea>
         <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
     `;
     wireDraftForm(container, draftUpgradeLevel);
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftUpgradeLevel=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
-      level.name = (draftUpgradeLevel.name||'').trim() || '未命名升级项目';
+      level.name = (draftUpgradeLevel.name||'').trim() || '未命名区域项目';
       level.image = draftUpgradeLevel.image || '';
       level.description = draftUpgradeLevel.description || '';
       editMode = false; draftUpgradeLevel = null;
@@ -2218,7 +2218,7 @@ function renderUpgradeLevelPage(){
       render();
     });
     document.getElementById('deleteUpgradeLevelBtn').addEventListener('click', async ()=>{
-      if(!confirm(`确定删除「${level.name}」这个升级项目？`)) return;
+      if(!confirm(`确定删除「${level.name}」这个区域项目？`)) return;
       upgrade.levels = upgrade.levels.filter(lv=>lv.id!==level.id);
       editMode = false; draftUpgradeLevel = null;
       const last = viewHistory[viewHistory.length-1];
@@ -2853,8 +2853,8 @@ function renderSidebar(){
 
   <div class="nav-section">
     <details class="nav-collapsible" data-picker-key="sidebar-upgrades"${(openPickerKeys.has('sidebar-upgrades') || currentView.type==='upgrade' || currentView.type==='upgradeLevel') ? ' open' : ''}>
-      <summary class="nav-section-label" style="cursor:pointer;">升级${isAdmin ? ' <button type="button" class="cat-add" id="addUpgradeBtn" title="新增升级分类">+</button>' : ''}</summary>
-      ${state.upgrades.map(s=>`<a href="${viewToHash({type:'upgrade', id:s.id})}" class="top-link nav-sub-link ${((currentView.type==='upgrade'&&currentView.id===s.id)||(currentView.type==='upgradeLevel'&&String(currentView.id||'').startsWith(s.id+'__')))?'active':''}" data-view="upgrade" data-id="${s.id}"${isAdmin ? ' draggable="true"' : ''}>${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无升级分类</div>'}
+      <summary class="nav-section-label" style="cursor:pointer;">区域${isAdmin ? ' <button type="button" class="cat-add" id="addUpgradeBtn" title="新增区域">+</button>' : ''}</summary>
+      ${state.upgrades.map(s=>`<a href="${viewToHash({type:'upgrade', id:s.id})}" class="top-link nav-sub-link ${((currentView.type==='upgrade'&&currentView.id===s.id)||(currentView.type==='upgradeLevel'&&String(currentView.id||'').startsWith(s.id+'__')))?'active':''}" data-view="upgrade" data-id="${s.id}"${isAdmin ? ' draggable="true"' : ''}>${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无区域</div>'}
     </details>
   </div>
 
@@ -2897,7 +2897,7 @@ function renderSidebar(){
   if(addUpgradeBtn) addUpgradeBtn.addEventListener('click', async (e)=>{
     e.preventDefault(); e.stopPropagation();
     if(!requireAdmin()) return;
-    const name = window.prompt('新升级分类的名称？（例如：单位升级、武器升级、天赋升级）', '');
+    const name = window.prompt('新区域的名称？', '');
     if(name === null) return;
     const trimmed = name.trim();
     if(!trimmed) return;
