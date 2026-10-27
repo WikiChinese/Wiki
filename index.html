@@ -101,6 +101,8 @@
   .gallery-card-en{display:block;font-size:10.5px;color:var(--text-faint);margin-top:2px;}
   .gallery-card:hover .gallery-card-img,.gallery-card:hover .gallery-card-placeholder{border-color:var(--gold-dim);}
   .gallery-card:hover .gallery-card-name{color:var(--gold);}
+  /* Gradient colours stand still when 设置 → 渐变色流动动画 is switched off */
+  body.no-gradient-anim [style*="galleryBorderPulse"], body.no-gradient-anim [style*="textGradientPulse"], body.no-gradient-anim .gallery-card-img-wrap.animated-border{animation:none !important;background-size:100% 100% !important;background-position:0% 50% !important;}
   @keyframes textGradientPulse{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
   .gallery-card-img-wrap.animated-border{padding:3px;border-radius:13px;background:linear-gradient(135deg,#3a2f14,#c9a24b,#3a2f14);background-size:300% 300%;animation:galleryBorderPulse 4s ease-in-out infinite;}
   .gallery-card-img-wrap.animated-border .gallery-card-img,.gallery-card-img-wrap.animated-border .gallery-card-placeholder{border:none;border-radius:10px;}
@@ -1080,6 +1082,7 @@ function migrateState(){
     ];
   }
   if(!Array.isArray(state.adminEmails)) state.adminEmails = [];
+  if(typeof state.gradientAnimation !== 'boolean') state.gradientAnimation = true;
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
   state.attackTypes.forEach(t=>{
@@ -1314,6 +1317,7 @@ function migrateState(){
     if(!Array.isArray(u.questline)) u.questline = [];
     u.questline.forEach(q=>{ if(q.name===undefined) q.name=''; if(q.description===undefined) q.description=''; });
     if(u.personalColor===undefined) u.personalColor = '';
+    if(u.colorStatic===undefined) u.colorStatic = false;
     if(u.unitType===undefined) u.unitType = 'fighting';
     if(!Array.isArray(u.skins)) u.skins = [];
     u.skins.forEach(s=>{ if(s.rarity===undefined) s.rarity=''; if(s.obtainWay===undefined) s.obtainWay=''; if(s.series===undefined) s.series=''; if(s.referenceUrl===undefined) s.referenceUrl=''; if(!Array.isArray(s.media)) s.media = s.image ? [s.image] : []; });
@@ -1360,6 +1364,7 @@ function migrateState(){
     if(!Array.isArray(f.obtainMethods)) f.obtainMethods = [];
     if(!Array.isArray(f.comments)) f.comments = [];
     if(f.personalColor===undefined) f.personalColor = '';
+    if(f.colorStatic===undefined) f.colorStatic = false;
   });
   state.memories.forEach(m=>{
     if(!Array.isArray(m.marks)) m.marks = [];
@@ -1376,6 +1381,7 @@ function migrateState(){
     if(!Array.isArray(m.linkedFamilies)) m.linkedFamilies = [];
     if(!Array.isArray(m.comments)) m.comments = [];
     if(m.personalColor===undefined) m.personalColor = '';
+    if(m.colorStatic===undefined) m.colorStatic = false;
   });
 }
 
@@ -2213,7 +2219,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -2618,11 +2624,12 @@ function formatNumberDisplay(s){
 // Renders a unit's personalColor as an inline style. Accepts either a plain color (hex/rgb/named)
 // or a full CSS gradient string (e.g. "linear-gradient(90deg, gold, red)") — gradients can't be
 // applied via the `color` property directly, so text needs the background-clip:text trick instead.
-function unitBorderGradientStyle(value){
+function unitBorderGradientStyle(value, isStatic){
   if(!value) return '';
   const v = String(value).trim();
   if(!v || !/gradient/i.test(v)) return '';
   const safe = v.replace(/[<>"']/g, '');
+  if(isStatic) return ` style="padding:3px;border-radius:13px;background:${safe};background-size:100% 100%;animation:none;"`;
   return ` style="padding:3px;border-radius:13px;background:${safe};background-size:300% 300%;animation:galleryBorderPulse 4s ease-in-out infinite;"`;
 }
 // A unit follows its rarity's colour (the one set for that rarity in 设置) — but always STATIC, even if
@@ -2646,15 +2653,18 @@ function unitColorAttrs(u){
   const ownGradient = /gradient/i.test(own);
   return {
     wrapClass: ownGradient ? ' animated-border' : (rc ? ' rarity-border' : ''),
-    wrapStyle: ownGradient ? unitBorderGradientStyle(own) : (rc ? ` style="background:${rc};"` : ''),
-    nameStyle: own ? unitNameColorStyle(own) : staticNameColorStyle(rc)
+    wrapStyle: ownGradient ? unitBorderGradientStyle(own, u.colorStatic) : (rc ? ` style="background:${rc};"` : ''),
+    nameStyle: own ? unitNameColorStyle(own, u.colorStatic) : staticNameColorStyle(rc)
   };
 }
-function unitNameColorStyle(value){
+function unitNameColorStyle(value, isStatic){
   if(!value) return '';
   const v = String(value).trim();
   if(!v) return '';
   const safe = v.replace(/[<>"']/g, '');
+  if(/gradient/i.test(safe) && isStatic){
+    return ` style="background:${safe};background-size:100% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:none;"`;
+  }
   if(/gradient/i.test(safe)){
     return ` style="background:${safe};background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;animation:textGradientPulse 4s ease-in-out infinite;"`;
   }
@@ -5348,6 +5358,7 @@ function renderUnit(){
           <input class="edit-input" style="flex:1;" id="unitPersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftUnit.personalColor||'')}" placeholder="留空 = 默认渐变动画，也可以填自己的渐变 CSS（会自动带呼吸动画）">
           <button type="button" class="btn" data-action="clearUnitPersonalColor">清除</button>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;"><input type="checkbox" id="unitColorStaticToggle" ${draftUnit.colorStatic ? 'checked' : ''}><span>让这个渐变色保持静止（不流动）。不勾选 = 会流动</span></label>
       </div>
       <div class="edit-field">
         <span class="edit-label">单位类型</span>
@@ -5695,6 +5706,7 @@ function renderUnit(){
       unit.marks = draftUnit.marks || [];
       unit.questline = draftUnit.questline || [];
       unit.personalColor = draftUnit.personalColor || '';
+      unit.colorStatic = !!draftUnit.colorStatic;
       unit.unitType = draftUnit.unitType || 'fighting';
       unit.updatedAt = Date.now();
       editMode = false;
@@ -5703,6 +5715,8 @@ function renderUnit(){
       render();
     };
     document.getElementById('saveBtn').addEventListener('click', doSaveUnit);
+    const unitColorStaticToggle = document.getElementById('unitColorStaticToggle');
+    if(unitColorStaticToggle) unitColorStaticToggle.addEventListener('change', ()=>{ draftUnit.colorStatic = unitColorStaticToggle.checked; });
     const unitColorPickerHelper = document.getElementById('unitColorPickerHelper');
     if(unitColorPickerHelper) unitColorPickerHelper.addEventListener('input', ()=>{
       draftUnit.personalColor = unitColorPickerHelper.value;
@@ -5841,7 +5855,7 @@ function renderUnit(){
     return `<div class="skill-view">
       ${media}
       <div class="skill-view-body">
-        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'memory', id:m.id})}" data-view="memory" data-id="${m.id}" style="${m.personalColor ? unitNameColorStyle(m.personalColor).replace(/^\s*style="|"$/g,'') : 'color:inherit;'}text-decoration:none;cursor:pointer;">${escapeHtml(m.name)}</a></h3>
+        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'memory', id:m.id})}" data-view="memory" data-id="${m.id}" style="${m.personalColor ? unitNameColorStyle(m.personalColor, m.colorStatic).replace(/^\s*style="|"$/g,'') : 'color:inherit;'}text-decoration:none;cursor:pointer;">${escapeHtml(m.name)}</a></h3>
         ${passivesInner}
       </div>
     </div>`;
@@ -5862,7 +5876,7 @@ function renderUnit(){
     return `<div class="skill-view">
       ${media2}
       <div class="skill-view-body">
-        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'family', id:f.id})}" data-view="family" data-id="${f.id}" style="${f.personalColor ? unitNameColorStyle(f.personalColor).replace(/^\s*style="|"$/g,'') : 'color:inherit;'}text-decoration:none;cursor:pointer;">${escapeHtml(f.name)}</a></h3>
+        <h3 class="skill-name" style="margin:0 0 6px;"><a href="${viewToHash({type:'family', id:f.id})}" data-view="family" data-id="${f.id}" style="${f.personalColor ? unitNameColorStyle(f.personalColor, f.colorStatic).replace(/^\s*style="|"$/g,'') : 'color:inherit;'}text-decoration:none;cursor:pointer;">${escapeHtml(f.name)}</a></h3>
         ${fpassivesInner}
       </div>
     </div>`;
@@ -6441,8 +6455,8 @@ function renderGallery(type){
     const searchText = escapeHtml(((entity.name||'')+' '+(entity.englishName||'')).toLowerCase());
     const ca = type==='unit' ? unitColorAttrs(entity) : {
       wrapClass: /gradient/i.test(entity.personalColor||'') ? ' animated-border' : '',
-      wrapStyle: unitBorderGradientStyle(entity.personalColor),
-      nameStyle: unitNameColorStyle(entity.personalColor)
+      wrapStyle: unitBorderGradientStyle(entity.personalColor, entity.colorStatic),
+      nameStyle: unitNameColorStyle(entity.personalColor, entity.colorStatic)
     };
     const filterAttrs = galleryFilterConfig(type).map(f=>{
       const vals = (type==='unit' && f.key==='groups') ? unitEffectiveGroupIds(entity)
@@ -6789,6 +6803,7 @@ function renderSimpleEntity(type){
           <input class="edit-input" style="flex:1;" id="simplePersonalColorInput" data-bind="personalColor" value="${escapeHtml(draftSimple.personalColor||'')}" placeholder="留空 = 跟随稀有度颜色">
           <button type="button" class="btn" data-action="clearSimplePersonalColor">清除</button>
         </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer;"><input type="checkbox" id="simpleColorStaticToggle" ${draftSimple.colorStatic ? 'checked' : ''}><span>让这个渐变色保持静止（不流动）。不勾选 = 会流动</span></label>
       </div>
 
       <div class="edit-field">
@@ -6888,6 +6903,7 @@ function renderSimpleEntity(type){
         entity.linkedFamilies = draftSimple.linkedFamilies || [];
       }
       entity.personalColor = draftSimple.personalColor || '';
+      entity.colorStatic = !!draftSimple.colorStatic;
       entity.rarity = draftSimple.rarity || '';
       entity.obtainWay = draftSimple.obtainWay || '';
       entity.obtainMethods = Array.isArray(draftSimple.obtainMethods) ? draftSimple.obtainMethods : [];
@@ -6897,6 +6913,8 @@ function renderSimpleEntity(type){
       await saveData(false);
       render();
     });
+    const simpleColorStaticToggle = document.getElementById('simpleColorStaticToggle');
+    if(simpleColorStaticToggle) simpleColorStaticToggle.addEventListener('change', ()=>{ draftSimple.colorStatic = simpleColorStaticToggle.checked; });
     const simpleColorPickerHelper = document.getElementById('simpleColorPickerHelper');
     if(simpleColorPickerHelper) simpleColorPickerHelper.addEventListener('input', ()=>{
       draftSimple.personalColor = simpleColorPickerHelper.value;
@@ -6983,7 +7001,7 @@ function renderSimpleEntity(type){
     </div>
     ${entity.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(entity.image))}">` : ''}
     <div class="page-header">
-      <h1 class="page-title"${unitNameColorStyle(entity.personalColor)}>${escapeHtml(entity.name)}</h1>
+      <h1 class="page-title"${unitNameColorStyle(entity.personalColor, entity.colorStatic)}>${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
       <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
@@ -7668,6 +7686,17 @@ function renderSettings(){
     </details>
 
     <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">渐变色流动动画</summary>
+      <div class="hint" style="margin-bottom:14px;">
+        使用渐变色（例如 <code>linear-gradient(...)</code>）的名字、边框、稀有度标签，默认会一直缓慢流动。关掉后，<b>全站</b>所有渐变色都会静止不动。如果只想让某一个单位/回忆/家族的颜色不动，不用关这个，直接在那一项的编辑页面勾选「让这个渐变色保持静止」就可以。普通的单一颜色不受影响。
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+        <input type="checkbox" id="gradientAnimToggle" ${state.gradientAnimation === false ? '' : 'checked'}>
+        <span>让渐变色流动</span>
+      </label>
+    </details>
+
+    <details class="settings-block">
       <summary class="section-label" style="margin-top:0;">清理未使用图片</summary>
       <div class="hint" style="margin-bottom:14px;">
         图片一选好就会立刻上传到 GitHub 仓库，就算之后没有保存、或把条目里的图片删掉，仓库里的图片文件也不会自动消失。这里会把仓库 <code>images/</code> 文件夹里的图片，和整个 wiki 数据里用到的图片逐一比对，列出<b>没有被任何条目使用</b>的图片，由你确认后再删除。<br>
@@ -7776,6 +7805,12 @@ function renderSettings(){
 
   wireSettingsBindElements(container, renderSettings);
   refreshUnusedImagesUi();
+  const gradientAnimToggle = document.getElementById('gradientAnimToggle');
+  if(gradientAnimToggle) gradientAnimToggle.addEventListener('change', async ()=>{
+    state.gradientAnimation = gradientAnimToggle.checked;
+    applyGradientAnimSetting();
+    await saveData(true);
+  });
   const addBtn = document.getElementById('addMarkBtn');
   if(addBtn) addBtn.addEventListener('click', async ()=>{
     state.marks.push({id:uid(), name:'新标记', image:'', color:'#c9a24b', categoryId:'', description:''});
@@ -7915,7 +7950,12 @@ function renderSettings(){
   }
 }
 
+function applyGradientAnimSetting(){
+  if(document.body) document.body.classList.toggle('no-gradient-anim', state.gradientAnimation === false);
+}
+
 function render(){
+  applyGradientAnimSetting();
   const titleEl = document.getElementById('siteTitle');
   if(titleEl && document.activeElement !== titleEl) titleEl.value = state.siteTitle || '动漫先锋 (Anime Vanguard) Wiki';
   if(titleEl) titleEl.readOnly = !isAdmin;
