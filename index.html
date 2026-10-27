@@ -783,6 +783,7 @@ let addingCharacterCardForUnit = false;
 let activeSkillEditTabIndex = 0;
 let newCharacterCardDraft = null;
 let draftUpgrade = null;
+let draftUpgradeLevel = null;
 let draftStageLevel = null;
 let showingShinyImage = false;
 
@@ -790,7 +791,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','upgradeLevel','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -828,7 +829,7 @@ function goBack(){
   clearUnitTraitPreviewIfLeaving(newView);
   currentView = newView;
   setHash(currentView);
-  editMode=false; draftUnit=null; draftSimple=null; draftItem=null; addingLog=false; showingShinyImage=false;
+  editMode=false; draftUnit=null; draftSimple=null; draftItem=null; draftUpgrade=null; draftUpgradeLevel=null; addingLog=false; showingShinyImage=false;
   render();
   const mainEl = document.querySelector('.main');
   if(mainEl) mainEl.scrollTop = prev ? prev.scrollTop : 0;
@@ -2063,12 +2064,6 @@ function renderUpgradePage(){
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个升级类型的规则、玩法、消耗、注意事项...">${escapeHtml(draftUpgrade.description||'')}</textarea>
         <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
       </div>
-      <div class="edit-field">
-        <span class="edit-label">升级 (每一项)</span>
-        <div class="hint" style="margin-bottom:10px;">比如这个升级分类里有很多具体的升级项目/等级，在这里一个个加。</div>
-        ${draftUpgrade.levels.map((lv,i)=>odysseyCardEditHtml(lv,i,'levels','removeUpgradeLevel',false,'升级')).join('') || '<div class="empty-hint" style="padding-left:0;">暂无升级项目</div>'}
-        <button class="btn btn-gold" data-action="addUpgradeLevel">+ 添加升级</button>
-      </div>
     `;
     wireDraftForm(container, draftUpgrade);
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftUpgrade=null; render(); });
@@ -2076,7 +2071,6 @@ function renderUpgradePage(){
       upgrade.name = (draftUpgrade.name||'').trim() || '未命名升级';
       upgrade.image = draftUpgrade.image || '';
       upgrade.description = draftUpgrade.description || '';
-      upgrade.levels = draftUpgrade.levels || [];
       editMode = false; draftUpgrade = null;
       await saveData(false);
       render();
@@ -2093,13 +2087,12 @@ function renderUpgradePage(){
   }
 
   const levelsHtml = upgrade.levels.length ? upgrade.levels.map(lv=>`
-    <div class="floor-card" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
-      ${lv.image ? `<img class="skill-image zoomable" src="${escapeHtml(String(lv.image))}">` : ''}
+    <a href="${viewToHash({type:'upgradeLevel', id: upgrade.id+'__'+lv.id})}" class="floor-card" data-view="upgradeLevel" data-id="${upgrade.id}__${lv.id}" data-level-id="${lv.id}"${isAdmin ? ' draggable="true"' : ''}>
+      ${lv.image ? `<img class="skill-image" src="${escapeHtml(String(lv.image))}">` : ''}
       <div class="floor-card-body">
         <div class="floor-card-name">${inline(lv.name)}</div>
-        <div class="floor-card-desc">${lv.description ? renderMarkdownLite(lv.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
-    </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无升级项目</div>';
+    </a>`).join('') : '<div class="empty-hint" style="padding-left:0;">暂无升级项目</div>';
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -2112,10 +2105,34 @@ function renderUpgradePage(){
     <div class="section-label">升级列表</div>
     ${isAdmin && upgrade.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 按住卡片拖动，可以调整顺序。</div>` : ''}
     <div class="floor-list" id="upgradeLevelsList">${levelsHtml}</div>
+    ${isAdmin ? '<div style="margin-top:14px;"><button class="btn btn-gold" id="addUpgradeLevelBtn">+ 添加升级项目</button></div>' : ''}
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode=true; draftUpgrade=null; render(); });
   wireBackButton(container);
+
+  const addUpgradeLevelBtn = document.getElementById('addUpgradeLevelBtn');
+  if(addUpgradeLevelBtn) addUpgradeLevelBtn.addEventListener('click', async ()=>{
+    if(!requireAdmin()) return;
+    const name = (window.prompt('新升级项目的名称？', '') || '').trim();
+    if(!name) return;
+    const lv = {id: uid(), name, image:'', description:''};
+    upgrade.levels.push(lv);
+    await saveData(false);
+    goToView({type:'upgradeLevel', id: upgrade.id+'__'+lv.id});
+    editMode = true; draftUpgradeLevel = null;
+    render();
+  });
+
+  document.getElementById('upgradeLevelsList').querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
+    card.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      goToView({type:'upgradeLevel', id: card.dataset.id});
+      editMode = false; draftUpgrade = null;
+      render();
+    });
+  });
 
   if(isAdmin){
     const listEl = document.getElementById('upgradeLevelsList');
@@ -2153,6 +2170,79 @@ function renderUpgradePage(){
       });
     });
   }
+}
+
+function renderUpgradeLevelPage(){
+  const container = document.getElementById('mainInner');
+  const [upgradeId, levelId] = (currentView.id || '').split('__');
+  const upgrade = state.upgrades.find(s=>s.id===upgradeId);
+  const level = upgrade ? upgrade.levels.find(lv=>lv.id===levelId) : null;
+  if(!upgrade || !level){ container.innerHTML = `<div class="empty-state"><h2>未找到该升级项目</h2></div>`; return; }
+
+  if(editMode){
+    if(!draftUpgradeLevel || draftUpgradeLevel.id !== level.id) draftUpgradeLevel = JSON.parse(JSON.stringify(level));
+    container.innerHTML = `
+      <div class="page-toolbar">
+        <div class="crumb">编辑升级项目 · ${escapeHtml(upgrade.name)}</div>
+        <div class="toolbar-actions">
+          <button class="btn btn-danger" id="deleteUpgradeLevelBtn">删除</button>
+          <button class="btn" id="cancelBtn">取消</button>
+          <button class="btn btn-gold" id="saveBtn">保存</button>
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">名称</span>
+        <input class="edit-input title-input" data-bind="name" value="${escapeHtml(draftUpgradeLevel.name)}" placeholder="升级项目名称">
+      </div>
+      <div class="image-upload-box" style="margin-bottom:18px;">
+        ${draftUpgradeLevel.image ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUpgradeLevel.image))}">` : `<div class="image-placeholder">无图片</div>`}
+        <div class="upload-controls">
+          <label class="file-label">选择图片<input type="file" accept="image/*" data-image-bind="image" style="display:none;"></label>
+          ${draftUpgradeLevel.image ? `<button class="btn" data-image-remove="image">移除图片</button>` : ''}
+        </div>
+      </div>
+      <div class="edit-field">
+        <span class="edit-label">说明</span>
+        <textarea class="edit-textarea tall" data-bind="description" placeholder="这个升级项目的效果、消耗、注意事项...">${escapeHtml(draftUpgradeLevel.description||'')}</textarea>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+      </div>
+    `;
+    wireDraftForm(container, draftUpgradeLevel);
+    document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftUpgradeLevel=null; render(); });
+    document.getElementById('saveBtn').addEventListener('click', async ()=>{
+      level.name = (draftUpgradeLevel.name||'').trim() || '未命名升级项目';
+      level.image = draftUpgradeLevel.image || '';
+      level.description = draftUpgradeLevel.description || '';
+      editMode = false; draftUpgradeLevel = null;
+      await saveData(false);
+      render();
+    });
+    document.getElementById('deleteUpgradeLevelBtn').addEventListener('click', async ()=>{
+      if(!confirm(`确定删除「${level.name}」这个升级项目？`)) return;
+      upgrade.levels = upgrade.levels.filter(lv=>lv.id!==level.id);
+      editMode = false; draftUpgradeLevel = null;
+      const last = viewHistory[viewHistory.length-1];
+      if(last && last.view && last.view.type==='upgrade' && last.view.id===upgrade.id) viewHistory.pop();
+      currentView = {type:'upgrade', id: upgrade.id};
+      setHash(currentView);
+      await saveData(false);
+      render();
+    });
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <div class="crumb">${escapeHtml(upgrade.name)}</div>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
+    </div>
+    ${level.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(level.image))}">` : ''}
+    <h1 class="page-title" style="margin-bottom:20px;">${inline(level.name)}</h1>
+    <div class="content-body">${level.description ? renderMarkdownLite(level.description) : '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+  `;
+  const editBtn = document.getElementById('editBtn');
+  if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode = true; draftUpgradeLevel = null; render(); });
+  wireBackButton(container);
 }
 
 function renderTraitsPage(){
@@ -2762,9 +2852,9 @@ function renderSidebar(){
   </div>
 
   <div class="nav-section">
-    <details class="nav-collapsible" data-picker-key="sidebar-upgrades"${(openPickerKeys.has('sidebar-upgrades') || currentView.type==='upgrade') ? ' open' : ''}>
+    <details class="nav-collapsible" data-picker-key="sidebar-upgrades"${(openPickerKeys.has('sidebar-upgrades') || currentView.type==='upgrade' || currentView.type==='upgradeLevel') ? ' open' : ''}>
       <summary class="nav-section-label" style="cursor:pointer;">升级${isAdmin ? ' <button type="button" class="cat-add" id="addUpgradeBtn" title="新增升级分类">+</button>' : ''}</summary>
-      ${state.upgrades.map(s=>`<a href="${viewToHash({type:'upgrade', id:s.id})}" class="top-link nav-sub-link ${currentView.type==='upgrade'&&currentView.id===s.id?'active':''}" data-view="upgrade" data-id="${s.id}"${isAdmin ? ' draggable="true"' : ''}>${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无升级分类</div>'}
+      ${state.upgrades.map(s=>`<a href="${viewToHash({type:'upgrade', id:s.id})}" class="top-link nav-sub-link ${((currentView.type==='upgrade'&&currentView.id===s.id)||(currentView.type==='upgradeLevel'&&String(currentView.id||'').startsWith(s.id+'__')))?'active':''}" data-view="upgrade" data-id="${s.id}"${isAdmin ? ' draggable="true"' : ''}>${escapeHtml(s.name)}</a>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无升级分类</div>'}
     </details>
   </div>
 
@@ -2828,7 +2918,7 @@ function renderSidebar(){
       clearUnitTraitPreviewIfLeaving(newView);
       currentView = newView;
       setHash(currentView);
-      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftItem=null; draftOdyssey=null; draftStage=null; draftUpgrade=null; render(); closeMobileSidebar();
+      editMode=false; addingLog=false; draftUnit=null; draftSimple=null; draftItem=null; draftOdyssey=null; draftStage=null; draftUpgrade=null; draftUpgradeLevel=null; render(); closeMobileSidebar();
     });
   });
   if(isAdmin){
@@ -5012,8 +5102,6 @@ function handleDraftAction(ds, draft, el){
   else if(action==='clearSpecialUnitReward') draft.specialUnitReward = '';
   else if(action==='addShopItem'){ if(!Array.isArray(draft.shop)) draft.shop=[]; draft.shop.push({id:uid(), refType:'', refId:'', quantity:'', price:''}); }
   else if(action==='removeShopItem') draft.shop.splice(idx,1);
-  else if(action==='addUpgradeLevel') draft.levels.push({id:uid(), name:'升级 '+(draft.levels.length+1), image:'', description:''});
-  else if(action==='removeUpgradeLevel') draft.levels.splice(idx,1);
   else if(action==='toggleOdysseyUnit'){
     const id = ds.unitId;
     if(!Array.isArray(draft.unitIds)) draft.unitIds = [];
@@ -6424,6 +6512,7 @@ function renderMain(){
   else if(currentView.type==='stage') renderStagePage();
   else if(currentView.type==='stageLevel') renderStageLevelPage();
   else if(currentView.type==='upgrade') renderUpgradePage();
+  else if(currentView.type==='upgradeLevel') renderUpgradeLevelPage();
   else if(currentView.type==='settings') renderSettings();
   else if(currentView.type==='unit') renderUnit();
   else if(currentView.type==='item') renderItem();
