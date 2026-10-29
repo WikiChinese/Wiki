@@ -4031,6 +4031,16 @@ function wireEnemyMechanicsForm(container){
         renderEnemyMechanics();
       });
     });
+    const p = el.dataset.emImageBind;
+    if(!getPath(state.enemyMechanics, p)) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.textContent = '移除图标'; b.style.margin = '0';
+    b.addEventListener('click', async ()=>{
+      setPath(state.enemyMechanics, p, '');
+      await saveData(true);
+      renderEnemyMechanics();
+    });
+    (el.closest('label') || el).insertAdjacentElement('afterend', b);
   });
   container.querySelectorAll('[data-em-action]').forEach(el=>{
     el.addEventListener('click', async ()=>{
@@ -5051,6 +5061,15 @@ function wireDraftForm(container, draft){
     el.addEventListener('change', ()=>{
       handleImageUpload(el, (dataUrl)=>{ setPath(draft, el.dataset.imageBind, dataUrl); renderMain(); });
     });
+  });
+  // Any upload box that has an image but no remove button of its own gets one here
+  container.querySelectorAll('[data-image-bind]').forEach(el=>{
+    const p = el.dataset.imageBind;
+    if(!getPath(draft, p)) return;
+    if(container.querySelector(`[data-image-remove="${p}"]`)) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.dataset.imageRemove = p; b.textContent = '移除';
+    (el.closest('label') || el).insertAdjacentElement('afterend', b);
   });
   container.querySelectorAll('[data-image-remove]').forEach(el=>{
     el.addEventListener('click', ()=>{ setPath(draft, el.dataset.imageRemove, ''); renderMain(); });
@@ -7512,6 +7531,17 @@ function wireSettingsBindElements(container, rerenderFn){
         rerenderFn();
       });
     });
+    // Remove-icon button next to every settings upload that currently has an icon
+    const p = el.dataset.settingsImageBind;
+    if(!getPath(state, p)) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn'; b.textContent = '移除图标'; b.style.margin = '0';
+    b.addEventListener('click', async ()=>{
+      setPath(state, p, '');
+      await saveData(true);
+      rerenderFn();
+    });
+    (el.closest('label') || el).insertAdjacentElement('afterend', b);
   });
   container.querySelectorAll('[data-settings-action]').forEach(el=>{
     el.addEventListener('click', async ()=>{
