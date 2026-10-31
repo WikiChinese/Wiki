@@ -534,6 +534,10 @@
   .entity-picker-item:hover{color:var(--gold);border-color:var(--gold-dim);}
   .entity-picker-item img{width:20px;height:20px;border-radius:50%;object-fit:cover;}
   .entity-picker-item .mark-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+.chip-crop{display:inline-block;flex-shrink:0;width:18px;height:18px;border-radius:50%;overflow:hidden;}
+.chip-crop img{width:100%;height:100%;border-radius:0;object-fit:cover;display:block;}
+.mark-toggle .chip-crop{width:22px;height:22px;}
+.entity-picker-item .chip-crop{width:20px;height:20px;}
   .mark-quickadd .edit-input{width:auto;flex:1;min-width:160px;}
 
   .settings-block{margin-bottom:36px;}
@@ -924,6 +928,11 @@ function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 
 function cardNum(v, d){ const n = Number(v); return Number.isFinite(n) ? n : d; }
+function chipIconHtml(e){
+  const src = escapeHtml(String(e.image));
+  const style = cardFrameImgStyle(e);
+  return style ? `<span class="chip-crop"><img src="${src}"${style}></span>` : `<img src="${src}">`;
+}
 function thumbImgHtml(e, cls, extraAttrs){
   const src = escapeHtml(String(e.image));
   const extra = extraAttrs || '';
@@ -3343,7 +3352,7 @@ function logEntityPickerHtml(label, allEntities, selectedIds, action, idAttr, he
   const selectedHtml = selectedIds.length ? selectedIds.map(id=>{
     const e = allEntities.find(x=>x.id===id);
     if(!e) return '';
-    const icon = e.image ? `<img src="${escapeHtml(String(e.image))}">` : '';
+    const icon = e.image ? chipIconHtml(e) : '';
     return `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#8a713a',true)}" data-action="${action}" data-${idAttr}="${e.id}">${icon}${escapeHtml(e.name)}${rarityTag(e)} ✕</button>`;
   }).join('') : `<div class="empty-hint" style="padding-left:0;">尚未选择${label}</div>`;
   const remaining = allEntities.filter(e=>!selectedIds.includes(e.id));
@@ -3354,7 +3363,7 @@ function logEntityPickerHtml(label, allEntities, selectedIds, action, idAttr, he
     <summary class="btn btn-gold">+ 选择${label}</summary>
     <div class="entity-picker-list">
       ${searchHtml}
-      <div class="entity-picker-items">${remaining.map(e=>`<button type="button" class="entity-picker-item" data-action="${action}" data-${idAttr}="${e.id}" data-search="${escapeHtml(((e.name||'')+' '+(e.englishName||'')).toLowerCase())}">${e.image?`<img src="${escapeHtml(String(e.image))}">`:''}${escapeHtml(e.name)}${e.englishName?` <span class="entity-picker-en">${escapeHtml(e.englishName)}</span>`:''}${rarityTag(e)}</button>`).join('')}</div>
+      <div class="entity-picker-items">${remaining.map(e=>`<button type="button" class="entity-picker-item" data-action="${action}" data-${idAttr}="${e.id}" data-search="${escapeHtml(((e.name||'')+' '+(e.englishName||'')).toLowerCase())}">${e.image?chipIconHtml(e):''}${escapeHtml(e.name)}${e.englishName?` <span class="entity-picker-en">${escapeHtml(e.englishName)}</span>`:''}${rarityTag(e)}</button>`).join('')}</div>
       <div class="entity-picker-noresult" style="display:none;">没有匹配的${label}</div>
     </div>
   </details>` : '';
@@ -3385,7 +3394,7 @@ function logEntityChipsHtml(allEntities, selectedIds, viewType, label){
     <div class="mark-row-list">${selectedIds.map(id=>{
       const e = allEntities.find(x=>x.id===id);
       if(!e) return '';
-      const icon = e.image ? `<img src="${escapeHtml(String(e.image))}">` : '';
+      const icon = e.image ? chipIconHtml(e) : '';
       const limitedTag = e.isLimitedReturn ? `<span title="限定复刻">🔄</span>` : '';
       const rarityObj = e.rarity ? state.rarities.find(x=>x.id===e.rarity) : null;
       const color = (rarityObj && rarityObj.color) || '#8a713a';
