@@ -451,7 +451,7 @@
   a.shop-item-card{cursor:pointer;}
   a.shop-item-card:hover{border-color:var(--gold-dim);transform:translateY(-2px);}
   .shop-item-card-unlinked{opacity:.6;}
-  .shop-item-icon-wrap{position:relative;width:100%;aspect-ratio:1;background:var(--card-hover);}
+  .shop-item-icon-wrap{position:relative;width:100%;aspect-ratio:1;background:var(--card-hover);overflow:hidden;}
   .shop-item-icon{width:100%;height:100%;object-fit:cover;display:block;}
   .shop-item-icon-placeholder{width:100%;height:100%;background:var(--card-hover);}
   .shop-item-type-tag{position:absolute;top:6px;left:6px;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;background:rgba(0,0,0,.6);color:var(--text-dim);backdrop-filter:blur(2px);}
@@ -918,6 +918,11 @@ function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 
 function cardNum(v, d){ const n = Number(v); return Number.isFinite(n) ? n : d; }
+function cardFrameImgStyle(e){
+  const x = cardNum(e && e.cardFocusX, 50), y = cardNum(e && e.cardFocusY, 50), z = cardNum(e && e.cardZoom, 100);
+  if(x === 50 && y === 50 && z === 100) return '';
+  return ` style="object-position:${x}% ${y}%;transform:scale(${z/100});transform-origin:${x}% ${y}%;"`;
+}
 function galleryCardImgHtml(e, extraAttrs){
   const x = cardNum(e.cardFocusX, 50), y = cardNum(e.cardFocusY, 50), z = cardNum(e.cardZoom, 100);
   const src = escapeHtml(String(e.image));
@@ -1978,7 +1983,7 @@ function renderStageLevelPage(){
     }
     return `<a href="${viewToHash({type:it.refType, id:linkedEntity.id})}" class="shop-item-card" data-view="${it.refType}" data-id="${linkedEntity.id}">
       <div class="shop-item-icon-wrap">
-        ${linkedEntity.image ? `<img class="shop-item-icon" src="${escapeHtml(String(linkedEntity.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}
+        ${linkedEntity.image ? `<img class="shop-item-icon" src="${escapeHtml(String(linkedEntity.image))}"${cardFrameImgStyle(linkedEntity)}>` : `<div class="shop-item-icon-placeholder"></div>`}
         <span class="shop-item-type-tag" style="${typeTagStyle}">${escapeHtml(typeTagLabel)}</span>
       </div>
       <div class="shop-item-body">
@@ -6156,7 +6161,7 @@ function renderUnit(){
     const ru = state.units.find(u=>u.id===r.unitId);
     if(!ru) return '';
     return `<a href="${viewToHash({type:'unit', id:ru.id})}" class="shop-item-card" data-view="unit" data-id="${ru.id}">
-      <div class="shop-item-icon-wrap">${ru.image ? `<img class="shop-item-icon" src="${escapeHtml(String(ru.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-icon-wrap">${ru.image ? `<img class="shop-item-icon" src="${escapeHtml(String(ru.image))}"${cardFrameImgStyle(ru)}>` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(ru.name)}</div>${r.note ? `<div class="shop-item-qty">${escapeHtml(r.note)}</div>` : ''}</div>
     </a>`;
   }).join('')}</div>` : '';
@@ -6536,7 +6541,7 @@ function renderItem(){
     <div class="content-body">${renderMarkdownLite(item.description) || '<p style="color:var(--text-faint);">暂无内容</p>'}</div>
     ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderMarkdownLite(item.questline)}</div>` : ''}
     ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
-      <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
+      <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}"${cardFrameImgStyle(evolvesUnit)}>` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.evolveQuantity))}</div>` : ''}</div>
     </a>` : ''}
     ${linkedItem ? `<div class="section-label">关联物品</div><a href="${viewToHash({type:'item', id:linkedItem.id})}" class="shop-item-card" data-view="item" data-id="${linkedItem.id}" style="max-width:220px;">
