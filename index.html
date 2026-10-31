@@ -1124,6 +1124,7 @@ function migrateState(){
   }
   if(!Array.isArray(state.adminEmails)) state.adminEmails = [];
   if(typeof state.gradientAnimation !== 'boolean') state.gradientAnimation = true;
+  if(typeof state.backupLock !== 'string') state.backupLock = '';
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
   state.attackTypes.forEach(t=>{
@@ -2349,7 +2350,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -7484,6 +7485,22 @@ function dbSizeReportHtml(){
   </details>`;
 }
 
+let backupsUnlocked = false;
+
+async function hashBackupPassword(pw, saltHex){
+  if(!(window.crypto && crypto.subtle)) throw new Error('这个浏览器环境不支持密码加密（需要 https 网址）');
+  const enc = new TextEncoder();
+  const salt = saltHex ? Uint8Array.from(saltHex.match(/../g).map(h=>parseInt(h, 16))) : crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({name:'PBKDF2', salt, iterations:100000, hash:'SHA-256'}, key, 256);
+  const hex = (buf)=> Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2, '0')).join('');
+  return hex(salt) + '$' + hex(bits);
+}
+async function checkBackupPassword(pw){
+  const saltHex = String(state.backupLock || '').split('$')[0];
+  return (await hashBackupPassword(pw, saltHex)) === state.backupLock;
+}
+
 const BACKUPS_PER_PAGE = 10;
 let backupsListPage = 0;
 let backupsListDetailsOpen = true;
@@ -7516,9 +7533,33 @@ function backupsListHtml(){
     </div>` : '';
     return listHtml + pagerHtml;
   })();
+  const hasLock = !!state.backupLock;
+  const locked = hasLock && !backupsUnlocked;
+  const lockedHtml = `<div class="sub-card">
+    <div style="font-weight:600;margin-bottom:6px;">🔒 历史备份记录已上锁</div>
+    <div class="hint" style="margin:0 0 10px;">输入密码才能查看备份列表和使用「恢复」，避免不小心点到。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input class="edit-input" type="password" id="backupUnlockInput" placeholder="输入密码" style="max-width:240px;" autocomplete="off">
+      <button class="btn btn-gold" id="backupUnlockBtn">解锁</button>
+    </div>
+  </div>`;
+  const lockMgmtHtml = hasLock ? `<div class="sub-card" style="margin-top:12px;">
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn" id="backupLockNowBtn">🔒 立即上锁</button>
+      <input class="edit-input" type="password" id="backupChangePwInput" placeholder="新密码（至少4个字）" style="max-width:220px;" autocomplete="new-password">
+      <button class="btn" id="backupChangePwBtn">修改密码</button>
+      <button class="btn btn-danger" id="backupRemovePwBtn">移除密码</button>
+    </div>
+  </div>` : `<div class="sub-card" style="margin-top:12px;">
+    <div class="hint" style="margin:0 0 8px;">🔐 想防止不小心点到「恢复」？可以给历史备份记录设一个密码，之后要输入密码才能打开。</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <input class="edit-input" type="password" id="backupSetPwInput" placeholder="设置密码（至少4个字）" style="max-width:240px;" autocomplete="new-password">
+      <button class="btn" id="backupSetPwBtn">设置密码</button>
+    </div>
+  </div>`;
   return `<details class="backups-list-block" style="margin-top:0;padding:0;border:none;" ${backupsListDetailsOpen?'open':''} id="backupsListDetails">
-    <summary class="section-label" style="margin-top:0;">历史备份记录${backupsListCache && backupsListCache.length ? `（共 ${backupsListCache.length} 条）` : ''}</summary>
-    <div style="margin-top:10px;">${bodyHtml}</div>
+    <summary class="section-label" style="margin-top:0;">历史备份记录${locked ? '（已上锁）' : (backupsListCache && backupsListCache.length ? `（共 ${backupsListCache.length} 条）` : '')}</summary>
+    <div style="margin-top:10px;">${locked ? lockedHtml : bodyHtml + lockMgmtHtml}</div>
   </details>`;
 }
 
@@ -7527,6 +7568,47 @@ function wireBackupsListWrap(container){
   if(!wrap) return;
   const details = document.getElementById('backupsListDetails');
   if(details) details.addEventListener('toggle', ()=>{ backupsListDetailsOpen = details.open; });
+  const redraw = ()=>{ wrap.innerHTML = backupsListHtml(); wireBackupsListWrap(container); wireRestoreBackupButtons(container); };
+  const unlockInput = document.getElementById('backupUnlockInput');
+  const unlockBtn = document.getElementById('backupUnlockBtn');
+  const tryUnlock = async ()=>{
+    if(!unlockInput || !unlockInput.value) return;
+    unlockBtn.disabled = true;
+    try{
+      if(await checkBackupPassword(unlockInput.value)){ backupsUnlocked = true; redraw(); return; }
+      showToast('密码不对', 3000);
+      unlockInput.value = '';
+    }catch(e){ showToast(String(e.message || e), 6000); }
+    unlockBtn.disabled = false;
+  };
+  if(unlockBtn) unlockBtn.addEventListener('click', tryUnlock);
+  if(unlockInput) unlockInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') tryUnlock(); });
+  const savePassword = async (inputId, okMsg)=>{
+    const input = document.getElementById(inputId);
+    const pw = input ? input.value : '';
+    if(pw.length < 4){ showToast('密码至少要4个字', 4000); return; }
+    try{
+      state.backupLock = await hashBackupPassword(pw);
+      backupsUnlocked = true;
+      await saveData(true);
+      showToast(okMsg, 4000);
+      redraw();
+    }catch(e){ showToast(String(e.message || e), 6000); }
+  };
+  const setPwBtn = document.getElementById('backupSetPwBtn');
+  if(setPwBtn) setPwBtn.addEventListener('click', ()=>savePassword('backupSetPwInput', '已设置密码，下次要输入密码才能打开'));
+  const changePwBtn = document.getElementById('backupChangePwBtn');
+  if(changePwBtn) changePwBtn.addEventListener('click', ()=>savePassword('backupChangePwInput', '密码已修改'));
+  const lockNowBtn = document.getElementById('backupLockNowBtn');
+  if(lockNowBtn) lockNowBtn.addEventListener('click', ()=>{ backupsUnlocked = false; redraw(); });
+  const removePwBtn = document.getElementById('backupRemovePwBtn');
+  if(removePwBtn) removePwBtn.addEventListener('click', async ()=>{
+    if(!confirm('确定移除密码？之后任何管理员都可以直接打开历史备份记录。')) return;
+    state.backupLock = '';
+    await saveData(true);
+    showToast('已移除密码', 3000);
+    redraw();
+  });
   const prevBtn = document.getElementById('backupsPrevPageBtn');
   if(prevBtn) prevBtn.addEventListener('click', ()=>{ backupsListPage--; wrap.innerHTML = backupsListHtml(); wireBackupsListWrap(container); wireRestoreBackupButtons(container); });
   const nextBtn = document.getElementById('backupsNextPageBtn');
@@ -7539,6 +7621,7 @@ function wireRestoreBackupButtons(container){
     btn.dataset.wired = '1';
     btn.addEventListener('click', async ()=>{
       if(!requireAdmin()) return;
+      if(state.backupLock && !backupsUnlocked){ showToast('请先输入密码解锁', 4000); return; }
       const id = btn.dataset.restoreBackupId;
       const label = btn.dataset.restoreBackupLabel || id;
       if(!confirm(`⚠️ 恢复到「${label}」？这会让 units/items/families/memories 完全变回那份备份当时的样子，包括删除之后新建的条目（恢复前会自动先给当前数据做一次安全备份）。确定吗？`)) return;
