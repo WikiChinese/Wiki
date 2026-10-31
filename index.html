@@ -148,6 +148,12 @@
   .gallery-recent-card{flex-shrink:0;width:78px;text-align:center;text-decoration:none;color:inherit;}
   .gallery-recent-img{width:78px;height:78px;border-radius:10px;object-fit:cover;background:var(--card-hover);border:1px solid var(--border);transition:border-color .15s, transform .15s;}
   .gallery-recent-card:hover .gallery-recent-img{border-color:var(--gold-dim);transform:translateY(-2px);}
+.thumb-crop{display:block;overflow:hidden;border-radius:10px;border:1px solid var(--border);background:var(--card-hover);transition:border-color .15s, transform .15s;}
+.thumb-crop img{width:100%;height:100%;object-fit:cover;display:block;border:none;border-radius:0;}
+.gallery-recent-card .thumb-crop{width:78px;height:78px;}
+.tier-card-img .thumb-crop{width:72px;height:72px;}
+.gallery-recent-card:hover .thumb-crop,.tier-card:hover .tier-card-img .thumb-crop{border-color:var(--gold-dim);transform:translateY(-2px);}
+@media (max-width:600px){ .tier-card-img .thumb-crop{width:62px;height:62px;} }
   .gallery-recent-name{font-size:11px;color:var(--text-dim);margin-top:5px;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .cat-add{background:none;border:1px solid var(--border);color:var(--text-faint);width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
   .cat-add:hover{color:var(--gold);border-color:var(--gold-dim);}
@@ -918,6 +924,13 @@ function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 
 function cardNum(v, d){ const n = Number(v); return Number.isFinite(n) ? n : d; }
+function thumbImgHtml(e, cls, extraAttrs){
+  const src = escapeHtml(String(e.image));
+  const extra = extraAttrs || '';
+  const style = cardFrameImgStyle(e);
+  if(!style) return `<img${cls ? ` class="${cls}"` : ''} src="${src}"${extra}>`;
+  return `<span class="thumb-crop"><img src="${src}"${extra}${style}></span>`;
+}
 function cardFrameImgStyle(e){
   const x = cardNum(e && e.cardFocusX, 50), y = cardNum(e && e.cardFocusY, 50), z = cardNum(e && e.cardZoom, 100);
   if(x === 50 && y === 50 && z === 100) return '';
@@ -3444,7 +3457,7 @@ function renderHome(){
   const recentUnitsHtml = recentUnits.length ? `
     <div class="section-label" style="margin-top:0;">最近更新的单位</div>
     <div class="gallery-recent-strip">${recentUnits.map(e=>`<a href="${viewToHash({type:'unit', id:e.id})}" class="gallery-recent-card" data-view="unit" data-id="${e.id}">
-      ${e.image ? `<img class="gallery-recent-img" src="${escapeHtml(String(e.image))}">` : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
+      ${e.image ? thumbImgHtml(e, 'gallery-recent-img') : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
       <div style="font-size:11px;margin-top:4px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(e.name)}</div>
     </a>`).join('')}</div>` : '';
 
@@ -3731,7 +3744,7 @@ function renderGroupGallery(){
       const viaEvery = !(u.groups||[]).includes(g.id);   // shown here only because it is marked with the "Every Group"
       return `<div class="tier-card-wrap" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
         <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
-          <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}${viaEvery ? `<span class="group-via-every" title="这个单位标了「${escapeHtml(everyGroupNames.join(' / '))}」，所以所有分组里都会显示">全</span>` : ''}</div>
+          <div class="tier-card-img">${u.image ? thumbImgHtml(u, '', ` alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)"`) : `<div class="gallery-card-placeholder">无图片</div>`}${viaEvery ? `<span class="group-via-every" title="这个单位标了「${escapeHtml(everyGroupNames.join(' / '))}」，所以所有分组里都会显示">全</span>` : ''}</div>
           <div class="tier-card-name">${escapeHtml(u.name)}</div>
         </a>
       </div>`;
@@ -4662,7 +4675,7 @@ function renderTierlist(){
       const search = escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase());
       return `<div class="tier-card-wrap" data-search="${search}" data-rarity="${escapeHtml(u.rarity||'')}" data-elements="${escapeHtml((Array.isArray(u.elements)?u.elements:[]).join(','))}" data-groups="${escapeHtml(unitEffectiveGroupIds(u).join(','))}">
         <a href="${viewToHash({type:'unit', id:u.id})}" class="tier-card">
-          <div class="tier-card-img">${u.image ? `<img src="${escapeHtml(String(u.image))}" alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}${chHtml}</div>
+          <div class="tier-card-img">${u.image ? thumbImgHtml(u, '', ` alt="${escapeHtml(u.name)}" onerror="handleGalleryImgError(this)"`) : `<div class="gallery-card-placeholder">无图片</div>`}${chHtml}</div>
           <div class="tier-card-name">${escapeHtml(u.name)}</div>
         </a>${noteBtn}${removeBtn}
       </div>`;
@@ -6697,7 +6710,7 @@ function renderGallery(type){
       if(recent.length){
         recentHtml = `<div class="section-label" style="margin-top:0;">最近更新</div>
         <div class="gallery-recent-strip">${recent.map(e=>`<a href="${viewToHash({type:cfg.viewType, id:e.id})}" class="gallery-recent-card" data-view="${cfg.viewType}" data-id="${e.id}">
-          ${e.image ? `<img class="gallery-recent-img" src="${escapeHtml(String(e.image))}">` : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
+          ${e.image ? thumbImgHtml(e, 'gallery-recent-img') : `<div class="gallery-recent-img" style="display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);">无图片</div>`}
           <div class="gallery-recent-name">${escapeHtml(e.name)}</div>
         </a>`).join('')}</div>`;
       }
