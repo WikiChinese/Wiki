@@ -96,7 +96,11 @@
   .gallery-card.dragging{opacity:.35;cursor:grabbing;}
   .gallery-card.drag-over{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
   .gallery-card-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--card);display:block;}
-  .gallery-card-placeholder{width:100%;aspect-ratio:1;border-radius:12px;border:1px dashed var(--border-light);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:11px;}
+  .gallery-card-crop{display:block;width:100%;aspect-ratio:1;overflow:hidden;border-radius:12px;border:1px solid var(--border);background:var(--card);}
+.gallery-card-crop .gallery-card-img{border:none;border-radius:0;height:100%;}
+.gallery-card:hover .gallery-card-crop{border-color:var(--gold-dim);}
+.gallery-card-img-wrap.animated-border .gallery-card-crop,.gallery-card-img-wrap.rarity-border .gallery-card-crop{border:none;border-radius:10px;}
+.gallery-card-placeholder{width:100%;aspect-ratio:1;border-radius:12px;border:1px dashed var(--border-light);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--text-faint);font-size:11px;}
   .gallery-card-name{font-size:13px;color:var(--text-dim);margin-top:8px;}
   .gallery-card-en{display:block;font-size:10.5px;color:var(--text-faint);margin-top:2px;}
   .gallery-card:hover .gallery-card-img,.gallery-card:hover .gallery-card-placeholder{border-color:var(--gold-dim);}
@@ -913,6 +917,42 @@ function wireComments(container){
 function uid(){ return 'p_' + Math.random().toString(36).slice(2,10); }
 function todayStr(){ const d=new Date(); return d.toISOString().slice(0,10); }
 
+function cardNum(v, d){ const n = Number(v); return Number.isFinite(n) ? n : d; }
+function galleryCardImgHtml(e, extraAttrs){
+  const x = cardNum(e.cardFocusX, 50), y = cardNum(e.cardFocusY, 50), z = cardNum(e.cardZoom, 100);
+  const src = escapeHtml(String(e.image));
+  const extra = extraAttrs || '';
+  if(x === 50 && y === 50 && z === 100) return `<img class="gallery-card-img" src="${src}"${extra}>`;
+  return `<span class="gallery-card-crop"><img class="gallery-card-img" src="${src}"${extra} style="object-position:${x}% ${y}%;transform:scale(${z/100});transform-origin:${x}% ${y}%;"></span>`;
+}
+function cardFramingFieldHtml(d){
+  const x = cardNum(d.cardFocusX, 50), y = cardNum(d.cardFocusY, 50), z = cardNum(d.cardZoom, 100);
+  return `<div class="hint" style="margin:14px 0 6px;">卡片显示位置（只影响外面列表里的小方图，不影响单位自己页面里的大图）</div>
+    <div style="display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;">
+      <div class="gallery-card" style="width:130px;cursor:default;pointer-events:none;"><div class="gallery-card-img-wrap" id="cardFramePreview">${d.image ? galleryCardImgHtml(d) : '<div class="gallery-card-placeholder">先上传图片</div>'}</div></div>
+      <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:8px;">
+        <label style="display:flex;align-items:center;gap:8px;">上下位置 <input type="range" id="cardFrameY" min="0" max="100" step="1" value="${y}" style="flex:1;"> <span id="cardFrameYv" style="width:42px;">${y}%</span></label>
+        <label style="display:flex;align-items:center;gap:8px;">左右位置 <input type="range" id="cardFrameX" min="0" max="100" step="1" value="${x}" style="flex:1;"> <span id="cardFrameXv" style="width:42px;">${x}%</span></label>
+        <label style="display:flex;align-items:center;gap:8px;">放大 <input type="range" id="cardFrameZ" min="100" max="300" step="5" value="${z}" style="flex:1;"> <span id="cardFrameZv" style="width:42px;">${z}%</span></label>
+        <div><button type="button" class="btn" id="cardFrameReset">重置</button></div>
+        <div class="hint">全身图想让卡片只显示头部：把「上下位置」拉到最上面（0%），再把「放大」调大一点。</div>
+      </div>
+    </div>`;
+}
+function wireCardFraming(d){
+  const X = document.getElementById('cardFrameX'), Y = document.getElementById('cardFrameY'), Z = document.getElementById('cardFrameZ');
+  if(!X || !Y || !Z) return;
+  const refresh = ()=>{
+    d.cardFocusX = +X.value; d.cardFocusY = +Y.value; d.cardZoom = +Z.value;
+    document.getElementById('cardFrameXv').textContent = X.value + '%';
+    document.getElementById('cardFrameYv').textContent = Y.value + '%';
+    document.getElementById('cardFrameZv').textContent = Z.value + '%';
+    const prev = document.getElementById('cardFramePreview');
+    if(prev && d.image) prev.innerHTML = galleryCardImgHtml(d);
+  };
+  [X, Y, Z].forEach(el=>el.addEventListener('input', refresh));
+  document.getElementById('cardFrameReset').addEventListener('click', ()=>{ X.value = 50; Y.value = 50; Z.value = 100; refresh(); });
+}
 function handleGalleryImgError(imgEl){
   const placeholder = document.createElement('div');
   placeholder.className = 'gallery-card-placeholder';
@@ -4311,7 +4351,7 @@ function renderOdyssey(){
   const unitsHtml = selectedUnits.length ? selectedUnits.map(u=>{ const ca = unitColorAttrs(u); return `
     <a href="${viewToHash({type:'unit', id:u.id})}" class="gallery-card" data-view="unit" data-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">
       <div class="gallery-card-img-wrap${ca.wrapClass}"${ca.wrapStyle}>
-        ${u.image ? `<img class="gallery-card-img" src="${escapeHtml(String(u.image))}">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${u.image ? galleryCardImgHtml(u) : `<div class="gallery-card-placeholder">无图片</div>`}
         ${u.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
       <div class="gallery-card-name"${ca.nameStyle}>${escapeHtml(u.name)}</div>
@@ -5485,6 +5525,7 @@ function renderUnit(){
             ${draftUnit.image ? `<button class="btn btn-danger" data-image-remove="image" style="width:fit-content;">移除图片</button>` : ''}
           </div>
         </div>
+        ${cardFramingFieldHtml(draftUnit)}
         <div class="hint" style="margin:12px 0 6px;">闪光图片（可选，例如闪光/异色版本）</div>
         <div class="image-upload-box">
           ${draftUnit.shinyImage ? `<img class="image-preview zoomable" src="${escapeHtml(String(draftUnit.shinyImage))}">` : `<div class="image-placeholder">无图片</div>`}
@@ -5814,6 +5855,7 @@ function renderUnit(){
       unit.questline = draftUnit.questline || [];
       unit.personalColor = draftUnit.personalColor || '';
       unit.colorStatic = !!draftUnit.colorStatic;
+      unit.cardFocusX = cardNum(draftUnit.cardFocusX, 50); unit.cardFocusY = cardNum(draftUnit.cardFocusY, 50); unit.cardZoom = cardNum(draftUnit.cardZoom, 100);
       unit.unitType = draftUnit.unitType || 'fighting';
       unit.updatedAt = Date.now();
       editMode = false;
@@ -5822,6 +5864,7 @@ function renderUnit(){
       render();
     };
     document.getElementById('saveBtn').addEventListener('click', doSaveUnit);
+    wireCardFraming(draftUnit);
     const unitColorStaticToggle = document.getElementById('unitColorStaticToggle');
     if(unitColorStaticToggle) unitColorStaticToggle.addEventListener('change', ()=>{ draftUnit.colorStatic = unitColorStaticToggle.checked; });
     const unitColorPickerHelper = document.getElementById('unitColorPickerHelper');
@@ -6573,7 +6616,7 @@ function renderGallery(type){
     }).join('');
     return `<a href="${viewToHash({type:cfg.viewType, id:entity.id})}" class="gallery-card" data-view="${cfg.viewType}" data-id="${entity.id}" data-search="${searchText}"${entity.categoryId?` data-item-category="${entity.categoryId}"`:''}${filterAttrs}${isAdmin ? ' draggable="true"' : ''}>
       <div class="gallery-card-img-wrap${ca.wrapClass}"${ca.wrapStyle}>
-        ${entity.image ? `<img class="gallery-card-img" src="${escapeHtml(String(entity.image))}" alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)">` : `<div class="gallery-card-placeholder">无图片</div>`}
+        ${entity.image ? galleryCardImgHtml(entity, ` alt="${escapeHtml(entity.name)}" onerror="handleGalleryImgError(this)"`) : `<div class="gallery-card-placeholder">无图片</div>`}
         ${entity.isLimitedReturn ? `<span class="gallery-card-limited-tag">🔄</span>` : ''}
       </div>
       <div class="gallery-card-name"${ca.nameStyle}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
@@ -6923,6 +6966,7 @@ function renderSimpleEntity(type){
             ${draftSimple.image ? `<button class="btn btn-danger" data-image-remove="image" style="width:fit-content;">移除图片</button>` : ''}
           </div>
         </div>
+        ${cardFramingFieldHtml(draftSimple)}
       </div>
 
       ${restrictFieldHtml}
@@ -7012,6 +7056,7 @@ function renderSimpleEntity(type){
       }
       entity.personalColor = draftSimple.personalColor || '';
       entity.colorStatic = !!draftSimple.colorStatic;
+      entity.cardFocusX = cardNum(draftSimple.cardFocusX, 50); entity.cardFocusY = cardNum(draftSimple.cardFocusY, 50); entity.cardZoom = cardNum(draftSimple.cardZoom, 100);
       entity.rarity = draftSimple.rarity || '';
       entity.obtainWay = draftSimple.obtainWay || '';
       entity.obtainMethods = Array.isArray(draftSimple.obtainMethods) ? draftSimple.obtainMethods : [];
@@ -7021,6 +7066,7 @@ function renderSimpleEntity(type){
       await saveData(false);
       render();
     });
+    wireCardFraming(draftSimple);
     const simpleColorStaticToggle = document.getElementById('simpleColorStaticToggle');
     if(simpleColorStaticToggle) simpleColorStaticToggle.addEventListener('change', ()=>{ draftSimple.colorStatic = simpleColorStaticToggle.checked; });
     const simpleColorPickerHelper = document.getElementById('simpleColorPickerHelper');
