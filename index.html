@@ -3383,7 +3383,8 @@ function logEvolutionEntities(){
     englishName: u.englishName || '',
     image: (u.evolvedImage && !isVideoUrl(u.evolvedImage)) ? u.evolvedImage : u.image,
     rarity: u.rarity,
-    isLimitedReturn: u.isLimitedReturn
+    isLimitedReturn: u.isLimitedReturn,
+    cardFocusX: u.cardFocusX, cardFocusY: u.cardFocusY, cardZoom: u.cardZoom
   }));
 }
 
