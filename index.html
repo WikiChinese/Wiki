@@ -6633,7 +6633,7 @@ function renderGallery(type){
 
   function cardHtml(entity){
     const searchText = escapeHtml(((entity.name||'')+' '+(entity.englishName||'')).toLowerCase());
-    const ca = type==='unit' ? unitColorAttrs(entity) : {
+    const ca = (type==='unit' || type==='memory') ? unitColorAttrs(entity) : {
       wrapClass: /gradient/i.test(entity.personalColor||'') ? ' animated-border' : '',
       wrapStyle: unitBorderGradientStyle(entity.personalColor, entity.colorStatic),
       nameStyle: unitNameColorStyle(entity.personalColor, entity.colorStatic)
@@ -7184,7 +7184,7 @@ function renderSimpleEntity(type){
     </div>
     ${entity.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(entity.image))}">` : ''}
     <div class="page-header">
-      <h1 class="page-title"${unitNameColorStyle(entity.personalColor, entity.colorStatic)}>${escapeHtml(entity.name)}</h1>
+      <h1 class="page-title"${type==='memory' ? unitColorAttrs(entity).nameStyle : unitNameColorStyle(entity.personalColor, entity.colorStatic)}>${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
       <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
