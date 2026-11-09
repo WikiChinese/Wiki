@@ -1479,6 +1479,9 @@ let auth = null;
 let docRef = null;
 let knownIds = { units:new Set(), items:new Set(), families:new Set(), memories:new Set() };
 let lastSavedJson = { meta:{}, units:{}, items:{}, families:{}, memories:{} };
+// True when the database could not be read at page load: the page is then showing blank defaults, so saving is blocked
+// to make sure those defaults can never overwrite the real data.
+let dataLoadFailed = false;
 let applyingRemoteUpdate = false;
 let isAdmin = false;
 
@@ -2461,6 +2464,7 @@ async function loadData(){
           // Could not read any format at all — this is almost certainly a Firestore
           // security-rules problem, not actually missing data. Do NOT auto-save blank defaults here,
           // to avoid any risk of overwriting real data once the rules are fixed.
+          dataLoadFailed = true;
           state = defaultData();
           migrateState();
           showToast('⚠️ 无法读取数据库，很可能是 Firestore 安全规则还没开放新的存储路径导致的权限问题——不是数据被删除了。你的原始数据大概率还完整保存在数据库里。在确认权限问题解决之前，请不要在这个页面保存任何修改！', 20000);
@@ -2468,13 +2472,25 @@ async function loadData(){
           render();
           return;
         } else {
-          state = defaultData();
-          migrateState();
-          await saveData(true);
+          // The settings collection read back empty. Only treat this as a brand-new, empty wiki (and write the
+          // starter defaults) when there are also no units/items/families/memories. If content exists, the
+          // settings were lost or unreadable: never write defaults over them - show a warning and block saves.
+          const [u0, i0, f0, m0] = await entitiesPromise;
+          if(u0.length || i0.length || f0.length || m0.length){
+            dataLoadFailed = true;
+            state = defaultData();
+            state.units = u0; state.items = i0; state.families = f0; state.memories = m0;
+            showToast('⚠️ 数据库里找不到设置资料（标记、分组、更新日志等），但单位等内容还在。为了不覆盖任何东西，已阻止保存。请先到 Firebase 的 backups 里找备份恢复，不要在这个页面保存！', 25000);
+          } else {
+            state = defaultData();
+            migrateState();
+            await saveData(true);
+          }
         }
       }
     }
   }catch(e){
+    dataLoadFailed = true;
     state = defaultData();
     showToast('⚠️ 连接数据库失败，可能是网络问题或 Firestore 权限规则问题——你的数据大概率没有丢失。请检查后再操作，弄清楚之前不要保存修改！', 15000);
     console.error('loadData error:', e);
@@ -2588,6 +2604,10 @@ const LIMIT_BYTES = 1048487; // Firestore's per-document hard limit is ~1MiB (1,
 // live-sync listener, could let an earlier partial save's server echo revert fields you were still
 // editing. Each call in the chain re-diffs against the freshest cache, so nothing gets missed.
 function saveData(silent){
+  if(dataLoadFailed){
+    showToast('⚠️ 这次没有成功从数据库载入数据，为了保护你的原始数据，已阻止保存。请刷新页面，确认能正常看到数据后再修改。', 9000);
+    return Promise.resolve();
+  }
   const run = ()=> runSaveData(silent);
   const next = saveQueueTail.then(run, run);
   saveQueueTail = next;
@@ -7743,6 +7763,42 @@ function wireSettingsBindElements(container, rerenderFn){
   });
 }
 
+// ===== Download / import a settings file (a copy that lives outside Firebase) =====
+function downloadFullExport(){
+  const payload = { app:'anime-vanguard-wiki', exportedAt:new Date().toISOString(), meta:{}, units:state.units, items:state.items, families:state.families, memories:state.memories };
+  META_KEYS.forEach(k=>{ if(k !== 'backupLock') payload.meta[k] = state[k]; });
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'wiki-backup-' + todayDateKey() + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 5000);
+  showToast('已下载备份文件，请保存在安全的地方', 5000);
+}
+
+async function importSettingsFromFile(file){
+  if(!requireAdmin()) return;
+  if(state.backupLock && !backupsUnlocked){ showToast('请先在「历史备份记录」输入密码解锁，再导入设置', 5000); return; }
+  let data;
+  try{ data = JSON.parse(await file.text()); }catch(e){ showToast('这个文件不是有效的备份文件', 5000); return; }
+  if(!data || !data.meta || typeof data.meta !== 'object'){ showToast('这个文件里没有找到设置资料', 5000); return; }
+  const keys = META_KEYS.filter(k=> k in data.meta && k !== 'adminEmails' && k !== 'backupLock');
+  if(!keys.length){ showToast('这个文件里没有可导入的设置', 5000); return; }
+  if(!confirm(`将用文件里的 ${keys.length} 项设置，覆盖现在的设置（标记、分组、元素、稀有度、特性、更新日志等）。\n单位、道具、家族、回忆等内容不会改变。\n导入前会先自动做一份备份。确定继续？`)) return;
+  try{
+    showToast('正在先做一份导入前备份...', 60000);
+    await snapshotCollectionsToBackup('pre-import-' + Date.now(), '导入设置前自动备份');
+    keys.forEach(k=>{ state[k] = data.meta[k]; });
+    migrateState();
+    await saveData(true);
+    showToast('设置已导入', 5000);
+    render();
+  }catch(e){
+    console.error(e);
+    showToast('导入失败：' + (e.message || e), 8000);
+  }
+}
+
 // ===== Cleanup of unused images stored in the GitHub repo =====
 let unusedImagesState = { loading:false, files:null, totalCount:0, usedCount:0, error:'' };
 
@@ -7962,6 +8018,18 @@ function renderSettings(){
     </details>
 
     <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">下载 / 导入设置文件</summary>
+      <div class="hint" style="margin-bottom:14px;">
+        把整个 wiki（设置、单位、道具、家族、回忆）下载成一个文件，存在自己的电脑或云端硬盘里。这样即使 Firebase 出问题，你手上还有一份。<br>
+        「导入设置」只会还原设置资料（标记、分组、元素、系列、稀有度、特性、更新日志等），不会改动单位、道具、家族、回忆；导入前会先自动做一份备份。
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn btn-gold" id="downloadFullExportBtn">⬇ 下载备份文件</button>
+        <label class="btn" style="cursor:pointer;margin:0;">⬆ 导入设置<input type="file" accept="application/json,.json" id="importSettingsInput" style="display:none;"></label>
+      </div>
+    </details>
+
+    <details class="settings-block">
       <summary class="section-label" style="margin-top:0;">渐变色流动动画</summary>
       <div class="hint" style="margin-bottom:14px;">
         使用渐变色（例如 <code>linear-gradient(...)</code>）的名字、边框、稀有度标签，默认会一直缓慢流动。关掉后，<b>全站</b>所有渐变色都会静止不动。如果只想让某一个单位/回忆/家族的颜色不动，不用关这个，直接在那一项的编辑页面勾选「让这个渐变色保持静止」就可以。普通的单一颜色不受影响。
@@ -8081,6 +8149,14 @@ function renderSettings(){
 
   wireSettingsBindElements(container, renderSettings);
   refreshUnusedImagesUi();
+  const dlBtn = document.getElementById('downloadFullExportBtn');
+  if(dlBtn) dlBtn.addEventListener('click', downloadFullExport);
+  const impInput = document.getElementById('importSettingsInput');
+  if(impInput) impInput.addEventListener('change', async ()=>{
+    const f = impInput.files[0];
+    impInput.value = '';
+    if(f) await importSettingsFromFile(f);
+  });
   const gradientAnimToggle = document.getElementById('gradientAnimToggle');
   if(gradientAnimToggle) gradientAnimToggle.addEventListener('change', async ()=>{
     state.gradientAnimation = gradientAnimToggle.checked;
