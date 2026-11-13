@@ -96,7 +96,36 @@
   .gallery-card.dragging{opacity:.35;cursor:grabbing;}
   .gallery-card.drag-over{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
   .gallery-card-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--card);display:block;}
-  .gallery-card-crop{display:block;width:100%;aspect-ratio:1;overflow:hidden;border-radius:12px;border:1px solid var(--border);background:var(--card);}
+  .team-list{display:flex;flex-direction:column;gap:22px;}
+.team-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.team-head{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.team-head .team-name-input{flex:1;min-width:160px;font-size:18px;font-weight:700;}
+.team-head h2{flex:1;margin:0;font-size:19px;}
+.team-slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;}
+.team-slot{background:var(--card-hover);border:1px solid var(--border);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:10px;min-width:0;}
+.team-slot-title{font-size:12px;color:var(--text-faint);font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+.team-unit{display:flex;flex-direction:column;gap:6px;}
+.team-row{display:flex;align-items:center;gap:8px;min-width:0;}
+.team-role{font-size:11px;color:var(--text-faint);width:30px;flex-shrink:0;}
+.team-col{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
+.team-ico{display:inline-block;overflow:hidden;border-radius:10px;border:1px solid var(--border);background:var(--card);flex-shrink:0;}
+.team-ico img{width:100%;height:100%;object-fit:cover;display:block;}
+.team-ico.lg{width:100%;aspect-ratio:1;}
+.team-ico.sm{width:38px;height:38px;border-radius:8px;}
+.team-name{font-size:13px;font-weight:600;word-break:break-all;color:var(--text);text-decoration:none;}
+a.team-name:hover{color:var(--gold);}
+.team-empty{color:var(--text-faint);font-size:12px;}
+.team-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.team-mini{padding:3px 8px;font-size:12px;margin:0;}
+.team-add-slot{display:flex;align-items:center;justify-content:center;min-height:120px;border:2px dashed var(--border);border-radius:12px;background:transparent;color:var(--text-dim);cursor:pointer;font-size:14px;}
+.team-add-slot:hover{border-color:var(--gold-dim);color:var(--gold);}
+.team-picker{position:fixed;inset:0;background:rgba(10,11,16,.72);z-index:150;display:flex;align-items:center;justify-content:center;padding:20px;}
+.team-picker-box{background:var(--card);border:1px solid var(--border-light);border-radius:14px;width:min(600px,100%);max-height:82vh;display:flex;flex-direction:column;padding:16px;gap:10px;}
+.team-picker-list{overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px;padding:2px;}
+.team-picker-item{background:var(--card-hover);border:2px solid transparent;border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center;cursor:pointer;color:var(--text);text-align:center;}
+.team-picker-item:hover{border-color:var(--gold-dim);}
+.team-picker-item.sel{border-color:var(--gold);}
+.gallery-card-crop{display:block;width:100%;aspect-ratio:1;overflow:hidden;border-radius:12px;border:1px solid var(--border);background:var(--card);}
 .gallery-card-crop .gallery-card-img{border:none;border-radius:0;height:100%;}
 .gallery-card:hover .gallery-card-crop{border-color:var(--gold-dim);}
 .gallery-card-img-wrap.animated-border .gallery-card-crop,.gallery-card-img-wrap.rarity-border .gallery-card-crop{border:none;border-radius:10px;}
@@ -672,7 +701,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, teams:[], marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -805,7 +834,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','upgradeLevel','unit','item','family','memory','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','upgradeLevel','unit','item','family','memory','teams','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -1053,6 +1082,7 @@ function defaultData(){
         {id:uid(), name:'誓约·觉醒', description:'生命值低于50%时触发一次全额回血。（仅炎焰骑士生效）', scope:'personal'}
       ], marks:[], updatedAt: now}
     ],
+    teams:[],
     tierlist:{content:'# 分级榜\n\n在这里整理你的单位强度排名。\n\n**S级**\n- 炎焰骑士\n\n**A级**\n\n**B级**'},
     marks:[
       {id:uid(), name:'持续伤害', image:'', color:'#b8544a'},
@@ -1152,6 +1182,7 @@ function migrateState(){
   if(!Array.isArray(state.adminEmails)) state.adminEmails = [];
   if(typeof state.gradientAnimation !== 'boolean') state.gradientAnimation = true;
   if(typeof state.backupLock !== 'string') state.backupLock = '';
+  if(!Array.isArray(state.teams)) state.teams = [];
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
   state.attackTypes.forEach(t=>{
@@ -2380,7 +2411,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','teams','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -2921,6 +2952,7 @@ function renderSidebar(){
     <a href="#/" class="top-link ${currentView.type==='home'?'active':''}" data-view="home"><span class="nav-icon">📰</span>首页 · 更新日志</a>
     <a href="#/tierlist" class="top-link ${currentView.type==='tierlist'?'active':''}" data-view="tierlist"><span class="nav-icon">📊</span>分级榜</a>
     <a href="#/odyssey" class="top-link ${currentView.type==='odyssey'?'active':''}" data-view="odyssey"><span class="nav-icon">🗺️</span>Odyssey 冒险模式</a>
+    <a href="#/teams" class="top-link ${currentView.type==='teams'?'active':''}" data-view="teams"><span class="nav-icon">👥</span>队伍</a>
   </div>
 
   <div class="nav-section">
@@ -4495,6 +4527,180 @@ function unitTierChipHtml(unit){
   const t = tiers.find(x=>x.entries.some(e=>e.unitId===unit.id));
   if(!t) return '';
   return `<a href="${viewToHash({type:'tierlist'})}" class="badge" style="background:${escapeHtml(t.color)};color:${readableTextColor(t.color)};font-weight:700;text-decoration:none;cursor:pointer;" title="在分级榜里的位置">📊 分级榜：${escapeHtml(t.label||'?')}</a>`;
+}
+
+function teamIcoHtml(e, size){
+  if(!e || !e.image) return `<span class="team-ico ${size}"></span>`;
+  return `<span class="team-ico ${size}"><img src="${escapeHtml(String(e.image))}"${cardFrameImgStyle(e)}></span>`;
+}
+
+function openTeamPicker(kind, currentId, onPick){
+  const list = kind === 'unit' ? state.units : (kind === 'family' ? state.families : state.memories);
+  const titles = {unit:'选择单位', family:'选择使魔', memory:'选择记忆'};
+  const ov = document.createElement('div');
+  ov.className = 'team-picker';
+  ov.innerHTML = `<div class="team-picker-box">
+    <div style="display:flex;gap:8px;align-items:center;"><strong style="flex:1;">${titles[kind]}</strong><button type="button" class="btn" data-role="close">关闭</button></div>
+    <input class="edit-input" placeholder="搜索名字..." data-role="search">
+    <div class="team-picker-list"></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const listEl = ov.querySelector('.team-picker-list');
+  const search = ov.querySelector('[data-role="search"]');
+  const close = ()=>ov.remove();
+  const draw = ()=>{
+    const q = search.value.trim().toLowerCase();
+    const items = list.filter(e=>!q || (((e.name||'') + ' ' + (e.englishName||'')).toLowerCase().includes(q)))
+      .slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''), 'zh'));
+    listEl.innerHTML = items.length ? items.map(e=>`<button type="button" class="team-picker-item${e.id===currentId?' sel':''}" data-id="${escapeHtml(e.id)}">${teamIcoHtml(e,'lg')}<span class="team-name">${escapeHtml(e.name)}</span></button>`).join('') : '<div class="team-empty" style="grid-column:1/-1;padding:12px;">没有找到</div>';
+  };
+  draw();
+  search.addEventListener('input', draw);
+  listEl.addEventListener('click', (ev)=>{
+    const b = ev.target.closest('.team-picker-item');
+    if(!b) return;
+    close();
+    onPick(b.dataset.id);
+  });
+  ov.addEventListener('click', (ev)=>{ if(ev.target === ov) close(); });
+  ov.querySelector('[data-role="close"]').addEventListener('click', close);
+  search.focus();
+}
+
+let draftTeams = null;
+
+function renderTeamsPage(){
+  const container = document.getElementById('mainInner');
+  if(!isAdmin || !editMode) draftTeams = null;
+  const editing = isAdmin && editMode;
+  if(editing && !draftTeams) draftTeams = JSON.parse(JSON.stringify(state.teams));
+  const teams = editing ? draftTeams : state.teams;
+
+  const unitMap = {}, famMap = {}, memMap = {};
+  state.units.forEach(e=>{ unitMap[e.id] = e; });
+  state.families.forEach(e=>{ famMap[e.id] = e; });
+  state.memories.forEach(e=>{ memMap[e.id] = e; });
+  const newSlot = ()=>({unitId:'', familyId:'', memoryId:''});
+
+  const nameOf = (e, type, id)=> e
+    ? `<a href="${viewToHash({type, id:e.id})}" class="team-name" data-team-link="${type}" data-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a>`
+    : `<span class="team-empty">${id ? '（已删除）' : '未选择'}</span>`;
+  const btns = (ti, si, kind, hasValue)=> editing
+    ? `<div class="team-btns"><button type="button" class="btn team-mini" data-act="pick" data-kind="${kind}" data-ti="${ti}" data-si="${si}">${hasValue ? '更换' : '选择'}</button>${hasValue ? `<button type="button" class="btn team-mini" data-act="clear" data-kind="${kind}" data-ti="${ti}" data-si="${si}">清除</button>` : ''}</div>`
+    : '';
+
+  const slotHtml = (ti, si, s)=>{
+    const u = unitMap[s.unitId], f = famMap[s.familyId], m = memMap[s.memoryId];
+    return `<div class="team-slot">
+      <div class="team-slot-title"><span>位置 ${si+1}</span>${editing && si >= 6 ? `<button type="button" class="btn btn-danger team-mini" data-act="removeSlot" data-ti="${ti}" data-si="${si}" title="删除这个位置">✕</button>` : ''}</div>
+      <div class="team-unit">
+        ${teamIcoHtml(u, 'lg')}
+        <div>${nameOf(u, 'unit', s.unitId)}</div>
+        ${btns(ti, si, 'unit', !!s.unitId)}
+      </div>
+      <div class="team-row"><span class="team-role">使魔</span>${teamIcoHtml(f, 'sm')}<div class="team-col">${nameOf(f, 'family', s.familyId)}${btns(ti, si, 'family', !!s.familyId)}</div></div>
+      <div class="team-row"><span class="team-role">记忆</span>${teamIcoHtml(m, 'sm')}<div class="team-col">${nameOf(m, 'memory', s.memoryId)}${btns(ti, si, 'memory', !!s.memoryId)}</div></div>
+    </div>`;
+  };
+
+  const teamsHtml = teams.map((t, ti)=>`
+    <div class="team-card">
+      <div class="team-head">
+        ${editing ? `<input class="edit-input team-name-input" data-role="teamName" data-ti="${ti}" value="${escapeHtml(t.name || '')}" placeholder="队伍名称">` : `<h2>${escapeHtml(t.name || '未命名队伍')}</h2>`}
+        ${editing ? `<button type="button" class="btn btn-danger" data-act="removeTeam" data-ti="${ti}">删除队伍</button>` : ''}
+      </div>
+      <div class="team-slots">
+        ${t.slots.map((s, si)=>slotHtml(ti, si, s)).join('')}
+        ${editing ? `<button type="button" class="team-add-slot" data-act="addSlot" data-ti="${ti}">＋ 添加位置</button>` : ''}
+      </div>
+    </div>`).join('');
+
+  const toolbarBtns = !isAdmin ? '' : (editing
+    ? '<button class="btn btn-gold" data-act="addTeam">＋ 添加队伍</button><button class="btn" data-act="cancelTeams">取消</button><button class="btn btn-gold" data-act="saveTeams">保存</button>'
+    : '<button class="btn" data-act="editTeams">编辑</button>');
+
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <div class="crumb">队伍</div>
+      <div class="toolbar-actions">${toolbarBtns}</div>
+    </div>
+    <div class="team-list">${teamsHtml || `<div class="empty-state"><h2>还没有队伍</h2>${isAdmin ? '<p>点右上角的「编辑」，再点「＋ 添加队伍」开始。每支队伍有 6 个位置，每个位置可以放一个单位、一个使魔和一个记忆。改好后按「保存」才会生效。</p>' : ''}</div>`}</div>
+  `;
+
+  const redraw = ()=>{
+    const m = document.querySelector('.main');
+    const st = m ? m.scrollTop : 0;
+    renderTeamsPage();
+    if(m) m.scrollTop = st;
+  };
+  const fieldOf = {unit:'unitId', family:'familyId', memory:'memoryId'};
+
+  container.querySelectorAll('[data-team-link]').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      if(!isPlainLeftClick(e)) return;
+      e.preventDefault();
+      if(editing && JSON.stringify(draftTeams) !== JSON.stringify(state.teams) && !confirm('你还有没保存的修改，离开后会丢失。确定离开？')) return;
+      goToView({type:a.dataset.teamLink, id:a.dataset.id});
+      editMode = false;
+      draftTeams = null;
+      render();
+    });
+  });
+
+  if(!isAdmin) return;
+
+  container.querySelectorAll('[data-role="teamName"]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const t = draftTeams[+inp.dataset.ti];
+      if(t) t.name = inp.value;
+    });
+  });
+
+  container.querySelectorAll('[data-act]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!requireAdmin()) return;
+      const act = btn.dataset.act;
+      if(act === 'editTeams'){ editMode = true; draftTeams = null; redraw(); return; }
+      if(act === 'cancelTeams'){
+        if(JSON.stringify(draftTeams) !== JSON.stringify(state.teams) && !confirm('放弃没保存的修改？')) return;
+        editMode = false; draftTeams = null; redraw(); return;
+      }
+      if(act === 'saveTeams'){
+        draftTeams.forEach((t, i)=>{ t.name = String(t.name || '').trim() || ('队伍 ' + (i + 1)); });
+        state.teams = JSON.parse(JSON.stringify(draftTeams));
+        editMode = false; draftTeams = null;
+        await saveData(false);
+        redraw();
+        return;
+      }
+      if(!editing || !draftTeams) return;
+      const ti = +btn.dataset.ti, si = +btn.dataset.si;
+      const t = draftTeams[ti];
+      if(act === 'addTeam'){
+        draftTeams.push({id:uid(), name:'队伍 ' + (draftTeams.length + 1), slots:Array.from({length:6}, newSlot)});
+        redraw();
+      } else if(act === 'removeTeam' && t){
+        if(!confirm(`确定删除「${t.name || '这支队伍'}」？（按「保存」后才会真正生效）`)) return;
+        draftTeams.splice(ti, 1);
+        redraw();
+      } else if(act === 'addSlot' && t){
+        t.slots.push(newSlot());
+        redraw();
+      } else if(act === 'removeSlot' && t && si >= 6){
+        t.slots.splice(si, 1);
+        redraw();
+      } else if(act === 'clear' && t && t.slots[si]){
+        t.slots[si][fieldOf[btn.dataset.kind]] = '';
+        redraw();
+      } else if(act === 'pick' && t && t.slots[si]){
+        const field = fieldOf[btn.dataset.kind];
+        openTeamPicker(btn.dataset.kind, t.slots[si][field], (id)=>{
+          t.slots[si][field] = id;
+          redraw();
+        });
+      }
+    });
+  });
 }
 
 function renderTierlist(){
@@ -6612,6 +6818,7 @@ function renderItem(){
 function renderMain(){
   if(currentView.type==='home') renderHome();
   else if(currentView.type==='tierlist') renderTierlist();
+  else if(currentView.type==='teams') renderTeamsPage();
   else if(currentView.type==='statusEffects') renderStatusEffects();
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
