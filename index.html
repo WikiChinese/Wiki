@@ -2881,27 +2881,32 @@ function unitNameColorStyle(value, isStatic){
   }
   return ` style="color:${safe};"`;
 }
-// ===== Auto-link unit names that appear inside passive descriptions =====
+// ===== Auto-link unit / familiar / memoria names that appear inside passive descriptions =====
 let unitMentionCache = { sig:'', re:null, map:null };
 
 function getUnitMentionIndex(){
-  const sig = state.units.map(u=>u.id + '|' + (u.name||'') + '|' + (u.englishName||'')).join('\n');
+  const all = [
+    ...state.units.map(e=>({e, type:'unit'})),
+    ...state.families.map(e=>({e, type:'family'})),
+    ...state.memories.map(e=>({e, type:'memory'}))
+  ];
+  const sig = all.map(x=>x.type + '|' + x.e.id + '|' + (x.e.name||'') + '|' + (x.e.englishName||'')).join('\n');
   if(unitMentionCache.sig === sig) return unitMentionCache;
   const cache = { sig, re:null, map:null };
   const byText = new Map();
-  const add = (text, id)=>{
+  const add = (text, id, type)=>{
     const t = String(text||'').trim();
     if(t.length < 2) return;
     const k = t.toLowerCase();
-    if(byText.has(k) && byText.get(k).id !== id) byText.set(k, {id:null, text:t});
-    else if(!byText.has(k)) byText.set(k, {id, text:t});
+    if(byText.has(k) && byText.get(k).id !== id) byText.set(k, {id:null, type, text:t});
+    else if(!byText.has(k)) byText.set(k, {id, type, text:t});
   };
-  state.units.forEach(u=>{ add(u.name, u.id); add(u.englishName, u.id); });
+  all.forEach(x=>{ add(x.e.name, x.e.id, x.type); add(x.e.englishName, x.e.id, x.type); });
   const terms = [...byText.values()].filter(x=>x.id);
   if(terms.length){
     const esc = (s)=>escapeHtml(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const isLatin = (s)=>/^[\x00-\x7F]+$/.test(s);
-    terms.sort((a,b)=>b.text.length - a.text.length);
+    terms.sort((x,y)=>y.text.length - x.text.length);
     const latin = terms.filter(x=>isLatin(x.text)).map(x=>esc(x.text));
     const cjk = terms.filter(x=>!isLatin(x.text)).map(x=>esc(x.text));
     const parts = [];
@@ -2909,16 +2914,17 @@ function getUnitMentionIndex(){
     if(cjk.length) parts.push(`(?:${cjk.join('|')})`);
     try{
       cache.re = new RegExp(parts.join('|'), 'gi');
-      cache.map = new Map(terms.map(x=>[escapeHtml(x.text).toLowerCase(), x.id]));
+      cache.map = new Map(terms.map(x=>[escapeHtml(x.text).toLowerCase(), {id:x.id, type:x.type}]));
     }catch(e){ cache.re = null; }
   }
   unitMentionCache = cache;
   return cache;
 }
 
-function autoLinkUnitNames(html, excludeId){
+function autoLinkUnitNames(html, excludeIds){
   const idx = getUnitMentionIndex();
   if(!idx.re || !html) return html;
+  const ex = Array.isArray(excludeIds) ? excludeIds : [excludeIds];
   let skip = 0, spanSkip = 0;
   return String(html).split(/(<[^>]*>)/).map(seg=>{
     if(seg.startsWith('<')){
@@ -2930,22 +2936,22 @@ function autoLinkUnitNames(html, excludeId){
     }
     if(skip > 0 || spanSkip > 0) return seg;
     return seg.replace(idx.re, (m)=>{
-      const id = idx.map.get(m.toLowerCase());
-      if(!id || id === excludeId) return m;
-      return `<a class="unit-mention" href="${viewToHash({type:'unit', id})}" data-mention-unit="${escapeHtml(id)}">${m}</a>`;
+      const hit = idx.map.get(m.toLowerCase());
+      if(!hit || ex.includes(hit.id)) return m;
+      return `<a class="unit-mention" href="${viewToHash({type:hit.type, id:hit.id})}" data-mention-type="${hit.type}" data-mention-id="${escapeHtml(hit.id)}">${m}</a>`;
     });
   }).join('');
 }
 
-function renderPassiveDescHtml(text, excludeUnitId){
-  return autoLinkUnitNames(renderMarkdownLite(text), excludeUnitId);
+function renderPassiveDescHtml(text, excludeIds){
+  return autoLinkUnitNames(renderMarkdownLite(text), excludeIds);
 }
 
 document.addEventListener('click', (e)=>{
   const a = e.target.closest && e.target.closest('a.unit-mention');
   if(!a || !isPlainLeftClick(e)) return;
   e.preventDefault();
-  goToView({type:'unit', id:a.dataset.mentionUnit});
+  goToView({type:a.dataset.mentionType || 'unit', id:a.dataset.mentionId});
   editMode = false;
   render();
 });
@@ -6292,7 +6298,7 @@ function renderUnit(){
           ${mediaHtml ? `<div class="skill-view-media-stack">${mediaHtml}</div>` : ''}
           <div class="skill-view-body">
             <div class="skill-menu-effect-label">效果</div>
-            <div class="content-body">${renderMarkdownLite(s.description)}</div>
+            <div class="content-body">${renderPassiveDescHtml(s.description, unit.id)}</div>
           </div>
         </div>
       </div>`;
@@ -6333,7 +6339,7 @@ function renderUnit(){
       const scopeTag = `<span class="badge ${p.scope==='personal'?'badge-legendary':'badge-common'}" style="${p.scope==='personal'?'':'background:var(--card);color:var(--text-faint);'}margin-left:8px;">${p.scope==='personal'?'专属':'通用'}</span>`;
       return `<div style="margin-bottom:14px;">
         <div style="font-weight:600;color:var(--text);margin-bottom:4px;">${escapeHtml(p.name)}${scopeTag}</div>
-        <div class="content-body" style="font-size:14px;">${renderPassiveDescHtml(p.description, unit.id)}</div>
+        <div class="content-body" style="font-size:14px;">${renderPassiveDescHtml(p.description, [unit.id, m.id])}</div>
       </div>`;
     }).join('') : '<p style="color:var(--text-faint);">暂无被动说明</p>';
     return `<div class="skill-view">
@@ -6354,7 +6360,7 @@ function renderUnit(){
       const scopeTag = `<span class="badge ${p.scope==='personal'?'badge-legendary':'badge-common'}" style="${p.scope==='personal'?'':'background:var(--card);color:var(--text-faint);'}margin-left:8px;">${p.scope==='personal'?'专属':'通用'}</span>`;
       return `<div style="margin-bottom:14px;">
         <div style="font-weight:600;color:var(--text);margin-bottom:4px;">${escapeHtml(p.name)}${scopeTag}</div>
-        <div class="content-body" style="font-size:14px;">${renderPassiveDescHtml(p.description, unit.id)}</div>
+        <div class="content-body" style="font-size:14px;">${renderPassiveDescHtml(p.description, [unit.id, f.id])}</div>
       </div>`;
     }).join('') : '<p style="color:var(--text-faint);">暂无被动说明</p>';
     return `<div class="skill-view">
@@ -7459,7 +7465,7 @@ function renderSimpleEntity(type){
     const scopeTag = `<span class="badge ${p.scope==='personal'?'badge-legendary':'badge-common'}" style="${p.scope==='personal'?'':'background:var(--card);color:var(--text-faint);'}margin-left:8px;">${p.scope==='personal'?'专属':'通用'}</span>`;
     return `<div class="skill-view" style="display:block;">
       <h3 class="skill-name">${escapeHtml(p.name)}${scopeTag}</h3>
-      <div class="content-body">${renderPassiveDescHtml(p.description, '')}</div>
+      <div class="content-body">${renderPassiveDescHtml(p.description, entity.id)}</div>
     </div>`;
   }).join('') : '<p style="color:var(--text-faint);">暂无内容</p>';
 
