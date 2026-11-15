@@ -704,7 +704,7 @@ a.team-name:hover{color:var(--gold);}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, teams:[], marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, teams:[], memoryTraits:[], marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -837,7 +837,7 @@ function viewToHash(view){
   if(!view || !view.type || view.type==='home') return '#/';
   return view.id ? `#/${view.type}/${view.id}` : `#/${view.type}`;
 }
-const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','upgradeLevel','unit','item','family','memory','teams','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
+const VALID_HASH_TYPES = ['home','tierlist','settings','statusEffects','odyssey','attackTypes','traits','enemyMechanics','modifiers','lootCards','stage','stageLevel','upgrade','upgradeLevel','unit','item','family','memory','teams','memoryTraits','unitGallery','itemGallery','familyGallery','memoryGallery','groupGallery'];
 function hashToView(){
   const raw = (location.hash || '').replace(/^#\/?/, '');
   if(!raw) return {type:'home'};
@@ -1086,6 +1086,7 @@ function defaultData(){
       ], marks:[], updatedAt: now}
     ],
     teams:[],
+    memoryTraits:[],
     tierlist:{content:'# 分级榜\n\n在这里整理你的单位强度排名。\n\n**S级**\n- 炎焰骑士\n\n**A级**\n\n**B级**'},
     marks:[
       {id:uid(), name:'持续伤害', image:'', color:'#b8544a'},
@@ -1186,6 +1187,7 @@ function migrateState(){
   if(typeof state.gradientAnimation !== 'boolean') state.gradientAnimation = true;
   if(typeof state.backupLock !== 'string') state.backupLock = '';
   if(!Array.isArray(state.teams)) state.teams = [];
+  if(!Array.isArray(state.memoryTraits)) state.memoryTraits = [];
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
   state.attackTypes.forEach(t=>{
@@ -2350,6 +2352,23 @@ function renderUpgradeLevelPage(){
   wireBackButton(container);
 }
 
+function renderMemoryTraitsPage(){
+  const container = document.getElementById('mainInner');
+  const cardsHtml = state.memoryTraits.length ? state.memoryTraits.map(t=>`
+    <div class="trait-page-card">${traitDetailInnerHtml(t)}</div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何记忆特性，管理员可以到「设置」页面新增。</div>';
+  container.innerHTML = `
+    <div class="page-toolbar">
+      <h1 class="page-title" style="margin:0;">记忆特性</h1>
+      <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="goToMemoryTraitSettingsBtn">去设置页管理</button>' : ''}</div>
+    </div>
+    <div class="hint" style="margin:-6px 0 16px;">这里汇总了所有记忆特性的完整信息。想改某个记忆特性的说明，去「设置」页面改，这里会自动同步显示最新内容。</div>
+    <div class="trait-page-list">${cardsHtml}</div>
+  `;
+  const goBtn = document.getElementById('goToMemoryTraitSettingsBtn');
+  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  wireBackButton(container);
+}
+
 function renderTraitsPage(){
   const container = document.getElementById('mainInner');
   const cardsHtml = state.traits.length ? state.traits.map(t=>`
@@ -2369,7 +2388,7 @@ function renderTraitsPage(){
 }
 
 function openTraitOverlay(traitId){
-  const t = state.traits.find(x=>x.id===traitId);
+  const t = state.traits.find(x=>x.id===traitId) || state.memoryTraits.find(x=>x.id===traitId);
   if(!t) return;
   document.getElementById('traitBox').innerHTML = traitDetailInnerHtml(t);
   document.getElementById('traitOverlay').classList.add('show');
@@ -2414,7 +2433,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','teams','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','teams','memoryTraits','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -2949,6 +2968,8 @@ function renderPassiveDescHtml(text, excludeIds){
 }
 
 document.addEventListener('click', (e)=>{
+  const chip = e.target.closest && e.target.closest('.memory-trait-chip');
+  if(chip){ openTraitOverlay(chip.dataset.traitId); return; }
   const a = e.target.closest && e.target.closest('a.unit-mention');
   if(!a || !isPlainLeftClick(e)) return;
   e.preventDefault();
@@ -3057,11 +3078,12 @@ function renderSidebar(){
   </div>
 
   <div class="nav-section">
-    <details class="nav-collapsible" data-picker-key="sidebar-reference"${(openPickerKeys.has('sidebar-reference') || ['statusEffects','attackTypes','traits','enemyMechanics','modifiers','lootCards'].includes(currentView.type)) ? ' open' : ''}>
+    <details class="nav-collapsible" data-picker-key="sidebar-reference"${(openPickerKeys.has('sidebar-reference') || ['statusEffects','attackTypes','traits','memoryTraits','enemyMechanics','modifiers','lootCards'].includes(currentView.type)) ? ' open' : ''}>
       <summary class="nav-section-label" style="cursor:pointer;">参考资料</summary>
       <a href="#/statusEffects" class="top-link ${currentView.type==='statusEffects'?'active':''}" data-view="statusEffects"><span class="nav-icon">🔥</span>状态标记</a>
       <a href="#/attackTypes" class="top-link ${currentView.type==='attackTypes'?'active':''}" data-view="attackTypes"><span class="nav-icon">💥</span>攻击类型</a>
       <a href="#/traits" class="top-link ${currentView.type==='traits'?'active':''}" data-view="traits"><span class="nav-icon">✨</span>特性</a>
+      <a href="#/memoryTraits" class="top-link ${currentView.type==='memoryTraits'?'active':''}" data-view="memoryTraits"><span class="nav-icon">💭</span>记忆特性</a>
       <a href="#/enemyMechanics" class="top-link ${currentView.type==='enemyMechanics'?'active':''}" data-view="enemyMechanics"><span class="nav-icon">☠️</span>敌方机制</a>
       <a href="#/modifiers" class="top-link ${currentView.type==='modifiers'?'active':''}" data-view="modifiers"><span class="nav-icon">🧩</span>修正器</a>
       <a href="#/lootCards" class="top-link ${currentView.type==='lootCards'?'active':''}" data-view="lootCards"><span class="nav-icon">🃏</span>战利品卡</a>
@@ -6915,6 +6937,7 @@ function renderMain(){
   if(currentView.type==='home') renderHome();
   else if(currentView.type==='tierlist') renderTierlist();
   else if(currentView.type==='teams') renderTeamsPage();
+  else if(currentView.type==='memoryTraits') renderMemoryTraitsPage();
   else if(currentView.type==='statusEffects') renderStatusEffects();
   else if(currentView.type==='odyssey') renderOdyssey();
   else if(currentView.type==='attackTypes') renderAttackTypes();
@@ -7250,6 +7273,7 @@ function startSimpleEdit(type, entity){
   }
   if(draftSimple.personalColor===undefined) draftSimple.personalColor = '';
   draftSimple.rarity = entity.rarity || '';
+  draftSimple.memoryTrait = entity.memoryTrait || '';
   draftSimple.obtainWay = entity.obtainWay || '';
   editMode = true;
 }
@@ -7282,6 +7306,14 @@ function renderSimpleEntity(type){
         <div class="edit-field">
           <span class="edit-label">稀有度</span>
           <select class="edit-select" data-bind="rarity">${rarityOptionsHtml(draftSimple.rarity)}</select>
+        </div>
+        <div class="edit-field">
+          <span class="edit-label">记忆特性</span>
+          <select class="edit-select" data-bind="memoryTrait">
+            <option value="">（无）</option>
+            ${state.memoryTraits.map(t=>`<option value="${escapeHtml(String(t.id))}" ${draftSimple.memoryTrait===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
+          </select>
+          <div class="hint">可选。记忆特性在「设置 → 记忆特性」里新增和编辑。</div>
         </div>`;
 
     container.innerHTML = `
@@ -7410,6 +7442,7 @@ function renderSimpleEntity(type){
       entity.colorStatic = !!draftSimple.colorStatic;
       entity.cardFocusX = cardNum(draftSimple.cardFocusX, 50); entity.cardFocusY = cardNum(draftSimple.cardFocusY, 50); entity.cardZoom = cardNum(draftSimple.cardZoom, 100);
       entity.rarity = draftSimple.rarity || '';
+      if(type==='memory') entity.memoryTrait = draftSimple.memoryTrait || '';
       entity.obtainWay = draftSimple.obtainWay || '';
       entity.obtainMethods = Array.isArray(draftSimple.obtainMethods) ? draftSimple.obtainMethods : [];
       entity.updatedAt = Date.now();
@@ -7471,6 +7504,8 @@ function renderSimpleEntity(type){
     }
   }
   const rarityChipHtml = entity.rarity ? rarityBadge(entity.rarity) : '';
+  const memTrait = (type==='memory' && entity.memoryTrait) ? state.memoryTraits.find(t=>t.id===entity.memoryTrait) : null;
+  const memTraitChipHtml = memTrait ? `<span class="mark-chip memory-trait-chip" data-trait-id="${escapeHtml(String(memTrait.id))}" style="cursor:pointer;${coloredChipStyle(memTrait.color)}" title="点击查看详细">${memTrait.image ? `<img src="${escapeHtml(String(memTrait.image))}">` : ''}${escapeHtml(memTrait.name)}</span>` : '';
 
   const passivesHtml = (entity.passives&&entity.passives.length) ? entity.passives.map(p=>{
     const scopeTag = `<span class="badge ${p.scope==='personal'?'badge-legendary':'badge-common'}" style="${p.scope==='personal'?'':'background:var(--card);color:var(--text-faint);'}margin-left:8px;">${p.scope==='personal'?'专属':'通用'}</span>`;
@@ -7509,7 +7544,7 @@ function renderSimpleEntity(type){
     <div class="page-header">
       <h1 class="page-title"${type==='memory' ? unitColorAttrs(entity).nameStyle : unitNameColorStyle(entity.personalColor, entity.colorStatic)}>${escapeHtml(entity.name)}</h1>
       ${entity.englishName ? `<div class="unit-english-name">${escapeHtml(entity.englishName)}</div>` : ''}
-      <div class="meta-row">${rarityChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
+      <div class="meta-row">${rarityChipHtml}${memTraitChipHtml}${restrictChipHtml}${(entity.obtainMethods&&entity.obtainMethods.length) ? entity.obtainMethods.map(id=>{
         const t = state.obtainMethods.find(x=>x.id===id);
         return t ? `<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</span>` : '';
       }).join('') : (entity.obtainWay?`<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">获取：${escapeHtml(entity.obtainWay)}</span>`:'')}${marksHtml}</div>
@@ -7799,6 +7834,51 @@ function traitEditRowHtml(trait, i){
   </div>`;
 }
 
+function memoryTraitEditRowHtml(trait, i){
+  const iconHtml = trait.image ? `<img class="mark-icon-preview zoomable" src="${escapeHtml(String(trait.image))}">` : `<div class="mark-icon-placeholder"></div>`;
+  const isGradient = /gradient/.test(trait.color||'');
+  const colorPickerVal = isGradient ? '#c9a24b' : (trait.color||'#c9a24b');
+  const lbl = 'font-size:12px;color:var(--text-faint);display:block;margin-bottom:4px;';
+  return `<div class="sub-card">
+    <div class="sub-card-head">
+      <input class="edit-input" data-settings-bind="memoryTraits.${i}.name" value="${escapeHtml(trait.name)}" placeholder="记忆特性名称">
+      <button class="btn btn-danger" data-settings-action="removeMemoryTrait" data-index="${i}">删除</button>
+    </div>
+    <div class="mark-edit-row" style="margin:10px 0;">
+      ${iconHtml}
+      <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-settings-image-bind="memoryTraits.${i}.image" style="display:none;"></label>
+      <input type="color" data-settings-bind="memoryTraits.${i}.color" value="${escapeHtml(String(colorPickerVal))}">
+      ${colorFormulaInputHtml('memoryTraits', i, trait.color)}
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="flex:1;min-width:160px;">
+        <label style="${lbl}">概率</label>
+        <input class="edit-input" data-settings-bind="memoryTraits.${i}.odds" value="${escapeHtml(trait.odds||'')}" placeholder="例如：0.1% [1 in 1,000]">
+      </div>
+      <div style="flex:1;min-width:160px;">
+        <label style="${lbl}">保底</label>
+        <input class="edit-input" data-settings-bind="memoryTraits.${i}.pity" value="${escapeHtml(trait.pity||'')}" placeholder="例如：Pity: 1,500">
+      </div>
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">简介（可换行）</span>
+      <textarea class="edit-input" data-settings-bind="memoryTraits.${i}.tagline" rows="2" placeholder="这个记忆特性的简单说明">${escapeHtml(trait.tagline||'')}</textarea>
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">效果说明（每行一条，仅展示）</span>
+      <textarea class="edit-input" data-settings-bind="memoryTraits.${i}.statLines" rows="3" placeholder="+45% Critical Rate&#10;1 Placement Limit">${escapeHtml(trait.statLines||'')}</textarea>
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">对照表表头（可选，用 | 分隔两列，例如：Level | Bonus）</span>
+      <input class="edit-input" data-settings-bind="memoryTraits.${i}.tableHeaders" value="${escapeHtml(trait.tableHeaders||'')}" placeholder="Level | Bonus">
+    </div>
+    <div class="edit-field">
+      <span class="edit-label">对照表内容（每行一条，用 | 分隔两列）</span>
+      <textarea class="edit-input" data-settings-bind="memoryTraits.${i}.tableRows" rows="4" placeholder="1 | +10%&#10;2 | +20%">${escapeHtml(trait.tableRows||'')}</textarea>
+    </div>
+  </div>`;
+}
+
 function dbSizeReportHtml(){
   const limitBytes = 1048487;
   const sizeOf = (obj)=>{ try{ return new Blob([JSON.stringify(obj)]).size; }catch(e){ return 0; } };
@@ -8041,6 +8121,7 @@ function wireSettingsBindElements(container, rerenderFn){
         removeElement: {arr: state.elements, label:'元素'},
         removeSeries: {arr: state.series, label:'系列'},
         removeTrait: {arr: state.traits, label:'特性'},
+        removeMemoryTrait: {arr: state.memoryTraits, label:'记忆特性'},
         removeRarity: {arr: state.rarities, label:'稀有度'}
       };
       if(removeMap[action]){
@@ -8260,6 +8341,8 @@ function renderSettings(){
       <div class="mark-row-list">${state.rarities.map(r=>rarityBadge(r.id)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无稀有度</div>'}</div>
       <div class="section-label">特性</div>
       <div class="mark-row-list">${state.traits.map(t=>`<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</span>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无特性</div>'}</div>
+      <div class="section-label">记忆特性</div>
+      <div class="mark-row-list">${state.memoryTraits.map(t=>`<span class="mark-chip" style="${coloredChipStyle(t.color)}">${t.image?`<img src="${escapeHtml(String(t.image))}">`:''}${escapeHtml(t.name)}</span>`).join('') || '<div class="empty-hint" style="padding-left:0;">暂无记忆特性</div>'}</div>
     `;
     return;
   }
@@ -8282,6 +8365,7 @@ function renderSettings(){
   const elementsHtml = state.elements.length ? state.elements.map(elementEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无元素</div>';
   const seriesHtml = state.series.length ? state.series.map(seriesEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无系列</div>';
   const traitsHtml = state.traits.length ? state.traits.map(traitEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无特性</div>';
+  const memoryTraitsHtml = state.memoryTraits.length ? state.memoryTraits.map(memoryTraitEditRowHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无记忆特性</div>';
   const rarityRowsHtml = state.rarities.length ? state.rarities.map((r,i)=>{
     const stored = r.color || '';
     const isGradient = /gradient/.test(stored);
@@ -8429,6 +8513,13 @@ function renderSettings(){
     </details>
 
     <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">记忆特性</summary>
+      <div class="hint" style="margin-bottom:14px;">管理记忆可以挂载的特性。每个记忆特性可以填写概率、保底、简介、效果说明，以及一个可选的对照表。在记忆的编辑页选好之后，记忆页面会显示它，点标签会弹出这里填写的详细内容；左边菜单「参考资料」里的「记忆特性」页面会汇总所有记忆特性。</div>
+      <div id="memoryTraitsList">${memoryTraitsHtml}</div>
+      <button class="btn btn-gold" id="addMemoryTraitBtn">+ 新增记忆特性</button>
+    </details>
+
+    <details class="settings-block">
       <summary class="section-label" style="margin-top:0;">管理员账号</summary>
       <div class="hint" style="margin-bottom:14px;">
         浏览网站本来就不需要账号，任何人拿到链接都能直接查看。<br>
@@ -8571,6 +8662,12 @@ function renderSettings(){
   if(addRarityBtn) addRarityBtn.addEventListener('click', async ()=>{
     state.rarities.push({id:uid(), name:'新稀有度', color:'#c9a24b'});
       await saveData(true);
+    renderSettings();
+  });
+  const addMemoryTraitBtn = document.getElementById('addMemoryTraitBtn');
+  if(addMemoryTraitBtn) addMemoryTraitBtn.addEventListener('click', async ()=>{
+    state.memoryTraits.push({id:uid(), name:'新记忆特性', image:'', color:'#c9a24b', odds:'', pity:'', tagline:'', statLines:'', tableHeaders:'', tableRows:''});
+    await saveData(true);
     renderSettings();
   });
   const addTraitBtn = document.getElementById('addTraitBtn');
