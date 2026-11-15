@@ -4766,6 +4766,7 @@ function renderTeamsPage(){
 
   // The note boxes use the same editing helpers as every other description box (and the mark/element/group/mechanic insert buttons)
   wireDraftForm(container, {teams: draftTeams});
+  wirePickerToggles(container);
 
   container.querySelectorAll('[data-role="teamName"]').forEach(inp=>{
     inp.addEventListener('input', ()=>{
