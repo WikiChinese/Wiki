@@ -4726,7 +4726,7 @@ function renderTeamsPage(){
         ${editing ? `<button type="button" class="team-add-slot" data-act="addSlot" data-ti="${ti}">＋ 添加位置</button>` : ''}
       </div>
       ${editing
-        ? `<div class="edit-field" style="margin-top:14px;margin-bottom:0;"><span class="edit-label">队伍说明</span><textarea class="edit-textarea" data-role="teamNote" data-ti="${ti}" placeholder="这支队伍的打法、站位、注意事项、适合打什么关卡...">${escapeHtml(t.note || '')}</textarea></div>`
+        ? `<div class="edit-field" style="margin-top:14px;margin-bottom:0;"><span class="edit-label">队伍说明</span><textarea class="edit-textarea tall" data-bind="teams.${ti}.note" placeholder="这支队伍的打法、站位、注意事项、适合打什么关卡...">${escapeHtml(t.note || '')}</textarea><div class="hint"># 标题、**加粗**、- 列表 均可使用。点下面的小圆点可以插入状态标记（DOT 等）、元素、分组、敌方机制的图标。</div>${markInsertButtonsHtml(`teams.${ti}.note`)}</div>`
         : ((t.note || '').trim() ? `<div class="team-note content-body">${renderPassiveDescHtml(t.note, '')}</div>` : '')}
     </div>`).join('');
 
@@ -4764,12 +4764,8 @@ function renderTeamsPage(){
 
   if(!isAdmin) return;
 
-  container.querySelectorAll('[data-role="teamNote"]').forEach(ta=>{
-    ta.addEventListener('input', ()=>{
-      const t = draftTeams[+ta.dataset.ti];
-      if(t) t.note = ta.value;
-    });
-  });
+  // The note boxes use the same editing helpers as every other description box (and the mark/element/group/mechanic insert buttons)
+  wireDraftForm(container, {teams: draftTeams});
 
   container.querySelectorAll('[data-role="teamName"]').forEach(inp=>{
     inp.addEventListener('input', ()=>{
