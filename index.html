@@ -98,6 +98,7 @@
   .gallery-card-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--card);display:block;}
   .unit-mention{color:var(--gold);border-bottom:1px dotted var(--gold-dim);text-decoration:none;cursor:pointer;border-radius:2px;}
 .unit-mention:hover{background:rgba(201,162,75,.16);}
+.team-subrow{margin-left:6px;padding-left:8px;border-left:2px solid var(--border);}
 .team-note{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
 .team-list{display:flex;flex-direction:column;gap:22px;}
 .team-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
@@ -4639,8 +4640,8 @@ function teamIcoHtml(e, size){
 }
 
 function openTeamPicker(kind, currentId, onPick){
-  const list = kind === 'unit' ? state.units : (kind === 'family' ? state.families : (kind === 'trait' ? state.traits : state.memories));
-  const titles = {unit:'选择单位', family:'选择使魔', memory:'选择记忆', trait:'选择特性'};
+  const list = kind === 'unit' ? state.units : (kind === 'family' ? state.families : (kind === 'trait' ? state.traits : (kind === 'memoryTrait' ? state.memoryTraits : state.memories)));
+  const titles = {unit:'选择单位', family:'选择使魔', memory:'选择记忆', trait:'选择特性', memoryTrait:'选择记忆特性'};
   const ov = document.createElement('div');
   ov.className = 'team-picker';
   ov.innerHTML = `<div class="team-picker-box">
@@ -4656,9 +4657,9 @@ function openTeamPicker(kind, currentId, onPick){
     const q = search.value.trim().toLowerCase();
     const items = list.filter(e=>!q || (((e.name||'') + ' ' + (e.englishName||'')).toLowerCase().includes(q)))
       .slice().sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''), 'zh'));
-    listEl.innerHTML = items.length ? items.map(e=>`<button type="button" class="team-picker-item${e.id===currentId?' sel':''}" data-id="${escapeHtml(e.id)}">${kind === 'trait' ? teamTraitChipHtml(e) : `${teamIcoHtml(e,'lg')}<span class="team-name">${escapeHtml(e.name)}</span>`}</button>`).join('') : '<div class="team-empty" style="grid-column:1/-1;padding:12px;">没有找到</div>';
+    listEl.innerHTML = items.length ? items.map(e=>`<button type="button" class="team-picker-item${e.id===currentId?' sel':''}" data-id="${escapeHtml(e.id)}">${(kind === 'trait' || kind === 'memoryTrait') ? teamTraitChipHtml(e) : `${teamIcoHtml(e,'lg')}<span class="team-name">${escapeHtml(e.name)}</span>`}</button>`).join('') : '<div class="team-empty" style="grid-column:1/-1;padding:12px;">没有找到</div>';
   };
-  if(kind === 'trait') listEl.style.gridTemplateColumns = 'repeat(auto-fill,minmax(150px,1fr))';
+  if(kind === 'trait' || kind === 'memoryTrait') listEl.style.gridTemplateColumns = 'repeat(auto-fill,minmax(150px,1fr))';
   draw();
   search.addEventListener('input', draw);
   listEl.addEventListener('click', (ev)=>{
@@ -4685,9 +4686,11 @@ function renderTeamsPage(){
   state.units.forEach(e=>{ unitMap[e.id] = e; });
   state.families.forEach(e=>{ famMap[e.id] = e; });
   state.memories.forEach(e=>{ memMap[e.id] = e; });
-  const newSlot = ()=>({unitId:'', traitId:'', familyId:'', memoryId:''});
+  const newSlot = ()=>({unitId:'', traitId:'', familyId:'', memoryId:'', memoryTraitId:''});
   const traitMap = {};
   state.traits.forEach(e=>{ traitMap[e.id] = e; });
+  const memTraitMap = {};
+  state.memoryTraits.forEach(e=>{ memTraitMap[e.id] = e; });
 
   const nameOf = (e, type, id)=> e
     ? `<a href="${viewToHash({type, id:e.id})}" class="team-name" data-team-link="${type}" data-id="${escapeHtml(e.id)}">${escapeHtml(e.name)}</a>`
@@ -4697,7 +4700,7 @@ function renderTeamsPage(){
     : '';
 
   const slotHtml = (ti, si, s)=>{
-    const u = unitMap[s.unitId], f = famMap[s.familyId], m = memMap[s.memoryId], tr = traitMap[s.traitId];
+    const u = unitMap[s.unitId], f = famMap[s.familyId], m = memMap[s.memoryId], tr = traitMap[s.traitId], mtr = memTraitMap[s.memoryTraitId];
     return `<div class="team-slot">
       <div class="team-slot-title"><span>位置 ${si+1}</span>${editing && si >= 6 ? `<button type="button" class="btn btn-danger team-mini" data-act="removeSlot" data-ti="${ti}" data-si="${si}" title="删除这个位置">✕</button>` : ''}</div>
       <div class="team-unit">
@@ -4708,6 +4711,7 @@ function renderTeamsPage(){
       <div class="team-row"><span class="team-role">特性</span><div class="team-col">${tr ? teamTraitChipHtml(tr) : `<span class="team-empty">${s.traitId ? '（已删除）' : '未选择'}</span>`}${btns(ti, si, 'trait', !!s.traitId)}</div></div>
       <div class="team-row"><span class="team-role">使魔</span>${teamIcoHtml(f, 'sm')}<div class="team-col">${nameOf(f, 'family', s.familyId)}${btns(ti, si, 'family', !!s.familyId)}</div></div>
       <div class="team-row"><span class="team-role">记忆</span>${teamIcoHtml(m, 'sm')}<div class="team-col">${nameOf(m, 'memory', s.memoryId)}${btns(ti, si, 'memory', !!s.memoryId)}</div></div>
+      <div class="team-row team-subrow" title="这个记忆的记忆特性"><span class="team-role">特性</span><div class="team-col">${mtr ? teamTraitChipHtml(mtr) : `<span class="team-empty">${s.memoryTraitId ? '（已删除）' : '未选择'}</span>`}${btns(ti, si, 'memoryTrait', !!s.memoryTraitId)}</div></div>
     </div>`;
   };
 
@@ -4735,7 +4739,7 @@ function renderTeamsPage(){
       <div class="crumb">队伍</div>
       <div class="toolbar-actions">${toolbarBtns}</div>
     </div>
-    <div class="team-list">${teamsHtml || `<div class="empty-state"><h2>还没有队伍</h2>${isAdmin ? '<p>点右上角的「编辑」，再点「＋ 添加队伍」开始。每支队伍有 6 个位置，每个位置可以放一个单位、一个特性、一个使魔和一个记忆。改好后按「保存」才会生效。</p>' : ''}</div>`}</div>
+    <div class="team-list">${teamsHtml || `<div class="empty-state"><h2>还没有队伍</h2>${isAdmin ? '<p>点右上角的「编辑」，再点「＋ 添加队伍」开始。每支队伍有 6 个位置，每个位置可以放一个单位（含特性）、一个使魔和一个记忆（含记忆特性）。改好后按「保存」才会生效。</p>' : ''}</div>`}</div>
   `;
 
   const redraw = ()=>{
@@ -4744,7 +4748,7 @@ function renderTeamsPage(){
     renderTeamsPage();
     if(m) m.scrollTop = st;
   };
-  const fieldOf = {unit:'unitId', trait:'traitId', family:'familyId', memory:'memoryId'};
+  const fieldOf = {unit:'unitId', trait:'traitId', family:'familyId', memory:'memoryId', memoryTrait:'memoryTraitId'};
 
   container.querySelectorAll('[data-team-link]').forEach(a=>{
     a.addEventListener('click', (e)=>{
