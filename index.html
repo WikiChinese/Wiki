@@ -99,7 +99,12 @@
   .unit-mention{color:var(--gold);border-bottom:1px dotted var(--gold-dim);text-decoration:none;cursor:pointer;border-radius:2px;}
 .unit-mention:hover{background:rgba(201,162,75,.16);}
 .team-subrow{margin-left:6px;padding-left:8px;border-left:2px solid var(--border);}
-.team-note{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+.team-note-box{margin-top:14px;padding-top:10px;border-top:1px solid var(--border);}
+.team-note-box>summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--text-dim);list-style:none;display:flex;align-items:center;gap:6px;user-select:none;}
+.team-note-box>summary::-webkit-details-marker{display:none;}
+.team-note-box>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--gold-dim);}
+.team-note-box[open]>summary::before{transform:rotate(90deg);}
+.team-note-body{margin-top:10px;}
 .team-list{display:flex;flex-direction:column;gap:22px;}
 .team-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
 .team-head{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
@@ -4674,6 +4679,7 @@ function openTeamPicker(kind, currentId, onPick){
 }
 
 let draftTeams = null;
+const closedTeamNotes = new Set();
 
 function renderTeamsPage(){
   const container = document.getElementById('mainInner');
@@ -4726,8 +4732,8 @@ function renderTeamsPage(){
         ${editing ? `<button type="button" class="team-add-slot" data-act="addSlot" data-ti="${ti}">＋ 添加位置</button>` : ''}
       </div>
       ${editing
-        ? `<div class="edit-field" style="margin-top:14px;margin-bottom:0;"><span class="edit-label">队伍说明</span><textarea class="edit-textarea tall" data-bind="teams.${ti}.note" placeholder="这支队伍的打法、站位、注意事项、适合打什么关卡...">${escapeHtml(t.note || '')}</textarea><div class="hint"># 标题、**加粗**、- 列表 均可使用。点下面的小圆点可以插入状态标记（DOT 等）、元素、分组、敌方机制的图标。</div>${markInsertButtonsHtml(`teams.${ti}.note`)}</div>`
-        : ((t.note || '').trim() ? `<div class="team-note content-body">${renderPassiveDescHtml(t.note, '')}</div>` : '')}
+        ? `<details class="team-note-box" data-team-note="${escapeHtml(String(t.id))}" ${closedTeamNotes.has(t.id) ? '' : 'open'}><summary>队伍说明</summary><div class="edit-field" style="margin:10px 0 0;"><textarea class="edit-textarea tall" data-bind="teams.${ti}.note" placeholder="这支队伍的打法、站位、注意事项、适合打什么关卡...">${escapeHtml(t.note || '')}</textarea><div class="hint"># 标题、**加粗**、- 列表 均可使用。点下面的小圆点可以插入状态标记（DOT 等）、元素、分组、敌方机制的图标。</div>${markInsertButtonsHtml(`teams.${ti}.note`)}</div></details>`
+        : ((t.note || '').trim() ? `<details class="team-note-box" data-team-note="${escapeHtml(String(t.id))}" ${closedTeamNotes.has(t.id) ? '' : 'open'}><summary>队伍说明</summary><div class="team-note-body content-body">${renderPassiveDescHtml(t.note, '')}</div></details>` : '')}
     </div>`).join('');
 
   const toolbarBtns = !isAdmin ? '' : (editing
@@ -4763,6 +4769,13 @@ function renderTeamsPage(){
   });
 
   if(!isAdmin) return;
+
+  container.querySelectorAll('details[data-team-note]').forEach(d=>{
+    d.addEventListener('toggle', ()=>{
+      if(d.open) closedTeamNotes.delete(d.dataset.teamNote);
+      else closedTeamNotes.add(d.dataset.teamNote);
+    });
+  });
 
   // The note boxes use the same editing helpers as every other description box (and the mark/element/group/mechanic insert buttons)
   wireDraftForm(container, {teams: draftTeams});
