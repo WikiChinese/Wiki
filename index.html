@@ -7420,14 +7420,6 @@ function renderSimpleEntity(type){
         <div class="edit-field">
           <span class="edit-label">稀有度</span>
           <select class="edit-select" data-bind="rarity">${rarityOptionsHtml(draftSimple.rarity)}</select>
-        </div>
-        <div class="edit-field">
-          <span class="edit-label">记忆特性</span>
-          <select class="edit-select" data-bind="memoryTrait">
-            <option value="">（无）</option>
-            ${state.memoryTraits.map(t=>`<option value="${escapeHtml(String(t.id))}" ${draftSimple.memoryTrait===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('')}
-          </select>
-          <div class="hint">可选。记忆特性在「设置 → 记忆特性」里新增和编辑。</div>
         </div>`;
 
     container.innerHTML = `
@@ -8628,7 +8620,7 @@ function renderSettings(){
 
     <details class="settings-block">
       <summary class="section-label" style="margin-top:0;">记忆特性</summary>
-      <div class="hint" style="margin-bottom:14px;">管理记忆可以挂载的特性。每个记忆特性可以填写概率、保底、简介、效果说明，以及一个可选的对照表。在记忆的编辑页选好之后，记忆页面会显示它，点标签会弹出这里填写的详细内容；左边菜单「参考资料」里的「记忆特性」页面会汇总所有记忆特性。</div>
+      <div class="hint" style="margin-bottom:14px;">管理记忆可以挂载的特性。每个记忆特性可以填写概率、保底、简介、效果说明，以及一个可选的对照表。在队伍页面里可以给每个记忆位置选一个；左边菜单「参考资料」里的「记忆特性」页面会汇总所有记忆特性。</div>
       <div id="memoryTraitsList">${memoryTraitsHtml}</div>
       <button class="btn btn-gold" id="addMemoryTraitBtn">+ 新增记忆特性</button>
     </details>
