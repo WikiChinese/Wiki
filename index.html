@@ -1739,7 +1739,7 @@ function renderStagePage(){
     </div>
     ${stage.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(stage.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:12px;">${escapeHtml(stage.name)}</h1>
-    <div class="content-body">${renderMarkdownLite(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="content-body">${renderLinkedText(stage.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">关卡列表</div>
     ${stage.levels.length ? `<div class="log-meta-bar" style="padding-left:0;margin-bottom:12px;">
       <span class="log-count">共 ${stage.levels.length} 关</span>
@@ -2092,7 +2092,7 @@ function renderStageLevelPage(){
   const specialUnitHtml = specialUnit ? (()=>{
     const rarityObj = specialUnit.rarity ? state.rarities.find(x=>x.id===specialUnit.rarity) : null;
     const color = (rarityObj && rarityObj.color) || '#c9a24b';
-    const conditionHtml = level.specialUnitRewardCondition ? `<div class="content-body" style="font-size:13px;color:var(--text-dim);margin-top:6px;">${renderMarkdownLite(level.specialUnitRewardCondition)}</div>` : '';
+    const conditionHtml = level.specialUnitRewardCondition ? `<div class="content-body" style="font-size:13px;color:var(--text-dim);margin-top:6px;">${renderLinkedText(level.specialUnitRewardCondition)}</div>` : '';
     return `<div style="margin-bottom:20px;"><div class="mark-row-list"><a href="${viewToHash({type:'unit', id:specialUnit.id})}" class="badge" data-view="unit" data-id="${specialUnit.id}" style="background:${color};color:#fff;font-weight:700;cursor:pointer;text-decoration:none;">🎁 ${escapeHtml(specialUnit.name)}</a></div>${conditionHtml}</div>`;
   })() : '';
 
@@ -2106,7 +2106,7 @@ function renderStageLevelPage(){
     ${levelMechanicsHtml ? `<div class="mark-row-list" style="margin-bottom:20px;">${levelMechanicsHtml}</div>` : ''}
     ${levelModifiersHtml ? `<div class="section-label">修正器</div><div class="mark-row-list" style="margin-bottom:20px;">${levelModifiersHtml}</div>` : ''}
     ${levelLootCardsHtml ? `<div class="section-label">战利品卡</div><div class="mark-row-list" style="margin-bottom:20px;">${levelLootCardsHtml}</div>` : ''}
-    <div class="content-body">${renderMarkdownLite(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="content-body">${renderLinkedText(level.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     ${levelRewardsHtml ? `<div class="section-label">奖励</div>${levelRewardsHtml}` : ''}
     ${specialUnitHtml ? `<div class="section-label">特殊获得单位</div>${specialUnitHtml}` : ''}
     <div class="section-label">商店</div>
@@ -2214,7 +2214,7 @@ function renderUpgradePage(){
     </div>
     ${upgrade.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(upgrade.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:20px;">${escapeHtml(upgrade.name)}</h1>
-    <div class="content-body">${renderMarkdownLite(upgrade.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="content-body">${renderLinkedText(upgrade.description) || '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
     <div class="section-label">区域列表</div>
     ${isAdmin && upgrade.levels.length>1 ? `<div class="hint" style="margin:-6px 0 12px;">💡 按住卡片拖动，可以调整顺序。</div>` : ''}
     <div class="floor-list" id="upgradeLevelsList">${levelsHtml}</div>
@@ -2351,7 +2351,7 @@ function renderUpgradeLevelPage(){
     </div>
     ${level.image ? `<img class="unit-image zoomable" src="${escapeHtml(String(level.image))}">` : ''}
     <h1 class="page-title" style="margin-bottom:20px;">${inline(level.name)}</h1>
-    <div class="content-body">${level.description ? renderMarkdownLite(level.description) : '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
+    <div class="content-body">${level.description ? renderLinkedText(level.description) : '<p style="color:var(--text-faint);">暂无说明</p>'}</div>
   `;
   const editBtn = document.getElementById('editBtn');
   if(editBtn) editBtn.addEventListener('click', ()=>{ if(!requireAdmin()) return; editMode = true; draftUpgradeLevel = null; render(); });
@@ -2914,7 +2914,8 @@ function getUnitMentionIndex(){
   const all = [
     ...state.units.map(e=>({e, type:'unit'})),
     ...state.families.map(e=>({e, type:'family'})),
-    ...state.memories.map(e=>({e, type:'memory'}))
+    ...state.memories.map(e=>({e, type:'memory'})),
+    ...state.items.map(e=>({e, type:'item'}))
   ];
   const sig = all.map(x=>x.type + '|' + x.e.id + '|' + (x.e.name||'') + '|' + (x.e.englishName||'')).join('\n');
   if(unitMentionCache.sig === sig) return unitMentionCache;
@@ -2971,6 +2972,11 @@ function autoLinkUnitNames(html, excludeIds){
 
 function renderPassiveDescHtml(text, excludeIds){
   return autoLinkUnitNames(renderMarkdownLite(text), excludeIds);
+}
+
+// Markdown text for ordinary content areas: names of units / items / familiars / memorias become links (never the page's own name)
+function renderLinkedText(text){
+  return renderPassiveDescHtml(text, [currentView && currentView.id]);
 }
 
 document.addEventListener('click', (e)=>{
@@ -3672,7 +3678,7 @@ function renderHome(){
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
           </div>
           ${l.image ? `<img class="log-image zoomable" src="${escapeHtml(String(l.image))}">` : ''}
-          <div class="log-content">${renderMarkdownLite(l.content)}</div>
+          <div class="log-content">${renderLinkedText(l.content)}</div>
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
           ${logEntityChipsHtml(logEvolutionEntities(), l.linkedEvolutions, 'unit', '新进化')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
@@ -3823,7 +3829,7 @@ function renderStatusEffects(){
       ${m.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
-        <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${m.description ? renderLinkedText(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`;
 
@@ -3872,7 +3878,7 @@ function renderAttackTypes(){
       ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(t.name)}</div>
-        <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${t.description ? renderLinkedText(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何攻击类型，管理员可以到「设置」页面新增。</div>';
 
@@ -4025,7 +4031,7 @@ function renderModifiers(){
       ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(t.name)}</div>
-        <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${t.description ? renderLinkedText(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何修正器，管理员可以点右上角「编辑」新增。</div>';
 
@@ -4076,7 +4082,7 @@ function renderLootCards(){
       ${t.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(t.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(t.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(t.name)}</div>
-        <div class="status-effect-desc">${t.description ? renderMarkdownLite(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${t.description ? renderLinkedText(t.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`).join('') : '<div class="empty-hint" style="padding-left:0;">还没有任何战利品卡，管理员可以点右上角「编辑」新增。</div>';
 
@@ -4188,7 +4194,7 @@ function renderEnemyMechanics(){
       ${m.image ? `<img class="status-effect-icon zoomable" src="${escapeHtml(String(m.image))}">` : `<div class="status-effect-icon-dot" style="${coloredChipStyle(m.color)}"></div>`}
       <div class="status-effect-info">
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
-        <div class="status-effect-desc">${m.description ? renderMarkdownLite(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+        <div class="status-effect-desc">${m.description ? renderLinkedText(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
     </div>`;
 
@@ -4365,7 +4371,7 @@ function odysseyFloorViewHtml(floor){
     ${floor.image ? `<img class="skill-image zoomable" src="${escapeHtml(String(floor.image))}">` : ''}
     <div class="floor-card-body">
       <div class="floor-card-name">${inline(floor.name)}</div>
-      <div class="floor-card-desc">${floor.description ? renderMarkdownLite(floor.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      <div class="floor-card-desc">${floor.description ? renderLinkedText(floor.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
 }
@@ -4381,7 +4387,7 @@ function odysseyCardViewHtml(card, hideUnitTag){
     ${rarityObj ? `<span class="odyssey-card-rarity-badge" style="background:${rarityObj.color};">${rarityObj.name}</span>` : ''}
     <div class="odyssey-card-body">
       ${linkedUnit ? `<a href="${viewToHash({type:'unit', id:linkedUnit.id})}" class="odyssey-card-unit-tag" data-view="unit" data-id="${linkedUnit.id}">对应单位：${escapeHtml(linkedUnit.name)}</a>` : ''}
-      <div class="odyssey-card-desc">${card.description ? renderMarkdownLite(card.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
+      <div class="odyssey-card-desc">${card.description ? renderLinkedText(card.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
     </div>
   </div>`;
 }
@@ -4549,7 +4555,7 @@ function renderOdyssey(){
       <h1 class="page-title" style="margin:0;">Odyssey 冒险模式</h1>
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? '<button class="btn" id="editBtn">编辑</button>' : ''}</div>
     </div>
-    <div class="content-body">${renderMarkdownLite(od.intro) || '<p style="color:var(--text-faint);">暂无介绍</p>'}</div>
+    <div class="content-body">${renderLinkedText(od.intro) || '<p style="color:var(--text-faint);">暂无介绍</p>'}</div>
     <div class="section-label">楼层 (Floor)</div>
     <div class="floor-list">${od.floors.length ? od.floors.map(odysseyFloorViewHtml).join('') : '<div class="empty-hint" style="padding-left:0;">暂无楼层说明</div>'}</div>
     <div class="section-label">可选择的单位</div>
@@ -4559,7 +4565,7 @@ function renderOdyssey(){
     <div class="hint" style="margin:-6px 0 12px;">已经关联到某个单位的单位卡，只会显示在那个单位的详情页里，这里只列出还没关联单位的单位卡。</div>
     <div class="odyssey-card-grid">${unassignedCharacterCards.length ? unassignedCharacterCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无未关联单位的单位卡</div>'}</div>
     <div class="section-label">奥德赛修正器 (Odyssey Modifier)</div>
-    ${od.modifierIntro ? `<div class="content-body" style="margin:-6px 0 16px;">${renderMarkdownLite(od.modifierIntro)}</div>` : ''}
+    ${od.modifierIntro ? `<div class="content-body" style="margin:-6px 0 16px;">${renderLinkedText(od.modifierIntro)}</div>` : ''}
     <div class="odyssey-card-grid">${od.basicCards.length ? od.basicCards.map(c=>odysseyCardViewHtml(c)).join('') : '<div class="empty-hint" style="padding-left:0;">暂无奥德赛修正器</div>'}</div>
   `;
   const editBtn = document.getElementById('editBtn');
@@ -5083,7 +5089,7 @@ function renderTierlist(){
     ${metaHtml}
     ${filterBarHtml}
     ${placedUnits.length ? `<div id="tierRows">${rowsHtml}</div><div id="tierNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的单位</div>` : `<div class="empty-hint" style="padding-left:0;">分级榜里还没有单位${isAdmin ? '，点右上角「编辑」添加。' : '。'}</div>`}
-    ${(tl.content||'').trim() ? `<div class="section-label">说明</div><div class="content-body">${renderMarkdownLite(tl.content)}</div>` : ''}
+    ${(tl.content||'').trim() ? `<div class="section-label">说明</div><div class="content-body">${renderLinkedText(tl.content)}</div>` : ''}
   `;
 
   const editBtn = document.getElementById('editBtn');
@@ -6919,8 +6925,8 @@ function renderItem(){
       ${item.englishName ? `<div class="unit-english-name">${escapeHtml(item.englishName)}</div>` : ''}
       <div class="meta-row">${rarityBadge(item.rarity)}${itemCategoryObj ? `<span class="mark-chip" style="${coloredChipStyle(itemCategoryObj.color)}">${escapeHtml(itemCategoryObj.name)}</span>` : ''}</div>
     </div>
-    <div class="content-body">${renderMarkdownLite(item.description) || '<p style="color:var(--text-faint);">暂无内容</p>'}</div>
-    ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderMarkdownLite(item.questline)}</div>` : ''}
+    <div class="content-body">${renderLinkedText(item.description) || '<p style="color:var(--text-faint);">暂无内容</p>'}</div>
+    ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderLinkedText(item.questline)}</div>` : ''}
     ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
       <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}"${cardFrameImgStyle(evolvesUnit)}>` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.evolveQuantity))}</div>` : ''}</div>
