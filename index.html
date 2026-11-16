@@ -2458,7 +2458,14 @@ async function fetchEntityCollection(name){
   return list;
 }
 
+let resolveDataLoaded;
+const dataLoadedPromise = new Promise(r=>{ resolveDataLoaded = r; });
 async function loadData(){
+  try{ await loadDataInner(); }
+  finally{ resolveDataLoaded(); }
+}
+
+async function loadDataInner(){
   const ok = initFirebase();
   if(!ok){
     state = defaultData();
@@ -2809,6 +2816,8 @@ async function snapshotCollectionsToBackup(backupId, label){
 // was missing — it's what lets us undo a bad "force recover"/restore instead of losing data for good.
 async function maybeAutoBackupToday(){
   if(!db || !isAdmin) return;
+  await dataLoadedPromise; // wait until the page's data has finished loading, so we know whether the load looked healthy
+  if(dataLoadFailed) return; // the database looked unreadable/empty this time: don't snapshot a suspect state as today's "daily" backup
   try{
     const key = todayDateKey();
     const logSnap = await db.collection('meta').doc('backupLog').get();
@@ -4719,6 +4728,10 @@ function renderTeamsPage(){
     ? `<div class="team-btns"><button type="button" class="btn team-mini" data-act="pick" data-kind="${kind}" data-ti="${ti}" data-si="${si}">${hasValue ? '更换' : '选择'}</button>${hasValue ? `<button type="button" class="btn team-mini" data-act="clear" data-kind="${kind}" data-ti="${ti}" data-si="${si}">清除</button>` : ''}</div>`
     : '';
 
+  const foldedUnitIconHtml = (u, isEditing)=> (u && !isEditing)
+    ? `<a href="${viewToHash({type:'unit', id:u.id})}" data-team-link="unit" data-id="${escapeHtml(u.id)}" title="${escapeHtml(u.name)}" style="text-decoration:none;">${teamIcoHtml(u, 'sm')}</a>`
+    : `<span title="${escapeHtml(u ? u.name : '未选择')}">${teamIcoHtml(u, 'sm')}</span>`;
+
   const slotHtml = (ti, si, s, showDetail)=>{
     const u = unitMap[s.unitId], f = famMap[s.familyId], m = memMap[s.memoryId], tr = traitMap[s.traitId], mtr = memTraitMap[s.memoryTraitId];
     return `<div class="team-slot">
@@ -4744,7 +4757,7 @@ function renderTeamsPage(){
         ${editing ? `<input class="edit-input team-name-input" data-role="teamName" data-ti="${ti}" value="${escapeHtml(t.name || '')}" placeholder="队伍名称">` : `<h2>${escapeHtml(t.name || '未命名队伍')}</h2>`}
         ${editing ? `<button type="button" class="btn team-mini" data-team-fold="${escapeHtml(String(t.id))}">${foldedTeams.has(t.id) ? '▸ 展开' : '▾ 折叠'}</button><button type="button" class="btn btn-danger" data-act="removeTeam" data-ti="${ti}">删除队伍</button>` : `<button type="button" class="btn team-mini" data-team-toggle="${escapeHtml(String(t.id))}">${openTeams.has(t.id) ? '▾ 收起详细' : '▸ 展开详细'}</button>`}
       </div>
-      ${editing && foldedTeams.has(t.id) ? `<div class="team-folded-strip">${t.slots.map(s=>`<span title="${escapeHtml((unitMap[s.unitId] || {}).name || '未选择')}">${teamIcoHtml(unitMap[s.unitId], 'sm')}</span>`).join('')}</div>` : `
+      ${(editing ? foldedTeams.has(t.id) : !openTeams.has(t.id)) ? `<div class="team-folded-strip">${t.slots.map(s=>foldedUnitIconHtml(unitMap[s.unitId], editing)).join('')}</div>` : `
       <div class="team-slots">
         ${t.slots.map((s, si)=>slotHtml(ti, si, s, editing || openTeams.has(t.id))).join('')}
         ${editing ? `<button type="button" class="team-add-slot" data-act="addSlot" data-ti="${ti}">＋ 添加位置</button>` : ''}
