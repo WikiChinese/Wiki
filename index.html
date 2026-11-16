@@ -98,6 +98,12 @@
   .gallery-card-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--card);display:block;}
   .unit-mention{color:var(--gold);border-bottom:1px dotted var(--gold-dim);text-decoration:none;cursor:pointer;border-radius:2px;}
 .unit-mention:hover{background:rgba(201,162,75,.16);}
+.team-folded-strip{display:flex;gap:6px;flex-wrap:wrap;padding-top:2px;}
+.team-drag{cursor:grab;font-size:20px;line-height:1;color:var(--text-faint);padding:4px 6px;user-select:none;}
+.team-drag:active{cursor:grabbing;}
+.team-dragging{opacity:.45;}
+.team-drop-before{box-shadow:0 -4px 0 var(--gold);}
+.team-drop-after{box-shadow:0 4px 0 var(--gold);}
 .team-subrow{margin-left:6px;padding-left:8px;border-left:2px solid var(--border);}
 .team-note-box{margin-top:14px;padding-top:10px;border-top:1px solid var(--border);}
 .team-note-box>summary{cursor:pointer;font-weight:700;font-size:13px;color:var(--text-dim);list-style:none;display:flex;align-items:center;gap:6px;user-select:none;}
@@ -4686,6 +4692,8 @@ function openTeamPicker(kind, currentId, onPick){
 
 let draftTeams = null;
 const closedTeamNotes = new Set();
+const foldedTeams = new Set(); // while editing: teams folded down to just their header, so they are easy to drag around
+const openTeams = new Set(); // teams whose details are expanded; every team starts collapsed
 
 function renderTeamsPage(){
   const container = document.getElementById('mainInner');
@@ -4711,7 +4719,7 @@ function renderTeamsPage(){
     ? `<div class="team-btns"><button type="button" class="btn team-mini" data-act="pick" data-kind="${kind}" data-ti="${ti}" data-si="${si}">${hasValue ? '更换' : '选择'}</button>${hasValue ? `<button type="button" class="btn team-mini" data-act="clear" data-kind="${kind}" data-ti="${ti}" data-si="${si}">清除</button>` : ''}</div>`
     : '';
 
-  const slotHtml = (ti, si, s)=>{
+  const slotHtml = (ti, si, s, showDetail)=>{
     const u = unitMap[s.unitId], f = famMap[s.familyId], m = memMap[s.memoryId], tr = traitMap[s.traitId], mtr = memTraitMap[s.memoryTraitId];
     return `<div class="team-slot">
       <div class="team-slot-title"><span>位置 ${si+1}</span>${editing && si >= 6 ? `<button type="button" class="btn btn-danger team-mini" data-act="removeSlot" data-ti="${ti}" data-si="${si}" title="删除这个位置">✕</button>` : ''}</div>
@@ -4720,31 +4728,37 @@ function renderTeamsPage(){
         <div>${nameOf(u, 'unit', s.unitId)}</div>
         ${btns(ti, si, 'unit', !!s.unitId)}
       </div>
+      ${showDetail ? `
       <div class="team-row"><span class="team-role">特性</span><div class="team-col">${tr ? teamTraitChipHtml(tr) : `<span class="team-empty">${s.traitId ? '（已删除）' : '未选择'}</span>`}${btns(ti, si, 'trait', !!s.traitId)}</div></div>
       <div class="team-row"><span class="team-role">使魔</span>${teamIcoHtml(f, 'sm')}<div class="team-col">${nameOf(f, 'family', s.familyId)}${btns(ti, si, 'family', !!s.familyId)}</div></div>
       <div class="team-row"><span class="team-role">记忆</span>${teamIcoHtml(m, 'sm')}<div class="team-col">${nameOf(m, 'memory', s.memoryId)}${btns(ti, si, 'memory', !!s.memoryId)}</div></div>
       <div class="team-row team-subrow" title="这个记忆的记忆特性"><span class="team-role">特性</span><div class="team-col">${mtr ? teamTraitChipHtml(mtr) : `<span class="team-empty">${s.memoryTraitId ? '（已删除）' : '未选择'}</span>`}${btns(ti, si, 'memoryTrait', !!s.memoryTraitId)}</div></div>
+      ` : ''}
     </div>`;
   };
 
   const teamsHtml = teams.map((t, ti)=>`
-    <div class="team-card">
+    <div class="team-card" data-ti="${ti}">
       <div class="team-head">
+        ${editing ? `<span class="team-drag" draggable="true" data-ti="${ti}" title="按住拖动，可以调整队伍的上下顺序">⠿</span>` : ''}
         ${editing ? `<input class="edit-input team-name-input" data-role="teamName" data-ti="${ti}" value="${escapeHtml(t.name || '')}" placeholder="队伍名称">` : `<h2>${escapeHtml(t.name || '未命名队伍')}</h2>`}
-        ${editing ? `<button type="button" class="btn btn-danger" data-act="removeTeam" data-ti="${ti}">删除队伍</button>` : ''}
+        ${editing ? `<button type="button" class="btn team-mini" data-team-fold="${escapeHtml(String(t.id))}">${foldedTeams.has(t.id) ? '▸ 展开' : '▾ 折叠'}</button><button type="button" class="btn btn-danger" data-act="removeTeam" data-ti="${ti}">删除队伍</button>` : `<button type="button" class="btn team-mini" data-team-toggle="${escapeHtml(String(t.id))}">${openTeams.has(t.id) ? '▾ 收起详细' : '▸ 展开详细'}</button>`}
       </div>
+      ${editing && foldedTeams.has(t.id) ? `<div class="team-folded-strip">${t.slots.map(s=>`<span title="${escapeHtml((unitMap[s.unitId] || {}).name || '未选择')}">${teamIcoHtml(unitMap[s.unitId], 'sm')}</span>`).join('')}</div>` : `
       <div class="team-slots">
-        ${t.slots.map((s, si)=>slotHtml(ti, si, s)).join('')}
+        ${t.slots.map((s, si)=>slotHtml(ti, si, s, editing || openTeams.has(t.id))).join('')}
         ${editing ? `<button type="button" class="team-add-slot" data-act="addSlot" data-ti="${ti}">＋ 添加位置</button>` : ''}
       </div>
       ${editing
         ? `<details class="team-note-box" data-team-note="${escapeHtml(String(t.id))}" ${closedTeamNotes.has(t.id) ? '' : 'open'}><summary>队伍说明</summary><div class="edit-field" style="margin:10px 0 0;"><textarea class="edit-textarea tall" data-bind="teams.${ti}.note" placeholder="这支队伍的打法、站位、注意事项、适合打什么关卡...">${escapeHtml(t.note || '')}</textarea><div class="hint"># 标题、**加粗**、- 列表 均可使用。点下面的小圆点可以插入状态标记（DOT 等）、元素、分组、敌方机制的图标。</div>${markInsertButtonsHtml(`teams.${ti}.note`)}</div></details>`
-        : ((t.note || '').trim() ? `<details class="team-note-box" data-team-note="${escapeHtml(String(t.id))}" ${closedTeamNotes.has(t.id) ? '' : 'open'}><summary>队伍说明</summary><div class="team-note-body content-body">${renderPassiveDescHtml(t.note, '')}</div></details>` : '')}
+        : ((t.note || '').trim() && openTeams.has(t.id) ? `<details class="team-note-box" data-team-note="${escapeHtml(String(t.id))}" ${closedTeamNotes.has(t.id) ? '' : 'open'}><summary>队伍说明</summary><div class="team-note-body content-body">${renderPassiveDescHtml(t.note, '')}</div></details>` : '')}
+      `}
     </div>`).join('');
 
-  const toolbarBtns = !isAdmin ? '' : (editing
-    ? '<button class="btn btn-gold" data-act="addTeam">＋ 添加队伍</button><button class="btn" data-act="cancelTeams">取消</button><button class="btn btn-gold" data-act="saveTeams">保存</button>'
-    : '<button class="btn" data-act="editTeams">编辑</button>');
+  const viewToggleBtns = (!editing && teams.length) ? '<button class="btn" data-team-toggle-all="close">全部收起</button><button class="btn" data-team-toggle-all="open">全部展开</button>' : '';
+  const toolbarBtns = viewToggleBtns + (!isAdmin ? '' : (editing
+    ? '<button class="btn" data-team-fold-all="fold">全部折叠</button><button class="btn" data-team-fold-all="unfold">全部展开</button><button class="btn btn-gold" data-act="addTeam">＋ 添加队伍</button><button class="btn" data-act="cancelTeams">取消</button><button class="btn btn-gold" data-act="saveTeams">保存</button>'
+    : '<button class="btn" data-act="editTeams">编辑</button>'));
 
   container.innerHTML = `
     <div class="page-toolbar">
@@ -4774,7 +4788,74 @@ function renderTeamsPage(){
     });
   });
 
+  container.querySelectorAll('[data-team-toggle]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const id = b.dataset.teamToggle;
+      if(openTeams.has(id)) openTeams.delete(id); else openTeams.add(id);
+      redraw();
+    });
+  });
+  container.querySelectorAll('[data-team-toggle-all]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if(b.dataset.teamToggleAll === 'close') openTeams.clear();
+      else teams.forEach(t=>openTeams.add(t.id));
+      redraw();
+    });
+  });
+
   if(!isAdmin) return;
+
+  if(editing){
+    container.querySelectorAll('[data-team-fold]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        const id = b.dataset.teamFold;
+        if(foldedTeams.has(id)) foldedTeams.delete(id); else foldedTeams.add(id);
+        redraw();
+      });
+    });
+    container.querySelectorAll('[data-team-fold-all]').forEach(b=>{
+      b.addEventListener('click', ()=>{
+        if(b.dataset.teamFoldAll === 'fold') teams.forEach(t=>foldedTeams.add(t.id));
+        else foldedTeams.clear();
+        redraw();
+      });
+    });
+    // Drag a team (by its ⠿ handle) up or down to reorder; no arrow buttons needed
+    let dragFrom = -1;
+    const clearMarks = ()=>container.querySelectorAll('.team-card').forEach(c=>c.classList.remove('team-dragging', 'team-drop-before', 'team-drop-after'));
+    container.querySelectorAll('.team-drag').forEach(h=>{
+      h.addEventListener('dragstart', (e)=>{
+        dragFrom = +h.dataset.ti;
+        const card = h.closest('.team-card');
+        e.dataTransfer.effectAllowed = 'move';
+        try{ e.dataTransfer.setData('text/plain', String(dragFrom)); }catch(err){}
+        if(card){ try{ e.dataTransfer.setDragImage(card, 24, 24); }catch(err){} card.classList.add('team-dragging'); }
+      });
+      h.addEventListener('dragend', ()=>{ dragFrom = -1; clearMarks(); });
+    });
+    container.querySelectorAll('.team-card').forEach(card=>{
+      const isAfter = (e)=>{ const r = card.getBoundingClientRect(); return e.clientY > r.top + r.height / 2; };
+      card.addEventListener('dragover', (e)=>{
+        if(dragFrom < 0) return;
+        e.preventDefault();
+        const after = isAfter(e);
+        card.classList.toggle('team-drop-after', after);
+        card.classList.toggle('team-drop-before', !after);
+      });
+      card.addEventListener('dragleave', ()=>card.classList.remove('team-drop-before', 'team-drop-after'));
+      card.addEventListener('drop', (e)=>{
+        if(dragFrom < 0) return;
+        e.preventDefault();
+        let target = +card.dataset.ti + (isAfter(e) ? 1 : 0);
+        const from = dragFrom;
+        dragFrom = -1;
+        const [moved] = draftTeams.splice(from, 1);
+        if(from < target) target--;
+        draftTeams.splice(target, 0, moved);
+        redraw();
+      });
+    });
+  }
 
   container.querySelectorAll('details[data-team-note]').forEach(d=>{
     d.addEventListener('toggle', ()=>{
@@ -4798,7 +4879,7 @@ function renderTeamsPage(){
     btn.addEventListener('click', async ()=>{
       if(!requireAdmin()) return;
       const act = btn.dataset.act;
-      if(act === 'editTeams'){ editMode = true; draftTeams = null; redraw(); return; }
+      if(act === 'editTeams'){ editMode = true; draftTeams = null; foldedTeams.clear(); redraw(); return; }
       if(act === 'cancelTeams'){
         if(JSON.stringify(draftTeams) !== JSON.stringify(state.teams) && !confirm('放弃没保存的修改？')) return;
         editMode = false; draftTeams = null; redraw(); return;
