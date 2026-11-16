@@ -3678,7 +3678,7 @@ function renderHome(){
             <div class="log-actions">${isAdmin?`<button class="icon-btn" data-edit-log="${l.id}">编辑</button><button class="icon-btn" data-del-log="${l.id}">删除</button>`:''}</div>
           </div>
           ${l.image ? `<img class="log-image zoomable" src="${escapeHtml(String(l.image))}">` : ''}
-          <div class="log-content">${renderLinkedText(l.content)}</div>
+          <div class="log-content">${renderMarkdownLite(l.content)}</div>
           ${logEntityChipsHtml(state.units, l.linkedUnits, 'unit', '新单位')}
           ${logEntityChipsHtml(logEvolutionEntities(), l.linkedEvolutions, 'unit', '新进化')}
           ${logEntityChipsHtml(state.memories, l.linkedMemories, 'memory', '新记忆')}
