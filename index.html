@@ -4879,7 +4879,7 @@ function renderTeamsPage(){
     btn.addEventListener('click', async ()=>{
       if(!requireAdmin()) return;
       const act = btn.dataset.act;
-      if(act === 'editTeams'){ editMode = true; draftTeams = null; foldedTeams.clear(); redraw(); return; }
+      if(act === 'editTeams'){ editMode = true; draftTeams = null; foldedTeams.clear(); state.teams.forEach(t=>foldedTeams.add(t.id)); redraw(); return; }
       if(act === 'cancelTeams'){
         if(JSON.stringify(draftTeams) !== JSON.stringify(state.teams) && !confirm('放弃没保存的修改？')) return;
         editMode = false; draftTeams = null; redraw(); return;
