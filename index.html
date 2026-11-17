@@ -3587,9 +3587,8 @@ function renderHome(){
   const container = document.getElementById('mainInner');
   const logs = [...state.updateLog].sort((a,b)=> (b.date||'').localeCompare(a.date||'') || b.updatedAt-a.updatedAt);
 
-  let addFormHtml = '';
-  if(addingLog && draftLogEntry){
-    addFormHtml = `
+  // The form is a function so it can appear at the top (new log) or in place of the entry being edited
+  const logFormHtml = ()=>`
       <div class="log-entry is-form">
         <div class="edit-field">
           <span class="edit-label">日期</span>
@@ -3625,7 +3624,7 @@ function renderHome(){
           <button class="btn btn-gold" id="saveLogBtn">保存日志</button>
         </div>
       </div>`;
-  }
+  const addFormHtml = (addingLog && draftLogEntry && !draftLogEntry.id) ? logFormHtml() : '';
 
   const quickLinks = [
     {type:'tierlist', label:'📊 分级榜'},
@@ -3682,6 +3681,7 @@ function renderHome(){
           const monthLabel = month ? month.replace(/^(\d{4})-(\d{2})$/, '$1年$2月') : '';
           const monthDividerHtml = (month && month!==prevMonth) ? `<div class="log-month-divider">${escapeHtml(monthLabel)}</div>` : '';
           prevMonth = month;
+          if(addingLog && draftLogEntry && draftLogEntry.id === l.id) return `${monthDividerHtml}${logFormHtml()}`;
           const searchKey = ((l.title||'')+' '+(l.content||'')).toLowerCase();
           return `${monthDividerHtml}
         <div class="log-entry" data-log-search="${escapeHtml(searchKey)}">
@@ -3705,7 +3705,12 @@ function renderHome(){
     <div id="logNoResult" class="empty-hint" style="display:none;padding-left:0;">没有匹配的更新记录</div>
   `;
 
-  if(addingLog && draftLogEntry){ wireDraftForm(container, draftLogEntry); wirePickerToggles(container); }
+  if(addingLog && draftLogEntry){
+    wireDraftForm(container, draftLogEntry);
+    wirePickerToggles(container);
+    const formEl = container.querySelector('.log-entry.is-form');
+    if(formEl && draftLogEntry.id && formEl.scrollIntoView) formEl.scrollIntoView({block:'nearest'});
+  }
 
   const logSearchInput = document.getElementById('logSearchInput');
   if(logSearchInput) logSearchInput.addEventListener('input', ()=>{
