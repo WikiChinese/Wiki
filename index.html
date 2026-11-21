@@ -2377,7 +2377,7 @@ function renderMemoryTraitsPage(){
     <div class="trait-page-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToMemoryTraitSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
   wireBackButton(container);
 }
 
@@ -2395,7 +2395,7 @@ function renderTraitsPage(){
     <div class="trait-page-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToTraitSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
   wireBackButton(container);
 }
 
@@ -3253,7 +3253,7 @@ function renderSidebar(){
     if(!requireAdmin()) return;
     const u = {id:uid(), name:'新单位', image:'', shinyImage:'', rarity:'', passive:'', skills:[], attacks:[], otherForms:[], tags:[], group:null, element:null, marks:[], linkedMemories:[], linkedFamilies:[], updatedAt:Date.now()};
     state.units.unshift(u);
-    currentView = {type:'unit', id:u.id};
+    goToView({type:'unit', id:u.id});
     startUnitEdit(u);
     await saveData(true);
     render();
@@ -3263,7 +3263,7 @@ function renderSidebar(){
     if(!requireAdmin()) return;
     const it = {id:uid(), name:'新物品', image:'', rarity:'', description:'', updatedAt:Date.now()};
     state.items.unshift(it);
-    currentView = {type:'item', id:it.id};
+    goToView({type:'item', id:it.id});
     editMode = true;
     await saveData(true);
     render();
@@ -3273,7 +3273,7 @@ function renderSidebar(){
     if(!requireAdmin()) return;
     const f = {id:uid(), name:'新使魔', image:'', passive:'', marks:[], rarity:'', exclusiveTarget:[], updatedAt:Date.now()};
     state.families.unshift(f);
-    currentView = {type:'family', id:f.id};
+    goToView({type:'family', id:f.id});
     startSimpleEdit('family', f);
     await saveData(true);
     render();
@@ -3283,7 +3283,7 @@ function renderSidebar(){
     if(!requireAdmin()) return;
     const m = {id:uid(), name:'新记忆', image:'', passive:'', marks:[], linkedFamilies:[], updatedAt:Date.now()};
     state.memories.unshift(m);
-    currentView = {type:'memory', id:m.id};
+    goToView({type:'memory', id:m.id});
     startSimpleEdit('memory', m);
     await saveData(true);
     render();
@@ -3885,7 +3885,7 @@ function renderStatusEffects(){
     ${state.marks.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的标记</div>` : ''}
   `;
   const goBtn = document.getElementById('goToMarkSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
   wireCollapsibleBlocks(container, '.status-effect-category-group', 'statusEffects');
   wireStatusListSearch(container, 'statusEffectSearchInput', '.status-effect-category-group');
   wireBackButton(container);
@@ -3913,7 +3913,7 @@ function renderAttackTypes(){
     ${state.attackTypes.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的攻击类型</div>` : ''}
   `;
   const goBtn = document.getElementById('goToAttackTypeSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
   wireStatusListSearch(container, 'attackTypeSearchInput', null);
   wireBackButton(container);
 }
@@ -3969,7 +3969,7 @@ function renderGroupGallery(){
   `;
 
   const goBtn = document.getElementById('goToGroupSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ currentView = {type:'settings'}; setHash(currentView); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
   wireBackButton(container);
 
   const blocks = ()=> [...container.querySelectorAll('details.group-block')];
@@ -5276,7 +5276,7 @@ async function duplicateUnit(unitId){
   copy.comments = [];
   copy.updatedAt = Date.now();
   state.units.unshift(copy);
-  currentView = {type:'unit', id:copy.id};
+  goToView({type:'unit', id:copy.id});
   editMode = false; showingShinyImage = false;
   await saveData(true);
   showToast('已复制单位，可以在下面编辑副本');
