@@ -97,6 +97,10 @@
   .gallery-card.drag-over{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
   .gallery-card-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--card);display:block;}
   .unit-mention{color:var(--gold);border-bottom:1px dotted var(--gold-dim);text-decoration:none;cursor:pointer;border-radius:2px;}
+.unit-mention[data-mention-type="unit"]{color:var(--mention-unit,var(--gold));border-bottom-color:var(--mention-unit,var(--gold-dim));}
+.unit-mention[data-mention-type="family"]{color:var(--mention-family,var(--gold));border-bottom-color:var(--mention-family,var(--gold-dim));}
+.unit-mention[data-mention-type="memory"]{color:var(--mention-memory,var(--gold));border-bottom-color:var(--mention-memory,var(--gold-dim));}
+.unit-mention[data-mention-type="item"]{color:var(--mention-item,var(--gold));border-bottom-color:var(--mention-item,var(--gold-dim));}
 .unit-mention:hover{background:rgba(201,162,75,.16);}
 .team-folded-strip{display:flex;gap:6px;flex-wrap:wrap;padding-top:2px;}
 .team-drag{cursor:grab;font-size:20px;line-height:1;color:var(--text-faint);padding:4px 6px;user-select:none;}
@@ -716,7 +720,7 @@ a.team-name:hover{color:var(--gold);}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 
-let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, teams:[], memoryTraits:[], marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
+let state = { siteTitle:'动漫先锋 (Anime Vanguard) Wiki', updateLog:[], units:[], items:[], itemCategories:[], families:[], memories:[], tierlist:{content:''}, teams:[], memoryTraits:[], linkColors:{}, marks:[], markCategories:[], groups:[], elements:[], series:[], rarities:[], traits:[], adminEmails:[], obtainMethods:[], odyssey:{intro:'', unitIds:[], characterCards:[], basicCards:[], floors:[]}, attackTypes:[], enemyMechanics:[], enemyMechanicCategories:[], stages:[], upgrades:[] };
 let currentView = {type:'home'};
 let viewHistory = [];
 let traitPreviewOverrides = {};
@@ -1099,6 +1103,7 @@ function defaultData(){
     ],
     teams:[],
     memoryTraits:[],
+    linkColors:{},
     tierlist:{content:'# 分级榜\n\n在这里整理你的单位强度排名。\n\n**S级**\n- 炎焰骑士\n\n**A级**\n\n**B级**'},
     marks:[
       {id:uid(), name:'持续伤害', image:'', color:'#b8544a'},
@@ -1200,6 +1205,7 @@ function migrateState(){
   if(typeof state.backupLock !== 'string') state.backupLock = '';
   if(!Array.isArray(state.teams)) state.teams = [];
   if(!Array.isArray(state.memoryTraits)) state.memoryTraits = [];
+  if(!state.linkColors || typeof state.linkColors !== 'object' || Array.isArray(state.linkColors)) state.linkColors = {};
   if(!Array.isArray(state.obtainMethods)) state.obtainMethods = [];
   if(!Array.isArray(state.attackTypes)) state.attackTypes = [];
   state.attackTypes.forEach(t=>{
@@ -2445,7 +2451,7 @@ document.getElementById('loginSubmitBtn').addEventListener('click', async ()=>{
 const ENTITY_COLLECTIONS = ['units','items','families','memories'];
 // Every top-level piece of "site config" data gets its own small document in the `meta` collection.
 // To give something new its own document in the future, just add its state key to this list.
-const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','teams','memoryTraits','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
+const META_KEYS = ['siteTitle','updateLog','tierlist','marks','markCategories','groups','elements','series','rarities','traits','adminEmails','gradientAnimation','backupLock','teams','memoryTraits','linkColors','obtainMethods','odyssey','attackTypes','enemyMechanics','enemyMechanicCategories','modifiers','lootCards','stages','upgrades','itemCategories'];
 
 async function fetchEntityCollection(name){
   const snap = await db.collection(name).get();
@@ -8528,6 +8534,20 @@ function renderSettings(){
     </details>
 
     <details class="settings-block">
+      <summary class="section-label" style="margin-top:0;">链接颜色（自动链接）</summary>
+      <div class="hint" style="margin-bottom:14px;">说明、被动、技能等文字里，自动变成链接的单位、使魔、记忆、道具名字，可以分别设定颜色。没设定的显示默认的金色。</div>
+      ${[['unit','单位'],['family','使魔'],['memory','记忆'],['item','道具']].map(([k, label])=>{
+        const c = (state.linkColors && state.linkColors[k]) || '';
+        return `<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">
+          <span style="width:48px;">${label}</span>
+          <input type="color" data-link-color="${k}" value="${c || '#c9a24b'}">
+          <span class="unit-mention" data-mention-type="${k}" style="pointer-events:none;">示例：${label}名字</span>
+          <button type="button" class="btn team-mini" data-link-color-reset="${k}" ${c ? '' : 'disabled'}>恢复默认</button>
+        </div>`;
+      }).join('')}
+    </details>
+
+    <details class="settings-block">
       <summary class="section-label" style="margin-top:0;">渐变色流动动画</summary>
       <div class="hint" style="margin-bottom:14px;">
         使用渐变色（例如 <code>linear-gradient(...)</code>）的名字、边框、稀有度标签，默认会一直缓慢流动。关掉后，<b>全站</b>所有渐变色都会静止不动。如果只想让某一个单位/回忆/家族的颜色不动，不用关这个，直接在那一项的编辑页面勾选「让这个渐变色保持静止」就可以。普通的单一颜色不受影响。
@@ -8661,6 +8681,26 @@ function renderSettings(){
     const f = impInput.files[0];
     impInput.value = '';
     if(f) await importSettingsFromFile(f);
+  });
+  container.querySelectorAll('[data-link-color]').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      state.linkColors[inp.dataset.linkColor] = inp.value;
+      applyLinkColors();
+    });
+    inp.addEventListener('change', async ()=>{
+      state.linkColors[inp.dataset.linkColor] = inp.value;
+      applyLinkColors();
+      await saveData(true);
+      renderSettings();
+    });
+  });
+  container.querySelectorAll('[data-link-color-reset]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      delete state.linkColors[btn.dataset.linkColorReset];
+      applyLinkColors();
+      await saveData(true);
+      renderSettings();
+    });
   });
   const gradientAnimToggle = document.getElementById('gradientAnimToggle');
   if(gradientAnimToggle) gradientAnimToggle.addEventListener('change', async ()=>{
@@ -8813,12 +8853,22 @@ function renderSettings(){
   }
 }
 
+function applyLinkColors(){
+  const root = document.documentElement;
+  ['unit', 'family', 'memory', 'item'].forEach(k=>{
+    const c = state.linkColors && state.linkColors[k];
+    if(c && /^#[0-9a-fA-F]{3,8}$/.test(c)) root.style.setProperty('--mention-' + k, c);
+    else root.style.removeProperty('--mention-' + k);
+  });
+}
+
 function applyGradientAnimSetting(){
   if(document.body) document.body.classList.toggle('no-gradient-anim', state.gradientAnimation === false);
 }
 
 function render(){
   applyGradientAnimSetting();
+  applyLinkColors();
   const titleEl = document.getElementById('siteTitle');
   if(titleEl && document.activeElement !== titleEl) titleEl.value = state.siteTitle || '动漫先锋 (Anime Vanguard) Wiki';
   if(titleEl) titleEl.readOnly = !isAdmin;
