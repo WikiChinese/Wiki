@@ -1693,7 +1693,7 @@ function renderStagePage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个关卡的整体规则、玩法、注意事项...">${escapeHtml(draftStage.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
         ${markInsertButtonsHtml('description')}
       </div>
       <div class="edit-field">
@@ -1895,7 +1895,7 @@ function renderStageLevelPage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="这一关的怪物、机制、掉落、注意事项...">${escapeHtml(draftStageLevel.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
         ${markInsertButtonsHtml('description')}
       </div>
       <div class="edit-field">
@@ -2187,7 +2187,7 @@ function renderUpgradePage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="介绍这个区域的规则、玩法、注意事项...">${escapeHtml(draftUpgrade.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
     `;
     wireDraftForm(container, draftUpgrade);
@@ -2329,7 +2329,7 @@ function renderUpgradeLevelPage(){
       <div class="edit-field">
         <span class="edit-label">说明</span>
         <textarea class="edit-textarea tall" data-bind="description" placeholder="这个区域项目的介绍、效果、注意事项...">${escapeHtml(draftUpgradeLevel.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
     `;
     wireDraftForm(container, draftUpgradeLevel);
@@ -2961,7 +2961,8 @@ function getUnitMentionIndex(){
     if(latin.length) parts.push(`(?<![A-Za-z0-9_&#])(?:${latin.join('|')})(?![A-Za-z0-9_])`);
     if(cjk.length) parts.push(`(?:${cjk.join('|')})`);
     try{
-      cache.re = new RegExp(parts.join('|'), 'gi');
+      // an optional leading backslash means "don't link this one"
+      cache.re = new RegExp('(\\\\)?(?:' + parts.join('|') + ')', 'gi');
       cache.map = new Map(terms.map(x=>[escapeHtml(x.text).toLowerCase(), {id:x.id, type:x.type}]));
     }catch(e){ cache.re = null; }
   }
@@ -2983,7 +2984,8 @@ function autoLinkUnitNames(html, excludeIds){
       return seg;
     }
     if(skip > 0 || spanSkip > 0) return seg;
-    return seg.replace(idx.re, (m)=>{
+    return seg.replace(idx.re, (m, bs)=>{
+      if(bs) return m.slice(1); // \Name -> plain text, backslash removed
       const hit = idx.map.get(m.toLowerCase());
       if(!hit || ex.includes(hit.id)) return m;
       return `<a class="unit-mention" href="${viewToHash({type:hit.type, id:hit.id})}" data-mention-type="${hit.type}" data-mention-id="${escapeHtml(hit.id)}">${m}</a>`;
@@ -4514,7 +4516,7 @@ function renderOdyssey(){
       <div class="edit-field">
         <span class="edit-label">玩法介绍</span>
         <textarea class="edit-textarea tall" data-bind="intro" placeholder="介绍这个玩法模式的规则、目标和流程...">${escapeHtml(draftOdyssey.intro||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
 
       <div class="edit-field">
@@ -5019,7 +5021,7 @@ function renderTierlist(){
       <div class="edit-field">
         <span class="edit-label">说明（可选，显示在分级榜下面）</span>
         <textarea class="edit-textarea tall" id="tierContent" placeholder="写评分标准、备注...">${escapeHtml(d.content||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
     `;
 
@@ -5336,7 +5338,7 @@ function passiveCardHtml(passive, i, pathPrefix, includeScope){
     </div>
     ${scopeHtml}
     <textarea class="edit-textarea" data-bind="${pathPrefix}.${i}.description" placeholder="被动效果...">${escapeHtml(passive.description||'')}</textarea>
-    <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+    <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
     ${markInsertButtonsHtml(`${pathPrefix}.${i}.description`)}
   </div>`;
 }
@@ -5454,7 +5456,7 @@ function skillCardHtml(skill, i){
           </div>
         </div>
         <textarea class="edit-textarea" data-bind="skills.${i}.description" placeholder="技能描述...">${escapeHtml(skill.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
         ${markInsertButtonsHtml(`skills.${i}.description`)}
       </div>
     </div>
@@ -6906,12 +6908,12 @@ function renderItem(){
       <div class="edit-field">
         <span class="edit-label">描述</span>
         <textarea class="edit-textarea" data-bind="description" placeholder="物品描述...">${escapeHtml(draftItem.description||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">任务线（可选，获得这个物品后需要完成的任务步骤）</span>
         <textarea class="edit-textarea" data-bind="questline" placeholder="例如：&#10;1. 前往XX地图击败XX敌人&#10;2. 收集X个XX材料&#10;3. 找NPC提交任务&#10;完成后即可用于单位进化">${escapeHtml(draftItem.questline||'')}</textarea>
-        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。</div>
+        <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
       <div class="edit-field">
         <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
