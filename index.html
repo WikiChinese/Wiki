@@ -79,7 +79,12 @@
   .odyssey-card-img.placeholder{display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--text-faint);text-align:center;}
   .floor-list{display:flex;flex-direction:column;gap:14px;margin-bottom:8px;}
   .floor-card{display:flex;gap:14px;flex-wrap:wrap;background:linear-gradient(165deg, var(--card) 0%, var(--panel) 130%);border:1px solid var(--border);border-left:3px solid var(--teal);border-radius:10px;padding:14px 16px;}
-  a.floor-card{text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;cursor:pointer;}
+  .floor-card.dragging,.sub-card.dragging{opacity:.4;}
+.floor-card.drop-before,.sub-card.drop-before{box-shadow:0 -4px 0 var(--gold);}
+.floor-card.drop-after,.sub-card.drop-after{box-shadow:0 4px 0 var(--gold);}
+.stage-drag-handle{cursor:grab;font-size:20px;line-height:1;color:var(--text-faint);padding:4px 6px;user-select:none;flex-shrink:0;}
+.stage-drag-handle:active{cursor:grabbing;}
+a.floor-card{text-decoration:none;color:inherit;transition:border-color .15s, transform .15s;cursor:pointer;}
   a.floor-card:hover{border-color:var(--gold-dim);transform:translateX(2px);}
   .floor-card-body{flex:1;min-width:200px;padding:0;}
   .floor-card-name{font-family:'Noto Serif SC',serif;font-weight:700;font-size:16px;color:var(--text);margin-bottom:6px;}
@@ -1655,9 +1660,52 @@ function stageRewardEditRowHtml(r, i){
   </div>`;
 }
 
+// Drag with the mouse to reorder a vertical list. A gold line shows where the item will land (above or below the one you hover).
+// handleSel: if given, only that grip starts the drag (so inputs inside the row stay usable); otherwise the whole item is draggable.
+function enableDragReorder(listEl, itemSel, handleSel, onReorder){
+  let src = null;
+  const items = ()=>[...listEl.querySelectorAll(itemSel)];
+  const clear = ()=>items().forEach(x=>x.classList.remove('dragging', 'drop-before', 'drop-after'));
+  items().forEach(item=>{
+    const grip = handleSel ? item.querySelector(handleSel) : item;
+    if(!grip) return;
+    const isAfter = (e)=>{ const r = item.getBoundingClientRect(); return e.clientY > r.top + r.height / 2; };
+    grip.addEventListener('dragstart', (e)=>{
+      src = item;
+      item.classList.add('dragging');
+      if(e.dataTransfer){
+        e.dataTransfer.effectAllowed = 'move';
+        try{ e.dataTransfer.setData('text/plain', 'reorder'); }catch(err){}
+        if(handleSel){ try{ e.dataTransfer.setDragImage(item, 24, 24); }catch(err){} }
+      }
+    });
+    grip.addEventListener('dragend', ()=>{ src = null; clear(); });
+    item.addEventListener('dragover', (e)=>{
+      if(!src || src === item) return;
+      e.preventDefault();
+      const after = isAfter(e);
+      item.classList.toggle('drop-after', after);
+      item.classList.toggle('drop-before', !after);
+    });
+    item.addEventListener('dragleave', ()=>item.classList.remove('drop-before', 'drop-after'));
+    item.addEventListener('drop', (e)=>{
+      if(!src || src === item) return;
+      e.preventDefault();
+      const all = items();
+      const from = all.indexOf(src);
+      let to = all.indexOf(item) + (isAfter(e) ? 1 : 0);
+      if(from < to) to--;
+      src = null;
+      clear();
+      if(from >= 0 && from !== to) onReorder(from, to);
+    });
+  });
+}
+
 function stageLevelListEditRowHtml(lv, i){
   return `<div class="sub-card" data-level-row-index="${i}">
     <div class="sub-card-head">
+      <span class="stage-drag-handle" draggable="true" title="按住拖动，调整这一关的上下顺序">⠿</span>
       ${lv.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(lv.image))}">` : `<div class="mark-icon-placeholder"></div>`}
       <label class="file-label" style="margin:0;">缩略图<input type="file" accept="image/*" data-image-bind="levels.${i}.image" style="display:none;"></label>
       <input class="edit-input" style="flex:1;min-width:160px;" data-bind="levels.${i}.name" value="${escapeHtml(lv.name)}" placeholder="关卡名称">
@@ -1703,13 +1751,18 @@ function renderStagePage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">关卡列表 (每一关)</span>
-        <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除、拖动排序。每一关的奖励、说明、商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
+        <div class="hint" style="margin-bottom:10px;">在这里加关卡、改名字、删除。按住每一关最左边的 ⠿ 用鼠标上下拖动，可以调整顺序。每一关的奖励、说明、商店，保存后点进那一关自己的页面里编辑，不用全部挤在这里。</div>
         ${draftStage.levels.map((lv,i)=>stageLevelListEditRowHtml(lv,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无关卡</div>'}
         <button class="btn btn-gold" data-action="addStageLevel">+ 添加关</button>
       </div>
     `;
     wireDraftForm(container, draftStage);
     wirePickerToggles(container);
+    enableDragReorder(container, '.sub-card[data-level-row-index]', '.stage-drag-handle', (from, to)=>{
+      const [moved] = draftStage.levels.splice(from, 1);
+      draftStage.levels.splice(to, 0, moved);
+      renderStagePage();
+    });
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStage=null; render(); });
     document.getElementById('saveBtn').addEventListener('click', async ()=>{
       stage.name = (draftStage.name||'').trim() || '未命名关卡';
@@ -1796,38 +1849,11 @@ function renderStagePage(){
   });
 
   if(isAdmin){
-    let dragSrcId = null;
-    listEl.querySelectorAll('.floor-card[data-level-id]').forEach(card=>{
-      card.addEventListener('dragstart', (e)=>{
-        dragSrcId = card.dataset.levelId;
-        card.classList.add('dragging');
-        if(e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
-      });
-      card.addEventListener('dragend', ()=>{
-        card.classList.remove('dragging');
-        listEl.querySelectorAll('.floor-card.drag-over').forEach(c=>c.classList.remove('drag-over'));
-        dragSrcId = null;
-      });
-      card.addEventListener('dragover', (e)=>{
-        if(!dragSrcId || card.dataset.levelId===dragSrcId) return;
-        e.preventDefault();
-        card.classList.add('drag-over');
-      });
-      card.addEventListener('dragleave', ()=>{ card.classList.remove('drag-over'); });
-      card.addEventListener('drop', async (e)=>{
-        e.preventDefault();
-        card.classList.remove('drag-over');
-        const targetId = card.dataset.levelId;
-        if(!dragSrcId || dragSrcId===targetId) return;
-        const srcIdx = stage.levels.findIndex(x=>x.id===dragSrcId);
-        if(srcIdx<0) return;
-        const [moved] = stage.levels.splice(srcIdx,1);
-        const tgtIdx = stage.levels.findIndex(x=>x.id===targetId);
-        stage.levels.splice(tgtIdx<0 ? stage.levels.length : tgtIdx, 0, moved);
-        dragSrcId = null;
-        await saveData(true);
-        renderStagePage();
-      });
+    enableDragReorder(listEl, '.floor-card[data-level-id]', '', async (from, to)=>{
+      const [moved] = stage.levels.splice(from, 1);
+      stage.levels.splice(to, 0, moved);
+      await saveData(true);
+      renderStagePage();
     });
   }
 }
