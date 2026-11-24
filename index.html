@@ -96,7 +96,9 @@
   .gallery-card.dragging{opacity:.35;cursor:grabbing;}
   .gallery-card.drag-over{outline:2px dashed var(--gold);outline-offset:3px;border-radius:8px;}
   .gallery-card-img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--border);background:var(--card);display:block;}
-  .unit-mention{color:var(--gold);border-bottom:1px dotted var(--gold-dim);text-decoration:none;cursor:pointer;border-radius:2px;}
+  @keyframes settingsFocusFlash{0%{box-shadow:0 0 0 3px var(--gold);background:rgba(201,162,75,.16);}100%{box-shadow:0 0 0 0 transparent;background:transparent;}}
+.settings-focus-flash{animation:settingsFocusFlash 1.8s ease-out;border-radius:10px;}
+.unit-mention{color:var(--gold);border-bottom:1px dotted var(--gold-dim);text-decoration:none;cursor:pointer;border-radius:2px;}
 .unit-mention[data-mention-type="unit"]{color:var(--mention-unit,var(--gold));border-bottom-color:var(--mention-unit,var(--gold-dim));}
 .unit-mention[data-mention-type="family"]{color:var(--mention-family,var(--gold));border-bottom-color:var(--mention-family,var(--gold-dim));}
 .unit-mention[data-mention-type="memory"]{color:var(--mention-memory,var(--gold));border-bottom-color:var(--mention-memory,var(--gold-dim));}
@@ -785,6 +787,9 @@ function getGalleryActiveFilters(type){
   return galleryActiveFilters[type];
 }
 let closedCollapsibleBlocks = new Set();
+let lastViewType = '';
+let enteringView = false;       // true while rendering the first frame after arriving at a different page
+let pendingSettingsFocus = null; // {title, focusPath}: open this settings section (and focus this field) once the settings page has rendered
 
 function wireCollapsibleBlocks(container, blockSelector, keyPrefix){
   container.querySelectorAll(blockSelector).forEach((block, i)=>{
@@ -2383,7 +2388,7 @@ function renderMemoryTraitsPage(){
     <div class="trait-page-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToMemoryTraitSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>goToSettingsSection('记忆特性'));
   wireBackButton(container);
 }
 
@@ -2401,7 +2406,7 @@ function renderTraitsPage(){
     <div class="trait-page-list">${cardsHtml}</div>
   `;
   const goBtn = document.getElementById('goToTraitSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>goToSettingsSection('特性'));
   wireBackButton(container);
 }
 
@@ -3859,6 +3864,7 @@ function renderStatusEffects(){
         <div class="status-effect-name">${escapeHtml(m.name)}</div>
         <div class="status-effect-desc">${m.description ? renderLinkedText(m.description) : '<span style="color:var(--text-faint);">暂无说明</span>'}</div>
       </div>
+      ${isAdmin ? `<button type="button" class="btn team-mini" data-edit-mark="${escapeHtml(String(m.id))}" title="到设置页编辑这个标记" style="align-self:flex-start;">编辑</button>` : ''}
     </div>`;
 
   let cardsHtml;
@@ -3893,8 +3899,16 @@ function renderStatusEffects(){
     ${state.marks.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的标记</div>` : ''}
   `;
   const goBtn = document.getElementById('goToMarkSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>goToSettingsSection('状态标记'));
+  // every time you arrive at this page the category groups start collapsed
+  if(enteringView) container.querySelectorAll('.status-effect-category-group').forEach((_, i)=>closedCollapsibleBlocks.add('statusEffects-' + i));
   wireCollapsibleBlocks(container, '.status-effect-category-group', 'statusEffects');
+  container.querySelectorAll('[data-edit-mark]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const idx = state.marks.findIndex(m=>m.id === b.dataset.editMark);
+      goToSettingsSection('状态标记', idx >= 0 ? `marks.${idx}.name` : '');
+    });
+  });
   wireStatusListSearch(container, 'statusEffectSearchInput', '.status-effect-category-group');
   wireBackButton(container);
 }
@@ -3921,7 +3935,7 @@ function renderAttackTypes(){
     ${state.attackTypes.length ? `<div class="status-list-no-result empty-hint" style="display:none;padding-left:0;">没有匹配的攻击类型</div>` : ''}
   `;
   const goBtn = document.getElementById('goToAttackTypeSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>goToSettingsSection('攻击类型'));
   wireStatusListSearch(container, 'attackTypeSearchInput', null);
   wireBackButton(container);
 }
@@ -3977,7 +3991,7 @@ function renderGroupGallery(){
   `;
 
   const goBtn = document.getElementById('goToGroupSettingsBtn');
-  if(goBtn) goBtn.addEventListener('click', ()=>{ goToView({type:'settings'}); render(); });
+  if(goBtn) goBtn.addEventListener('click', ()=>goToSettingsSection('分组'));
   wireBackButton(container);
 
   const blocks = ()=> [...container.querySelectorAll('details.group-block')];
@@ -8676,6 +8690,7 @@ function renderSettings(){
 
   wireSettingsBindElements(container, renderSettings);
   refreshUnusedImagesUi();
+  applyPendingSettingsFocus(container);
   const dlBtn = document.getElementById('downloadFullExportBtn');
   if(dlBtn) dlBtn.addEventListener('click', downloadFullExport);
   const impInput = document.getElementById('importSettingsInput');
@@ -8855,6 +8870,34 @@ function renderSettings(){
   }
 }
 
+function goToSettingsSection(title, focusPath){
+  // the settings page can render twice in a row (the address change triggers a second render), so keep the target for a short moment
+  pendingSettingsFocus = {title, focusPath: focusPath || '', left: 2, until: Date.now() + 2000};
+  goToView({type:'settings'});
+  render();
+}
+
+function applyPendingSettingsFocus(container){
+  const target = pendingSettingsFocus;
+  if(!target) return;
+  if(Date.now() > target.until || --target.left < 0){ pendingSettingsFocus = null; return; }
+  if(target.left === 0) pendingSettingsFocus = null;
+  const block = [...container.querySelectorAll('details.settings-block')].find(d=>{
+    const sm = d.querySelector(':scope > summary');
+    return sm && sm.textContent.trim() === target.title;
+  });
+  if(!block) return;
+  block.open = true;
+  let el = block;
+  if(target.focusPath){
+    const field = [...container.querySelectorAll('[data-settings-bind]')].find(x=>x.dataset.settingsBind === target.focusPath);
+    if(field){ el = field.closest('.sub-card, .mark-edit-row') || field; setTimeout(()=>{ try{ field.focus({preventScroll:true}); }catch(e){} }, 0); }
+  }
+  el.classList.add('settings-focus-flash');
+  setTimeout(()=>el.classList.remove('settings-focus-flash'), 1800);
+  if(el.scrollIntoView) setTimeout(()=>el.scrollIntoView({block: target.focusPath ? 'center' : 'start', behavior:'smooth'}), 30);
+}
+
 function applyLinkColors(){
   const root = document.documentElement;
   ['unit', 'family', 'memory', 'item'].forEach(k=>{
@@ -8869,6 +8912,8 @@ function applyGradientAnimSetting(){
 }
 
 function render(){
+  enteringView = (lastViewType !== currentView.type);
+  lastViewType = currentView.type;
   applyGradientAnimSetting();
   applyLinkColors();
   const titleEl = document.getElementById('siteTitle');
