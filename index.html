@@ -6074,15 +6074,6 @@ function renderUnit(){
             ${draftUnit.shinyImage ? `<button class="btn btn-danger" data-image-remove="shinyImage" style="width:fit-content;">移除图片</button>` : ''}
           </div>
         </div>
-        <div class="hint" style="margin:12px 0 6px;">进化后图片（可选，用于「进化」板块的进化前/进化后对比）</div>
-        <input class="edit-input" data-bind="evolvedName" value="${escapeHtml(draftUnit.evolvedName||'')}" placeholder="进化后名称（可选，不填就沿用原名）" style="margin-bottom:8px;">
-        <div class="image-upload-box">
-          ${draftUnit.evolvedImage ? (isVideoUrl(draftUnit.evolvedImage) ? `<video class="image-preview zoomable" src="${escapeHtml(String(draftUnit.evolvedImage))}" autoplay loop muted playsinline></video>` : `<img class="image-preview zoomable" src="${escapeHtml(String(draftUnit.evolvedImage))}">`) : `<div class="image-placeholder">无图片</div>`}
-          <div class="upload-controls">
-            <label class="file-label">选择图片/视频<input type="file" accept="image/*,video/*" data-image-bind="evolvedImage" style="display:none;"></label>
-            ${draftUnit.evolvedImage ? `<button class="btn btn-danger" data-image-remove="evolvedImage" style="width:fit-content;">移除图片</button>` : ''}
-          </div>
-        </div>
       </div>
 
       <div class="edit-field">
