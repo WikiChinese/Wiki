@@ -1197,6 +1197,7 @@ function migrateState(){
   state.items.forEach(it=>{
     if(it.questline===undefined) it.questline = '';
     if(it.evolvesUnitId===undefined) it.evolvesUnitId = '';
+    if(!Array.isArray(it.evolvesUnitIds)) it.evolvesUnitIds = it.evolvesUnitId ? [it.evolvesUnitId] : [];
     if(it.evolveQuantity===undefined) it.evolveQuantity = '';
     if(it.linkedItemId===undefined) it.linkedItemId = '';
     if(it.linkedItemQuantity===undefined) it.linkedItemQuantity = '';
@@ -6676,7 +6677,7 @@ function renderUnit(){
       ${unit.shinyImage ? `<button type="button" class="shiny-toggle-btn ${showingShinyImage?'active':''}" id="shinyToggleBtn">✨ ${showingShinyImage?'普通':'闪光'}</button>` : ''}
     </div>` : '';
 
-  const evolutionItems = state.items.filter(it=>it.evolvesUnitId===unit.id);
+  const evolutionItems = state.items.filter(it=>(Array.isArray(it.evolvesUnitIds) ? it.evolvesUnitIds.includes(unit.id) : it.evolvesUnitId===unit.id));
   const evolutionItemsHtml = evolutionItems.length ? `<div class="shop-item-grid">${evolutionItems.map(it=>`
     <a href="${viewToHash({type:'item', id:it.id})}" class="shop-item-card" data-view="item" data-id="${it.id}">
       <div class="shop-item-icon-wrap">${it.image ? `<img class="shop-item-icon" src="${escapeHtml(String(it.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
@@ -6895,7 +6896,7 @@ function renderItem(){
   const container = document.getElementById('mainInner');
   const item = state.items.find(i=>i.id===currentView.id);
   if(!item){ container.innerHTML = `<div class="empty-state"><h2>未找到该物品</h2></div>`; return; }
-  const evolvesUnit = item.evolvesUnitId ? state.units.find(u=>u.id===item.evolvesUnitId) : null;
+  const evolvesUnits = (Array.isArray(item.evolvesUnitIds) ? item.evolvesUnitIds : (item.evolvesUnitId ? [item.evolvesUnitId] : [])).map(id=>state.units.find(u=>u.id===id)).filter(Boolean);
   const linkedItem = item.linkedItemId ? state.items.find(x=>x.id===item.linkedItemId) : null;
   const referencingItems = state.items.filter(x=>x.linkedItemId===item.id);
   const itemCategoryObj = item.categoryId ? state.itemCategories.find(c=>c.id===item.categoryId) : null;
@@ -6947,11 +6948,12 @@ function renderItem(){
         <div class="hint"># 标题、## 小标题、**加粗**、*斜体*、~~删除线~~、==高亮==、\`代码\`、- 列表 均可使用。想让某个名字不要自动变成链接，在名字前面加一个 \\ （例如 \\Ichigo）。</div>
       </div>
       <div class="edit-field">
-        <span class="edit-label">完成任务线后，用于进化以下单位（可选）</span>
+        <span class="edit-label">完成任务线后，用于进化以下单位（可选，可以选多个）</span>
         ${(()=>{
-          const selUnit = draftItem.evolvesUnitId ? state.units.find(u=>u.id===draftItem.evolvesUnitId) : null;
-          const selectedHtml = selUnit ? `<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-evo-clear="1">${selUnit.image?`<img src="${escapeHtml(String(selUnit.image))}">`:''}${escapeHtml(selUnit.name)} ✕</button>` : `<div class="empty-hint" style="padding-left:0;">不用于进化任何单位</div>`;
-          const remaining = state.units.filter(u=>u.id!==draftItem.evolvesUnitId);
+          const evoIds = Array.isArray(draftItem.evolvesUnitIds) ? draftItem.evolvesUnitIds : [];
+          const selUnits = evoIds.map(id=>state.units.find(u=>u.id===id)).filter(Boolean);
+          const selectedHtml = selUnits.length ? selUnits.map(selUnit=>`<button type="button" class="mark-toggle active" style="${toggleChipStyle('#4a8fd1',true)}" data-item-evo-clear="${selUnit.id}">${selUnit.image?`<img src="${escapeHtml(String(selUnit.image))}">`:''}${escapeHtml(selUnit.name)} ✕</button>`).join('') : `<div class="empty-hint" style="padding-left:0;">不用于进化任何单位</div>`;
+          const remaining = state.units.filter(u=>!evoIds.includes(u.id));
           const searchHtml = remaining.length>5 ? `<input type="text" class="entity-picker-search" placeholder="搜索单位名称（中文/英文均可）...">` : '';
           const pickerHtml = remaining.length ? `<details class="entity-picker" data-picker-key="item-evo-unit">
             <summary class="btn btn-gold">+ 选择单位</summary>
@@ -6998,13 +7000,14 @@ function renderItem(){
     wirePickerToggles(container);
     container.querySelectorAll('[data-item-evo-select]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        draftItem.evolvesUnitId = btn.dataset.itemEvoSelect;
+        if(!Array.isArray(draftItem.evolvesUnitIds)) draftItem.evolvesUnitIds = [];
+        if(!draftItem.evolvesUnitIds.includes(btn.dataset.itemEvoSelect)) draftItem.evolvesUnitIds.push(btn.dataset.itemEvoSelect);
         render();
       });
     });
     container.querySelectorAll('[data-item-evo-clear]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        draftItem.evolvesUnitId = '';
+        draftItem.evolvesUnitIds = (draftItem.evolvesUnitIds || []).filter(id=>id !== btn.dataset.itemEvoClear);
         render();
       });
     });
@@ -7029,7 +7032,8 @@ function renderItem(){
       item.categoryId = draftItem.categoryId || '';
       item.description = draftItem.description || '';
       item.questline = draftItem.questline || '';
-      item.evolvesUnitId = draftItem.evolvesUnitId || '';
+      item.evolvesUnitIds = Array.isArray(draftItem.evolvesUnitIds) ? draftItem.evolvesUnitIds.filter((id, i, arr)=>arr.indexOf(id) === i) : [];
+      item.evolvesUnitId = item.evolvesUnitIds[0] || '';
       item.evolveQuantity = draftItem.evolveQuantity || '';
       item.linkedItemId = draftItem.linkedItemId || '';
       item.linkedItemQuantity = draftItem.linkedItemQuantity || '';
@@ -7065,10 +7069,10 @@ function renderItem(){
     </div>
     <div class="content-body">${renderLinkedText(item.description) || '<p style="color:var(--text-faint);">暂无内容</p>'}</div>
     ${item.questline ? `<div class="section-label">任务线</div><div class="content-body">${renderLinkedText(item.questline)}</div>` : ''}
-    ${evolvesUnit ? `<div class="section-label">完成后用于进化</div><a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}" style="max-width:220px;">
+    ${evolvesUnits.length ? `<div class="section-label">完成后用于进化</div><div class="shop-item-grid">${evolvesUnits.map(evolvesUnit=>`<a href="${viewToHash({type:'unit', id:evolvesUnit.id})}" class="shop-item-card" data-view="unit" data-id="${evolvesUnit.id}">
       <div class="shop-item-icon-wrap">${evolvesUnit.image ? `<img class="shop-item-icon" src="${escapeHtml(String(evolvesUnit.image))}"${cardFrameImgStyle(evolvesUnit)}>` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(evolvesUnit.name)}</div>${item.evolveQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.evolveQuantity))}</div>` : ''}</div>
-    </a>` : ''}
+    </a>`).join('')}</div>` : ''}
     ${linkedItem ? `<div class="section-label">关联物品</div><a href="${viewToHash({type:'item', id:linkedItem.id})}" class="shop-item-card" data-view="item" data-id="${linkedItem.id}" style="max-width:220px;">
       <div class="shop-item-icon-wrap">${linkedItem.image ? `<img class="shop-item-icon" src="${escapeHtml(String(linkedItem.image))}">` : `<div class="shop-item-icon-placeholder"></div>`}</div>
       <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(linkedItem.name)}</div>${item.linkedItemQuantity ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(item.linkedItemQuantity))}</div>` : ''}</div>
