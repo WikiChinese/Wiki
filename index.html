@@ -122,6 +122,9 @@ a.floor-card{text-decoration:none;color:inherit;transition:border-color .15s, tr
 .team-note-box>summary::before{content:'▸';display:inline-block;transition:transform .15s;color:var(--gold-dim);}
 .team-note-box[open]>summary::before{transform:rotate(90deg);}
 .team-note-body{margin-top:10px;}
+.ref-pick-btn{display:flex;align-items:center;gap:8px;flex:2;min-width:200px;text-align:left;justify-content:flex-start;}
+.ref-pick-ico{width:28px;height:28px;border-radius:6px;object-fit:cover;flex-shrink:0;background:var(--card-hover);}
+.ref-type-tag{font-size:11px;color:var(--text-faint);border:1px solid var(--border);border-radius:6px;padding:0 5px;flex-shrink:0;}
 .team-list{display:flex;flex-direction:column;gap:22px;}
 .team-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
 .team-head{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
@@ -1310,6 +1313,8 @@ function migrateState(){
         if(r.name===undefined) r.name = '';
         if(r.amount===undefined) r.amount = '';
         if(r.image===undefined) r.image = '';
+        if(r.refType===undefined) r.refType = '';
+        if(r.refId===undefined) r.refId = '';
       });
       if(lv.specialUnitReward===undefined) lv.specialUnitReward = '';
       if(lv.specialUnitRewardCondition===undefined) lv.specialUnitRewardCondition = '';
@@ -1651,12 +1656,84 @@ function questlineStepEditRowHtml(q, i){
   </div>`;
 }
 
+const REF_TYPE_LABELS = {item:'物品', unit:'单位', family:'使魔', memory:'记忆'};
+
+function refEntity(type, id){
+  const coll = {item:state.items, unit:state.units, family:state.families, memory:state.memories}[type];
+  return coll ? coll.find(x=>x.id === id) : null;
+}
+
+// A button showing the chosen unit/item/familiar/memoria (or a prompt to choose one); clicking it opens the searchable picker
+function refPickButtonHtml(type, id, attrs){
+  const e = type && id ? refEntity(type, id) : null;
+  if(!e) return `<button type="button" class="btn ref-pick-btn" ${attrs}><span style="color:var(--text-faint);">选择关联内容（可搜索）…</span></button>`;
+  return `<button type="button" class="btn ref-pick-btn" ${attrs}>${e.image ? `<img class="ref-pick-ico" src="${escapeHtml(String(e.image))}"${cardFrameImgStyle(e)}>` : '<span class="ref-pick-ico"></span>'}<span>${escapeHtml(e.name)}</span><span class="ref-type-tag">${REF_TYPE_LABELS[type]}</span></button>`;
+}
+
+function openRefPicker(currentType, currentId, onPick){
+  const all = [
+    ...state.items.map(e=>({e, type:'item'})),
+    ...state.units.map(e=>({e, type:'unit'})),
+    ...state.families.map(e=>({e, type:'family'})),
+    ...state.memories.map(e=>({e, type:'memory'}))
+  ];
+  let filterType = '';
+  const ov = document.createElement('div');
+  ov.className = 'team-picker';
+  ov.innerHTML = `<div class="team-picker-box">
+    <div style="display:flex;gap:8px;align-items:center;"><strong style="flex:1;">选择关联内容</strong><button type="button" class="btn" data-role="close">关闭</button></div>
+    <input class="edit-input" placeholder="搜索名字（中文或英文）..." data-role="search">
+    <div data-role="types" style="display:flex;gap:6px;flex-wrap:wrap;">${[['', '全部'], ['item', '物品'], ['unit', '单位'], ['family', '使魔'], ['memory', '记忆']].map(([k, label])=>`<button type="button" class="btn team-mini" data-type="${k}">${label}</button>`).join('')}</div>
+    <div class="team-picker-list"></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const listEl = ov.querySelector('.team-picker-list');
+  const search = ov.querySelector('[data-role="search"]');
+  const close = ()=>ov.remove();
+  const draw = ()=>{
+    const q = search.value.trim().toLowerCase();
+    ov.querySelectorAll('[data-type]').forEach(b=>b.classList.toggle('btn-gold', b.dataset.type === filterType));
+    const items = all.filter(x=>(!filterType || x.type === filterType) && (!q || (((x.e.name||'') + ' ' + (x.e.englishName||'')).toLowerCase().includes(q))))
+      .sort((a, b)=> (a.type === b.type ? String(a.e.name||'').localeCompare(String(b.e.name||''), 'zh') : 0));
+    listEl.innerHTML = items.length
+      ? items.map(x=>`<button type="button" class="team-picker-item${(x.type === currentType && x.e.id === currentId) ? ' sel' : ''}" data-type="${x.type}" data-id="${escapeHtml(x.e.id)}">${teamIcoHtml(x.e,'lg')}<span class="team-name">${escapeHtml(x.e.name)}</span><span class="ref-type-tag">${REF_TYPE_LABELS[x.type]}</span></button>`).join('')
+      : '<div class="team-empty" style="grid-column:1/-1;padding:12px;">没有找到</div>';
+  };
+  draw();
+  search.addEventListener('input', draw);
+  ov.querySelector('[data-role="types"]').addEventListener('click', (ev)=>{
+    const b = ev.target.closest('[data-type]');
+    if(!b) return;
+    filterType = b.dataset.type;
+    draw();
+  });
+  listEl.addEventListener('click', (ev)=>{
+    const b = ev.target.closest('.team-picker-item');
+    if(!b) return;
+    close();
+    onPick(b.dataset.type, b.dataset.id);
+  });
+  ov.addEventListener('click', (ev)=>{ if(ev.target === ov) close(); });
+  ov.querySelector('[data-role="close"]').addEventListener('click', close);
+  search.focus();
+}
+
 function stageRewardEditRowHtml(r, i){
+  const linked = !!(r.refType && r.refId && refEntity(r.refType, r.refId));
+  if(r.refType && r.refId){
+    return `<div class="sub-card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;" data-reward-row-index="${i}">
+    ${refPickButtonHtml(r.refType, r.refId, `data-ref-pick="reward" data-index="${i}"`)}
+    <input class="edit-input" style="flex:1;min-width:100px;" data-bind="rewards.${i}.amount" value="${escapeHtml(r.amount)}" placeholder="数量，如 500">
+    <button type="button" class="btn team-mini" data-reward-ref-clear="${i}" title="取消关联，改回自己填名称和图标">取消关联</button>
+    <button class="btn btn-danger" data-action="removeStageReward" data-index="${i}">删除</button>
+  </div>`;
+  }
   return `<div class="sub-card" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;" data-reward-row-index="${i}">
     ${r.image ? `<img class="mark-icon-preview" src="${escapeHtml(String(r.image))}">` : `<div class="mark-icon-placeholder"></div>`}
     <label class="file-label" style="margin:0;">图标<input type="file" accept="image/*" data-image-bind="rewards.${i}.image" style="display:none;"></label>
     <input class="edit-input" style="flex:2;min-width:140px;" data-bind="rewards.${i}.name" value="${escapeHtml(r.name)}" placeholder="奖励名称，如 宝石">
     <input class="edit-input" style="flex:1;min-width:100px;" data-bind="rewards.${i}.amount" value="${escapeHtml(r.amount)}" placeholder="数量，如 500">
+    <button type="button" class="btn team-mini" data-ref-pick="reward" data-index="${i}" title="改成关联一个单位、物品、使魔或记忆">🔗 关联…</button>
     <button class="btn btn-danger" data-action="removeStageReward" data-index="${i}">删除</button>
   </div>`;
 }
@@ -1859,25 +1936,10 @@ function renderStagePage(){
   }
 }
 
-function shopRefOptionsHtml(item){
-  const optGroup = (label, list, type) => list.length ? `<optgroup label="${label}">${list.map(x=>`<option value="${type}:${x.id}" ${item.refType===type&&item.refId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</optgroup>` : '';
-  const itemOptGroups = state.itemCategories.length
-    ? state.itemCategories.map(cat=>{
-        const inCat = state.items.filter(x=>x.categoryId===cat.id);
-        return inCat.length ? `<optgroup label="物品 · ${escapeHtml(cat.name)}">${inCat.map(x=>`<option value="item:${x.id}" ${item.refType==='item'&&item.refId===x.id?'selected':''}>${escapeHtml(x.name)}</option>`).join('')}</optgroup>` : '';
-      }).join('') + optGroup('物品 · 未分类', state.items.filter(x=>!x.categoryId || !state.itemCategories.some(c=>c.id===x.categoryId)), 'item')
-    : optGroup('物品', state.items, 'item');
-  return `<option value="">选择关联内容...</option>
-    ${itemOptGroups}
-    ${optGroup('单位', state.units, 'unit')}
-    ${optGroup('使魔', state.families, 'family')}
-    ${optGroup('记忆', state.memories, 'memory')}`;
-}
-
 function shopItemEditRowHtml(item, i){
   return `<div class="sub-card">
     <div class="sub-card-head">
-      <select class="edit-select" style="flex:2;min-width:200px;" data-shop-ref="${i}">${shopRefOptionsHtml(item)}</select>
+      ${refPickButtonHtml(item.refType, item.refId, `data-ref-pick="shop" data-index="${i}"`)}
       <button class="btn btn-danger" data-action="removeShopItem" data-index="${i}">删除</button>
     </div>
     <div class="mark-edit-row" style="margin-top:8px;margin-bottom:0;">
@@ -1932,9 +1994,10 @@ function renderStageLevelPage(){
       </div>
       <div class="edit-field">
         <span class="edit-label">奖励</span>
-        <div class="hint" style="margin-bottom:10px;">通关这一关能拿到的宝石/道具，可以有多条，比如"宝石 500"、"钻石 1000"，各自单独一行，可以加图标。</div>
+        <div class="hint" style="margin-bottom:10px;">通关这一关能拿到的东西，可以有多条。可以自己填名称、数量、图标（比如"宝石 500"），也可以点「🔗 关联…」或「+ 添加奖励（选单位 / 物品 / 使魔 / 记忆）」直接选一个单位、物品、使魔或记忆（可搜索），和商店一样。</div>
         ${(draftStageLevel.rewards||[]).map((r,i)=>stageRewardEditRowHtml(r,i)).join('') || '<div class="empty-hint" style="padding-left:0;">暂无奖励</div>'}
         <button class="btn btn-gold" data-action="addStageReward">+ 添加奖励</button>
+        <button type="button" class="btn btn-gold" id="addRewardRefBtn">+ 添加奖励（选单位 / 物品 / 使魔 / 记忆）</button>
       </div>
       <div class="edit-field">
         <span class="edit-label">特殊获得单位（可选）</span>
@@ -2036,12 +2099,26 @@ function renderStageLevelPage(){
     `;
     wireDraftForm(container, draftStageLevel);
     wirePickerToggles(container);
-    container.querySelectorAll('[data-shop-ref]').forEach(el=>{
-      el.addEventListener('change', ()=>{
-        const i = parseInt(el.dataset.shopRef);
-        const [t,id] = el.value.split(':');
-        draftStageLevel.shop[i].refType = t||'';
-        draftStageLevel.shop[i].refId = id||'';
+    container.querySelectorAll('[data-ref-pick]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const list = btn.dataset.refPick === 'shop' ? draftStageLevel.shop : draftStageLevel.rewards;
+        const row = list[parseInt(btn.dataset.index)];
+        if(!row) return;
+        openRefPicker(row.refType, row.refId, (type, id)=>{ row.refType = type; row.refId = id; renderStageLevelPage(); });
+      });
+    });
+    container.querySelectorAll('[data-reward-ref-clear]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const row = draftStageLevel.rewards[parseInt(btn.dataset.rewardRefClear)];
+        if(row){ row.refType = ''; row.refId = ''; }
+        renderStageLevelPage();
+      });
+    });
+    const addRewardRefBtn = document.getElementById('addRewardRefBtn');
+    if(addRewardRefBtn) addRewardRefBtn.addEventListener('click', ()=>{
+      openRefPicker('', '', (type, id)=>{
+        draftStageLevel.rewards.push({id:uid(), name:'', image:'', amount:'', refType:type, refId:id});
+        renderStageLevelPage();
       });
     });
     document.getElementById('cancelBtn').addEventListener('click', ()=>{ editMode=false; draftStageLevel=null; render(); });
@@ -2126,11 +2203,25 @@ function renderStageLevelPage(){
     return `<span class="mark-chip" style="${coloredChipStyle(c.color)}" title="${escapeHtml(c.description||c.name)}">${icon}${escapeHtml(c.name)}</span>`;
   }).join('') : '';
 
-  const levelRewardsHtml = (level.rewards&&level.rewards.length) ? `<div class="mark-row-list" style="margin-bottom:20px;">${level.rewards.map(r=>{
-    if(!r.name && !r.amount) return '';
+  const rewardAmountText = (amt)=>{ const t = String(amt||'').trim(); if(!t) return ''; return /^[x×]/i.test(t) ? t : '×' + t; };
+  const textRewards = (level.rewards||[]).filter(r=>!(r.refType && r.refId && refEntity(r.refType, r.refId)) && (r.name || r.amount));
+  const linkedRewards = (level.rewards||[]).filter(r=>r.refType && r.refId && refEntity(r.refType, r.refId));
+  const levelRewardsHtml = (textRewards.length || linkedRewards.length) ? `${textRewards.length ? `<div class="mark-row-list" style="margin-bottom:14px;">${textRewards.map(r=>{
     const icon = r.image ? `<img src="${escapeHtml(String(r.image))}">` : '';
     return `<span class="mark-chip" style="background:var(--card);border:1px solid var(--gold-dim);color:var(--gold);">${icon}${escapeHtml(r.name)}${r.amount ? ` ×${formatNumberDisplay(escapeHtml(r.amount))}` : ''}</span>`;
-  }).join('')}</div>` : '';
+  }).join('')}</div>` : ''}${linkedRewards.length ? `<div class="shop-item-grid" style="margin-bottom:20px;">${linkedRewards.map(r=>{
+    const e = refEntity(r.refType, r.refId);
+    let tagLabel = REF_TYPE_LABELS[r.refType], tagStyle = '';
+    if(r.refType === 'item' && e.categoryId){
+      const cat = state.itemCategories.find(c=>c.id === e.categoryId);
+      if(cat){ tagLabel = cat.name; tagStyle = `background:${/gradient/.test(cat.color||'')?'rgba(0,0,0,.6)':hexToRgba(cat.color||'#4a8fd1',0.75)};`; }
+    }
+    const amt = rewardAmountText(r.amount);
+    return `<a href="${viewToHash({type:r.refType, id:e.id})}" class="shop-item-card" data-view="${r.refType}" data-id="${e.id}">
+      <div class="shop-item-icon-wrap">${e.image ? `<img class="shop-item-icon" src="${escapeHtml(String(e.image))}"${cardFrameImgStyle(e)}>` : `<div class="shop-item-icon-placeholder"></div>`}<span class="shop-item-type-tag" style="${tagStyle}">${escapeHtml(tagLabel)}</span></div>
+      <div class="shop-item-body"><div class="shop-item-name">${escapeHtml(e.name)}</div>${amt ? `<div class="shop-item-qty">${formatNumberDisplay(escapeHtml(amt))}</div>` : ''}</div>
+    </a>`;
+  }).join('')}</div>` : ''}` : '';
 
   const specialUnit = level.specialUnitReward ? state.units.find(u2=>u2.id===level.specialUnitReward) : null;
   const specialUnitHtml = specialUnit ? (()=>{
