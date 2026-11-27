@@ -4681,18 +4681,28 @@ function localDateStr(){
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
 }
 function tierBuildSnapshot(tiers){
-  const map = {};
-  tiers.forEach(t=>t.entries.forEach(e=>{ map[e.unitId] = t.id; }));
-  return {order: tiers.map(t=>t.id), map};
+  const map = {};   // unitId -> first tier it sits in (older format, kept for compatibility)
+  const sets = {};  // unitId -> every tier it sits in
+  tiers.forEach(t=>t.entries.forEach(e=>{
+    if(map[e.unitId] === undefined) map[e.unitId] = t.id;
+    (sets[e.unitId] = sets[e.unitId] || []).push(t.id);
+  }));
+  return {order: tiers.map(t=>t.id), map, sets};
 }
 // Compares a unit's current tier with the version before the last published update.
 // Returns 'up' | 'down' | 'new' | '' (no previous version, or unchanged).
 function tierChangeFor(unitId, tierIndex){
   const ps = state.tierlist.prevSnapshot;
   if(!ps || !ps.map) return '';
-  const prevTierId = ps.map[unitId];
-  if(prevTierId===undefined) return 'new';
-  const prevIdx = (ps.order||[]).indexOf(prevTierId);
+  const tiersNow = (state.tierlist && state.tierlist.tiers) || [];
+  const thisTierId = tiersNow[tierIndex] && tiersNow[tierIndex].id;
+  const prevTierIds = ps.sets && ps.sets[unitId] ? ps.sets[unitId] : (ps.map[unitId] !== undefined ? [ps.map[unitId]] : []);
+  if(!prevTierIds.length) return 'new';
+  if(prevTierIds.includes(thisTierId)) return '';          // was already in this tier
+  const curTierIds = tiersNow.filter(t=>t.entries.some(e=>e.unitId === unitId)).map(t=>t.id);
+  if(curTierIds.length > prevTierIds.length) return 'new'; // added to one more tier
+  const gone = prevTierIds.find(id=>!curTierIds.includes(id)); // the tier it moved away from
+  const prevIdx = (ps.order||[]).indexOf(gone);
   if(prevIdx<0) return '';
   if(tierIndex<prevIdx) return 'up';
   if(tierIndex>prevIdx) return 'down';
@@ -4705,9 +4715,9 @@ function publishTierlist(tl){
 }
 function unitTierChipHtml(unit){
   const tiers = (state.tierlist && state.tierlist.tiers) || [];
-  const t = tiers.find(x=>x.entries.some(e=>e.unitId===unit.id));
-  if(!t) return '';
-  return `<a href="${viewToHash({type:'tierlist'})}" class="badge" style="background:${escapeHtml(t.color)};color:${readableTextColor(t.color)};font-weight:700;text-decoration:none;cursor:pointer;" title="在分级榜里的位置">📊 分级榜：${escapeHtml(t.label||'?')}</a>`;
+  const found = tiers.filter(x=>x.entries.some(e=>e.unitId===unit.id));
+  if(!found.length) return '';
+  return found.map(t=>`<a href="${viewToHash({type:'tierlist'})}" class="badge" style="background:${escapeHtml(t.color)};color:${readableTextColor(t.color)};font-weight:700;text-decoration:none;cursor:pointer;" title="在分级榜里的位置">📊 分级榜：${escapeHtml(t.label||'?')}</a>`).join('');
 }
 
 function teamTraitChipHtml(t){
@@ -5003,9 +5013,6 @@ function renderTierlist(){
       renderTierlist();
       if(m) m.scrollTop = st;
     };
-    const usedIds = new Set();
-    d.tiers.forEach(t=>t.entries.forEach(e=>usedIds.add(e.unitId)));
-    const available = state.units.filter(u=>!usedIds.has(u.id));
     const unitMap = {};
     state.units.forEach(u=>{ unitMap[u.id] = u; });
     const tierOptions = sel => d.tiers.map((t,i)=>`<option value="${i}"${i===sel?' selected':''}>${escapeHtml(t.label||'?')}</option>`).join('');
@@ -5021,11 +5028,13 @@ function renderTierlist(){
           <button type="button" class="btn btn-danger tier-remove" data-role="remove" data-ti="${ti}" data-ei="${ei}" title="把这个单位从分级榜移除">🗑 移除</button>
           <input class="edit-input tier-note-input" data-role="note" data-ti="${ti}" data-ei="${ei}" value="${escapeHtml(e.note||'')}" placeholder="一句话理由（可选）">
           <select class="edit-select" data-role="move" data-ti="${ti}" data-ei="${ei}" title="移到其他分级">${tierOptions(ti)}</select>
+          <select class="edit-select" data-role="copy" data-ti="${ti}" data-ei="${ei}" title="同一个单位也放进别的分级（原来的分级里会保留）"><option value="">＋也放进…</option>${d.tiers.map((x,xi)=>(xi!==ti && !x.entries.some(en=>en.unitId===e.unitId)) ? `<option value="${xi}">${escapeHtml(x.label||'?')}</option>` : '').join('')}</select>
           <button type="button" class="btn" data-role="left" data-ti="${ti}" data-ei="${ei}" title="往前移">◀</button>
           <button type="button" class="btn" data-role="right" data-ti="${ti}" data-ei="${ei}" title="往后移">▶</button>
         </div>`;
       }).join('') || '<div class="empty-hint" style="padding-left:0;">还没有单位，可以从下面添加，或把别的分级里的单位拖过来</div>';
       const key = 'tier-add-'+t.id;
+      const available = state.units.filter(u=>!t.entries.some(e=>e.unitId===u.id)); // a unit may sit in several tiers, but only once per tier
       const pickerHtml = available.length ? `<details class="entity-picker" data-picker-key="${key}"${openPickerKeys.has(key)?' open':''}>
         <summary class="btn btn-gold">+ 添加单位</summary>
         <div class="entity-picker-list">
@@ -5033,7 +5042,7 @@ function renderTierlist(){
           <div class="entity-picker-items">${available.map(u=>`<button type="button" class="entity-picker-item" data-role="add" data-ti="${ti}" data-unit-id="${u.id}" data-search="${escapeHtml(((u.name||'')+' '+(u.englishName||'')).toLowerCase())}">${u.image?`<img src="${escapeHtml(String(u.image))}">`:''}${escapeHtml(u.name)}</button>`).join('')}</div>
           <div class="entity-picker-noresult" style="display:none;">没有匹配的单位</div>
         </div>
-      </details>` : '<div class="hint">所有单位都已经放进分级榜了</div>';
+      </details>` : '<div class="hint">所有单位都已经放进这个分级了</div>';
       return `<div class="tier-edit-block" style="border-left-color:${color};">
         <div class="tier-edit-head">
           <input type="color" data-role="tcolor" data-ti="${ti}" value="${color}" title="这一级的颜色">
@@ -5056,7 +5065,7 @@ function renderTierlist(){
           <button class="btn btn-gold" id="publishBtn">发布更新</button>
         </div>
       </div>
-      <div class="hint" style="margin:-6px 0 14px;">「保存」只保存内容。「发布更新」会把最后更新日期改成今天，并和上一次发布的版本对比，在单位头像上标出 ↑ ↓ NEW。每个单位只能放在一个分级里。</div>
+      <div class="hint" style="margin:-6px 0 14px;">「保存」只保存内容。「发布更新」会把最后更新日期改成今天，并和上一次发布的版本对比，在单位头像上标出 ↑ ↓ NEW。同一个单位可以放进多个分级（例如同时放在 S 和「辅助」里），但同一个分级里只能放一次。</div>
       ${blocksHtml || '<div class="empty-hint" style="padding-left:0;">还没有分级</div>'}
       <button class="btn btn-gold" id="addTierBtn" style="margin-bottom:22px;">+ 新增分级</button>
       <div class="edit-field">
@@ -5068,6 +5077,11 @@ function renderTierlist(){
 
     const qa = sel => container.querySelectorAll(sel);
     const moveEntry = (fromTi, fromEi, toTi, toEi)=>{
+      const unitIdMoving = d.tiers[fromTi].entries[fromEi] && d.tiers[fromTi].entries[fromEi].unitId;
+      if(fromTi !== toTi && d.tiers[toTi].entries.some(e=>e.unitId === unitIdMoving)){
+        showToast('这个分级里已经有这个单位了（同一个分级只能放一次）', 4000);
+        return;
+      }
       const [moved] = d.tiers[fromTi].entries.splice(fromEi,1);
       let idx = (toEi===null || toEi===undefined) ? d.tiers[toTi].entries.length : toEi;
       if(fromTi===toTi && toEi!==null && toEi!==undefined && fromEi<toEi) idx = toEi-1;
@@ -5100,6 +5114,13 @@ function renderTierlist(){
     qa('[data-role="move"]').forEach(sel=> sel.addEventListener('change', ()=>{
       moveEntry(+sel.dataset.ti, +sel.dataset.ei, +sel.value, null); redraw();
     }));
+    qa('[data-role="copy"]').forEach(sel=> sel.addEventListener('change', ()=>{
+      if(sel.value === '') return;
+      const src = d.tiers[+sel.dataset.ti].entries[+sel.dataset.ei];
+      const target = d.tiers[+sel.value];
+      if(src && target && !target.entries.some(e=>e.unitId === src.unitId)) target.entries.push({unitId: src.unitId, note: src.note || ''});
+      redraw();
+    }));
     qa('[data-role="left"]').forEach(btn=> btn.addEventListener('click', ()=>{
       const ti = +btn.dataset.ti, ei = +btn.dataset.ei; if(ei<=0) return;
       const arr = d.tiers[ti].entries; [arr[ei-1], arr[ei]] = [arr[ei], arr[ei-1]]; redraw();
@@ -5112,7 +5133,9 @@ function renderTierlist(){
       d.tiers[+btn.dataset.ti].entries.splice(+btn.dataset.ei,1); redraw();
     }));
     qa('[data-role="add"]').forEach(btn=> btn.addEventListener('click', ()=>{
-      d.tiers[+btn.dataset.ti].entries.push({unitId: btn.dataset.unitId, note:''}); redraw();
+      const arr = d.tiers[+btn.dataset.ti].entries;
+      if(!arr.some(e=>e.unitId === btn.dataset.unitId)) arr.push({unitId: btn.dataset.unitId, note:''});
+      redraw();
     }));
     document.getElementById('addTierBtn').addEventListener('click', ()=>{
       d.tiers.push({id:uid(), label:'新分级', color:'#8a8a8a', entries:[]}); redraw();
