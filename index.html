@@ -184,12 +184,6 @@ a.team-name:hover{color:var(--gold);}
   .rarity-section-peek img{width:24px;height:24px;border-radius:50%;object-fit:cover;border:2px solid var(--bg);margin-left:-8px;background:var(--card-hover);}
   .rarity-section-peek img:first-child{margin-left:0;}
   .gallery-search-bar{display:flex;align-items:center;gap:9px;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:9px 14px;margin-bottom:16px;}
-  .gallery-category-filter{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:16px;}
-  .gallery-category-chip{border:none;cursor:pointer;font-size:12px;font-weight:600;padding:5px 13px;border-radius:20px;font-family:inherit;background:var(--card);color:var(--text-faint);opacity:.65;transition:opacity .12s, transform .1s;}
-  .gallery-category-chip:hover{opacity:1;}
-  .gallery-category-chip.active{opacity:1;box-shadow:inset 0 0 0 1.5px currentColor;}
-  .gallery-category-chip[data-cat-filter=""]{background:var(--card);color:var(--text-dim);}
-  .gallery-category-chip[data-cat-filter=""].active{background:var(--gold);color:#14161f;box-shadow:none;}
   .gallery-search-icon{font-size:13px;opacity:.6;}
   .gallery-search-input{flex:1;background:transparent;border:none;outline:none;color:var(--text);font-size:14px;font-family:inherit;}
   .gallery-search-input::placeholder{color:var(--text-faint);}
@@ -7273,10 +7267,6 @@ function renderGallery(type){
       <div class="gallery-card-name"${ca.nameStyle}>${escapeHtml(entity.name)}${entity.englishName ? ` <span class="gallery-card-en">${escapeHtml(entity.englishName)}</span>` : ''}</div>
     </a>`;
   }
-  const categoryFilterHtml = (type==='item' && list.length && state.itemCategories.length) ? `<div class="gallery-category-filter">
-    <button type="button" class="gallery-category-chip active" data-cat-filter="">全部</button>
-    ${state.itemCategories.map(c=>`<button type="button" class="gallery-category-chip" data-cat-filter="${c.id}" style="${dimChipStyle(c.color)}">${escapeHtml(c.name)}</button>`).join('')}
-  </div>` : '';
 
   const attrFilterCfg = galleryFilterConfig(type).filter(f=>f.options && f.options.length);
   const attrFilters = getGalleryActiveFilters(type);
@@ -7368,7 +7358,6 @@ function renderGallery(type){
       <div class="toolbar-actions">${backButtonHtml()}${isAdmin ? `<button class="btn btn-gold" id="galleryAddBtn">+ 新增${cfg.label}</button>` : ''}</div>
     </div>
     ${list.length>1 ? `<div class="gallery-search-bar"><span class="gallery-search-icon">🔍</span><input type="text" id="gallerySearchInput" class="gallery-search-input" placeholder="搜索${cfg.label}名称..."></div>` : ''}
-    ${categoryFilterHtml}
     ${attrFilterHtml}
     ${statsHtml}
     ${recentHtml}
@@ -7389,14 +7378,12 @@ function renderGallery(type){
     });
   });
 
-  let activeCategoryFilter = '';
   function applyGalleryFilters(){
     const q = (document.getElementById('gallerySearchInput')?.value||'').trim().toLowerCase();
     const sections = container.querySelectorAll('details.rarity-section[data-rarity-key]');
     const matchCard = (card)=>{
       const searchText = card.dataset.search || (card.querySelector('.gallery-card-name')?.textContent||'').toLowerCase();
       const searchOk = !q || searchText.includes(q);
-      const catOk = !activeCategoryFilter || card.dataset.itemCategory===activeCategoryFilter;
       // Attribute filters: within one field it's OR (fire OR water element matches either), across
       // different fields it's AND (must match the element filter AND the group filter if both set).
       const attrOk = attrFilterCfg.every(f=>{
@@ -7405,7 +7392,7 @@ function renderGallery(type){
         const cardVals = (card.getAttribute(`data-filter-${f.key.toLowerCase()}`)||'').split(',').filter(Boolean);
         return cardVals.some(v=> activeSet.has(v));
       });
-      return searchOk && catOk && attrOk;
+      return searchOk && attrOk;
     };
     if(sections.length){
       sections.forEach(section=>{
@@ -7416,7 +7403,7 @@ function renderGallery(type){
           if(match) anyVisible = true;
         });
         section.style.display = anyVisible ? '' : 'none';
-        setDetailsOpenSilently(section, !!((q || activeCategoryFilter || anyAttrFilterActive) ? true : openRaritySections.has(section.dataset.rarityKey)));
+        setDetailsOpenSilently(section, !!((q || anyAttrFilterActive) ? true : openRaritySections.has(section.dataset.rarityKey)));
       });
     } else {
       container.querySelectorAll('.gallery-card').forEach(card=>{
@@ -7430,14 +7417,6 @@ function renderGallery(type){
 
   const searchInput = document.getElementById('gallerySearchInput');
   if(searchInput) searchInput.addEventListener('input', applyGalleryFilters);
-
-  container.querySelectorAll('.gallery-category-chip[data-cat-filter]').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      activeCategoryFilter = chip.dataset.catFilter;
-      container.querySelectorAll('.gallery-category-chip').forEach(c=>c.classList.toggle('active', c===chip));
-      applyGalleryFilters();
-    });
-  });
 
   function updateFilterSummary(){
     const anyActive = attrFilterCfg.some(f=> attrFilters[f.key].size>0);
