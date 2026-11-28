@@ -7307,8 +7307,19 @@ function renderGallery(type){
   if(!list.length){
     cardsHtml = `<div class="empty-hint" style="padding-left:0;">暂无${cfg.label}，${isAdmin ? '点右上角新增一个吧' : '敬请期待'}</div>`;
   } else if(hasRarity){
-    groups = state.rarities.map(r=>({rarity:r, items:list.filter(e=>e.rarity===r.id)})).filter(g=>g.items.length);
-    const unranked = list.filter(e=>!e.rarity || !state.rarities.some(r=>r.id===e.rarity));
+    // Items are grouped by their item category; everything else (units, familiars, memorias) by rarity
+    const unrankedLabel = type==='item' ? '未分类' : '未分级';
+    const groupBadgeHtml = (g)=> g.isCategory
+      ? `<span class="mark-chip" style="${coloredChipStyle(g.rarity.color)}">${escapeHtml(g.rarity.name)}</span>`
+      : (g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">${unrankedLabel}</span>`);
+    let unranked;
+    if(type==='item'){
+      groups = state.itemCategories.map(c=>({rarity:{id:c.id, name:c.name, color:c.color}, isCategory:true, items:list.filter(e=>e.categoryId===c.id)})).filter(g=>g.items.length);
+      unranked = list.filter(e=>!e.categoryId || !state.itemCategories.some(c=>c.id===e.categoryId));
+    } else {
+      groups = state.rarities.map(r=>({rarity:r, items:list.filter(e=>e.rarity===r.id)})).filter(g=>g.items.length);
+      unranked = list.filter(e=>!e.rarity || !state.rarities.some(r=>r.id===e.rarity));
+    }
     if(unranked.length) groups.push({rarity:null, items:unranked});
     cardsHtml = groups.map(g=>{
       const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
@@ -7316,7 +7327,7 @@ function renderGallery(type){
       const peekHtml = g.items.slice(0,6).filter(e=>e.image).map(e=>`<img src="${escapeHtml(String(e.image))}">`).join('');
       return `
       <details class="rarity-section" data-rarity-key="${key}"${isOpen?' open':''}>
-        <summary class="rarity-section-head">${g.rarity ? rarityBadge(g.rarity.id) : `<span class="badge badge-common" style="background:var(--card);color:var(--text-faint);">未分级</span>`}${peekHtml ? `<span class="rarity-section-peek">${peekHtml}</span>` : ''}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
+        <summary class="rarity-section-head">${groupBadgeHtml(g)}${peekHtml ? `<span class="rarity-section-peek">${peekHtml}</span>` : ''}<span class="rarity-section-count">${g.items.length}</span><span class="rarity-section-arrow">▸</span></summary>
         <div class="gallery-grid">${g.items.map(cardHtml).join('')}</div>
       </details>`;
     }).join('');
@@ -7324,7 +7335,7 @@ function renderGallery(type){
       const distBarHtml = `<div class="gallery-distribution-bar">${groups.map(g=>{
         const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
         const bg = g.rarity ? (g.rarity.color||'var(--gold-dim)') : 'var(--border-light)';
-        const label = g.rarity ? g.rarity.name : '未分级';
+        const label = g.rarity ? g.rarity.name : unrankedLabel;
         return `<div class="gallery-distribution-seg" style="flex:${g.items.length};background:${bg};" title="${escapeHtml(label)} ${g.items.length}" data-jump="${key}"></div>`;
       }).join('')}</div>`;
       statsHtml = `<div class="gallery-stats-bar">
@@ -7333,7 +7344,7 @@ function renderGallery(type){
         <div class="gallery-stats-chips">${groups.map(g=>{
           const key = 'gallery-rarity-'+type+'-'+(g.rarity ? g.rarity.id : 'unranked');
           const style = g.rarity ? dimChipStyle(g.rarity.color) : 'background:var(--card);color:var(--text-faint);';
-          return `<button type="button" class="gallery-stats-chip" style="${style}" data-jump="${key}">${g.rarity ? escapeHtml(g.rarity.name) : '未分级'} <b>${g.items.length}</b></button>`;
+          return `<button type="button" class="gallery-stats-chip" style="${style}" data-jump="${key}">${g.rarity ? escapeHtml(g.rarity.name) : unrankedLabel} <b>${g.items.length}</b></button>`;
         }).join('')}</div>
       </div>`;
     }
